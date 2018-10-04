@@ -1,31 +1,30 @@
 * Preprocessing
+** Convert tcpdump files to csv
 
-Convert ~pcap~ file into a proper ~csv~, with every (and only) information we need.
+ Here follows WireShark names for fields we are interested into.
+ #+NAME: field_names
+ - frame.time_epoch
+ - ip.src
+ - ip.dst
+ - frame.len
 
-Here follows WireShark names for fields we are interested into.
-#+NAME: field_names
-- frame.time_epoch
-- ip.src
-- ip.dst
-- frame.len
+ Here follows a list of all ~pcap~ files.
+ #+NAME: pcap_files
+ - pcap_data/ciao.pcapng
 
-List here all wanted ~pcap~ files.
-#+NAME: pcap_files
-- ciao.pcapng
+ #+BEGIN_SRC sh :var field_names=field_names pcap_files=pcap_files
+   # put "-e " before each field
+   field_params=" -e $(echo $field_names | sed "s/ / -e /g")"
 
-#+BEGIN_SRC sh :var field_names=field_names pcap_files=pcap_files
-  # put "-e " before each field
-  field_params=" -e $(echo $field_names | sed "s/ / -e /g")"
+   for pcap_file in $(echo $pcap_files | sed "s/ /\n/g")
+   do
+       output_path="${pcap_file%%.*}.csv.gz"
 
-  for pcap_file in $(echo $pcap_files | sed "s/ /\n/g")
-  do
-      output_path="${pcap_file%%.*}.csv.gz"
+       # Write first row of csv output and then everything else.
+       # Then use comma as separator and compress
+       (echo $field_names && tshark -r $pcap_file -T fields ${field_params} -Y "ip.src") \
+           | sed 's/[\t ]/,/g' | gzip > $output_path
+   done
+ #+END_SRC
 
-      # Write first row of csv output and then everything else.
-      # Then use comma as separator and compress
-      (echo $field_names && tshark -r $pcap_file -T fields ${field_params} -Y "ip.src") \
-          | sed 's/\t/,/g' | gzip > $output_path
-  done
-#+END_SRC
-
-#+RESULTS:
+ #+RESULTS:
