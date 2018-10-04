@@ -1,6 +1,5 @@
 * Preprocessing
 ** Convert tcpdump files to csv
-
    Here follows WireShark names for fields we are interested into.
    #+NAME: field_names
    - frame.time_epoch
@@ -27,3 +26,8 @@
              | sed 's/[\t ]/,/g' | gzip > $output_path
      done
    #+END_SRC
+
+* Local variables
+  # Local Variables:
+  # eval: (add-hook 'before-save-hook (lambda () (indent-region (point-min) (point-max) nil)) t t)
+  # End:
