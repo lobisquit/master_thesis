@@ -1,0 +1,52 @@
+#+STARTUP: latexpreview
+
+bibliography:material.bib
+
+* ANALOGY Virtual Network Overlay as group of organizers of a fair
+
+- people coming in are packets to be forwarded
+
+- one all-knowing person cannot deal with all their specific needs, so
+  - many people deal with simple tasks, redirecting visitors to common destinations
+  - difficult (unusual) ones are sent to their supervisor, who knows more things
+  - again, unusual requests are sent up to the supervisor of the supervisor, and so on
+
+- the director has to be sure that all staff knows its needed information ~> controller
+
+- a responsible is given the task to check if everybody is working properly (no congestion, no problems) and tell the director in case ~> monitor
+
+* Traffic generation techniques, from "A Survey on the Common Network Traffic Sources Models"
+** Bound (envelope) source traffic models
+*** Deterministic Bound Interval Independent
+    Traffic function $A$ is limited by $A*$: $$ A[t,\, t + \tau] \le A^*(\tau) $$: deterministic and time-invariant bound.
+    cite:ChengShangChang1994
+
+*** Stochastic Bound Traffic Models
+    Bound is *not* deterministic, but in probability: traffic function is likely to be smaller than the bound.
+
+*** BIND Traffic Model
+
+** Unbound (exact) Source Models
+
+*** Poisson Distribution Model
+
+*** Pareto Distribution Process
+
+*** Markov Modulated Poisson Process
+
+*** Markov Modulated Fluid Models
+
+*** Autoregressive Models
+
+*** Wavelet-based Models
+
+*** Traffic Models Using Chaotic Maps
+    ex. Piecewise Linear Maps
+
+*** N-Burst Traffic Model
+    Sum of N independent ON-OFF sources
+* from PCAP dumps I need
+- sender IP, PORT
+- destination IP, PORT
+- time
+- number of bytes (of just IP packet? -> depends on what network I will test)
