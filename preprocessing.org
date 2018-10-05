@@ -7,9 +7,9 @@
    - ip.dst
    - frame.len
 
-   Here follows a list of all ~pcap~ files.
+   Here follows a list of all compressed ~pcap~ files.
    #+NAME: pcap_files
-   - pcap_data/ciao.pcapng
+   - pcap_data/201805090130.pcap.gz
 
    Perform actual procedure, using previous information.
    #+BEGIN_SRC sh :var field_names=field_names pcap_files=pcap_files :results none
@@ -18,12 +18,29 @@
 
      for pcap_file in $(echo $pcap_files | sed "s/ /\n/g")
      do
+         # problem: tshark has a memory leak and cannot deal with file that are too big
+         # we need to split each source file in 100MB chunks
+         mkdir -p pcap_data/temp/
+
+         slices_path="pcap_data/temp/slice_$(basename ${pcap_file%%.*}).pcap"
+         gunzip -c $pcap_file | tcpdump -r - -w $slices_path -C 100
+
          output_path="${pcap_file%%.*}.csv.gz"
+
+         for slice in $(ls $slices_path* | sed "s/ /\n/g")
+         do
+             tshark -r $slice \
+                    -T fields ${field_params} \
+                    -Y "ip.src" \
+                    -E separator=, -E occurrence=f > "$slice.dump"
+         done
 
          # Write first row of csv output and then everything else.
          # Then use comma as separator and compress
-         (echo $field_names && tshark -r $pcap_file -T fields ${field_params} -Y "ip.src") \
-             | sed 's/[\t ]/,/g' | gzip > $output_path
+         title=$(echo $field_names | sed "s/ /,/g")
+         (echo $title && cat $slices_path*.dump) | gzip > $output_path
+
+         rm -rf pcap_data/temp/
      done
    #+END_SRC
 
