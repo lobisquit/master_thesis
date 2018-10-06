@@ -1,6 +1,6 @@
 #+STARTUP: latexpreview
 
-bibliography:material.bib
+# bibliography:material.bib
 
 * ANALOGY Virtual Network Overlay as group of organizers of a fair
 
@@ -50,3 +50,24 @@ bibliography:material.bib
 - destination IP, PORT
 - time
 - number of bytes (of just IP packet? -> depends on what network I will test)
+
+
+* TODO thesis [0/3]
+- [ ] study WIDE dataset [0/3]
+  - [ ] preprocess dataset
+  - [ ] study non-stationarity, ...
+  - [ ] obtain a realistic packet generator (ON/OFF, ...) that fits the data
+- [ ] design wanted core network [0/2]
+  - [ ] choose between OpenFlow and theoric routing optimization
+  - [ ] write NS3 code
+- [ ] learn how to optimize the network
+  - [ ] write a reinforcement learning algo
+  - [ ] run it
+
+* things I have found
+- o'Reilly book on MPLS/SDN: nice overwiev of the protocol cite:Szarkowicz2015
+- overwiev on traditional packet generation techniques
+- internet flows are not always stationary, gaussian and linear cite:Marnerides2018,Cao2001
+- non-stationarity can be modeled using
+  - Transformed Arma Models cite:Laner2014
+  - time variant Poisson processed cite:Karagiannis2004
