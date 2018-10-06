@@ -48,6 +48,20 @@
      done
    #+END_SRC
 
+* Useful python code
+  Convert IP addresses to integer and viceversa.
+
+  #+BEGIN_SRC python :results output
+    import ipaddress
+
+    print(int(ipaddress.IPv4Address("192.168.0.1")))
+    print(str(ipaddress.IPv4Address(3232235521)))
+  #+END_SRC
+
+  #+RESULTS:
+  : 3232235521
+  : 192.168.0.1
+
 * Local variables
   # Local Variables:
   # eval: (add-hook 'before-save-hook (lambda () (indent-region (point-min) (point-max) nil)) t t)
