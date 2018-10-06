@@ -18,14 +18,19 @@
 
      for pcap_file in $(echo $pcap_files | sed "s/ /\n/g")
      do
-         # problem: tshark has a memory leak and cannot deal with file that are too big
-         # we need to split each source file in 100MB chunks
+         output_path="${pcap_file%%.*}.csv.gz"
+
+         # stop iteration immediately if output file already exists
+         if [ -f $output_path ]; then
+             continue
+         fi
+
+         # PROBLEM tshark has a memory leak and cannot deal with file that are too big
+         # we need to split each source file in 100MB chunks using tcpdump
          mkdir -p pcap_data/temp/
 
          slices_path="pcap_data/temp/slice_$(basename ${pcap_file%%.*}).pcap"
          gunzip -c $pcap_file | tcpdump -r - -w $slices_path -C 100
-
-         output_path="${pcap_file%%.*}.csv.gz"
 
          for slice in $(ls $slices_path* | sed "s/ /\n/g")
          do
@@ -35,8 +40,7 @@
                     -E separator=, -E occurrence=f > "$slice.dump"
          done
 
-         # Write first row of csv output and then everything else.
-         # Then use comma as separator and compress
+         # write first row of csv output and then everything else
          title=$(echo $field_names | sed "s/ /,/g")
          (echo $title && cat $slices_path*.dump) | gzip > $output_path
 
