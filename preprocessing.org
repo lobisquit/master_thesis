@@ -12,7 +12,7 @@
    - pcap_data/201805090130.pcap.gz
 
    Perform actual procedure, using previous information.
-   #+BEGIN_SRC sh :var field_names=field_names pcap_files=pcap_files :results none
+   #+BEGIN_SRC sh :var field_names=field_names pcap_files=pcap_files :results output
      # put "-e " before each field
      field_params=" -e $(echo $field_names | sed "s/ / -e /g")"
 
@@ -22,7 +22,10 @@
 
          # stop iteration immediately if output file already exists
          if [ -f $output_path ]; then
+             echo "Jumping $pcap_file, output already exists"
              continue
+         else
+             echo "Working on $pcap_file"
          fi
 
          # PROBLEM tshark has a memory leak and cannot deal with file that are too big
