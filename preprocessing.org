@@ -1,3 +1,18 @@
+
+* Obtaining the dataset
+  Dataset is available in [[http://mawi.wide.ad.jp/mawi/][MAWI Working Group Traffic Archive]].
+  Here I chose only few of those, as the work required to process them is huge.
+
+  #+NAME: dataset_urls
+  - http://mawi.nezu.wide.ad.jp/mawi/samplepoint-F/2018/201803151400.pcap.gz
+
+  #+BEGIN_SRC sh :var dataset_urls=dataset_urls :tangle scripts/1_download.sh
+    for url in $(echo $dataset_urls | sed "s/ /\n/g")
+    do
+        wget $url -P pcap_files
+    done
+  #+END_SRC
+
 * Preprocessing
 ** Convert tcpdump files to csv
    Here follows WireShark names for fields we are interested into.
@@ -12,7 +27,7 @@
    - pcap_data/201805090130.pcap.gz
 
    Perform actual procedure, using previous information.
-   #+BEGIN_SRC sh :var field_names=field_names pcap_files=pcap_files :results none
+   #+BEGIN_SRC sh :var field_names=field_names pcap_files=pcap_files :results none :tangle scripts/2_convert.sh
      # put "-e " before each field
      field_params=" -e $(echo $field_names | sed "s/ / -e /g")"
 
