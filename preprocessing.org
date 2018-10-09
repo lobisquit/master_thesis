@@ -51,6 +51,29 @@
      done
    #+END_SRC
 
+   Convert ~csv~ dataset to ~HDF5~.
+   #+BEGIN_SRC python :var pcap_files=pcap_files :results output :tangle scripts/second_step.py
+     import pandas as pd
+
+     stems = [pcap_path[0].split('.')[0] for pcap_path in pcap_files]
+     csv_files = ['{}.csv.gz'.format(stem) for stem in stems]
+     h5_files = ['{}.csv.'.format(stem) for stem in stems]
+
+     for stem in stems:
+         csv_file = '{}.csv.gz'.format(stem)
+         print('Working on {}'.format(csv_file))
+         # chunksize is the number of rows
+         chunksize = 1000
+         current_data = pd.read_csv(csv_file, chunksize=chunksize)
+
+         with pd.HDFStore('{}.h5'.format(stem), mode='w', complevel=9) as store:
+             for n, chunk in enumerate(current_data):
+                 print("{} rows parsed".format(n * chunksize), end='\r')
+                 store.append('table', chunk, index=False)
+   #+END_SRC
+
+   #+RESULTS:
+
 * Useful python code
   Convert IP addresses to integer and viceversa.
 
