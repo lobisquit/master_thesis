@@ -21,6 +21,7 @@
    - ip.src
    - ip.dst
    - frame.len
+   - frame.protocols
 
    Here follows a list of all compressed ~pcap~ files.
    #+NAME: pcap_files

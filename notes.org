@@ -45,12 +45,6 @@
 
 *** N-Burst Traffic Model
     Sum of N independent ON-OFF sources
-* from PCAP dumps I need
-- sender IP, PORT
-- destination IP, PORT
-- time
-- number of bytes (of just IP packet? -> depends on what network I will test)
-
 
 * TODO thesis [0/3]
 - [-] study WIDE dataset [1/3]
