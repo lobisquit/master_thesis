@@ -21,7 +21,6 @@
 
    #+NAME: field_names
    - frame.time_epoch
-
    - ip.src
    - ip.dst
    - frame.len
