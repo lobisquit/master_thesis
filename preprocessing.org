@@ -70,7 +70,7 @@
 
          echo "  Merging results"
          # write first row of csv output and then everything else
-         title=$(echo $field_names | sed "s/ /,/g")
+         title=$(echo ${field_names[*]} | sed "s/ /,/g")
          (echo $title && cat $slices_path*.dump) | gzip > $output_path
 
          rm -rf pcap_data/temp/
