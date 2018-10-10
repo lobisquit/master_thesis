@@ -9,15 +9,16 @@
   - http://mawi.nezu.wide.ad.jp/mawi/samplepoint-F/2018/201806161400.pcap.gz
 
   Download all of them in a parallel fashion, see [[https://stackoverflow.com/a/11850469][here]] for details.
-  ~wget -c~ ensure each file is not downloaded twice.
+  ~wget -c~ ensure each file is downloaded once, even if it is stopped and resumed.
 
   #+BEGIN_SRC bash :var dataset_urls=dataset_urls :tangle scripts/1_download.sh
-    echo ${dataset_urls[*]} | xargs -n 1 -P 8 wget -q -P pcap_data -c
+    echo ${dataset_urls[*]} | xargs -n 1 -P 8 wget -q -P pcap_data/ -c
   #+END_SRC
 
 * Preprocessing
 ** Convert tcpdump files to csv
    Here follows WireShark names for fields we are interested into.
+   Note that time is expressed in seconds and packet length in bytes.
 
    #+NAME: field_names
    - frame.time_epoch
@@ -30,6 +31,9 @@
 
    #+NAME: pcap_files
    - pcap_data/dummy_capture.pcap.gz
+   - pcap_data/201802061400.pcap.gz
+   - pcap_data/201806171400.pcap.gz
+   - pcap_data/201806161400.pcap.gz
 
    Perform actual procedure, using previous information.
 
