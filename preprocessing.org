@@ -4,12 +4,21 @@
   Here I chose only few of those, as the work required to process them is huge.
 
   #+NAME: dataset_urls
-  - http://mawi.nezu.wide.ad.jp/mawi/samplepoint-F/2018/201803151400.pcap.gz
+  - http://mawi.nezu.wide.ad.jp/mawi/samplepoint-F/2018/201802061400.pcap.gz
+  - http://mawi.nezu.wide.ad.jp/mawi/samplepoint-F/2018/201806171400.pcap.gz
+  - http://mawi.nezu.wide.ad.jp/mawi/samplepoint-F/2018/201806161400.pcap.gz
 
   #+BEGIN_SRC sh :var dataset_urls=dataset_urls :tangle scripts/1_download.sh
     for url in $(echo $dataset_urls | sed "s/ /\n/g")
     do
-        wget $url -P pcap_files
+        if [ -f "pcap_data/$(basename url)" ]; then
+            echo "$url already downloaded"
+            continue
+        else
+            echo "Downloading $pcap_file"
+        fi
+
+        wget $url -P pcap_data
     done
   #+END_SRC
 
@@ -57,6 +66,7 @@
          echo "  Working on each slice"
          for slice in $(ls $slices_path* | sed "s/ /\n/g")
          do
+             echo "$(ls pcap_data/temp/*.dump | wc -l)/$(ls pcap_data/temp/!(*.dump) | wc -l)"
              tshark -r $slice \
                     -T fields ${field_params} \
                     -Y "ip.src" \
@@ -107,7 +117,10 @@
   : 3232235521
   : 192.168.0.1
 
+
+
 * Local variables
+
   # Local Variables:
   # eval: (add-hook 'before-save-hook (lambda () (indent-region (point-min) (point-max) nil)) t t)
   # eval: (add-hook 'after-save-hook 'org-babel-tangle t t)
