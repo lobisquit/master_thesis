@@ -8,7 +8,7 @@
   - http://mawi.nezu.wide.ad.jp/mawi/samplepoint-F/2018/201806171400.pcap.gz
   - http://mawi.nezu.wide.ad.jp/mawi/samplepoint-F/2018/201806161400.pcap.gz
 
-  Download all of them in a parallel fashion, see [[https://stackoverflow.com/a/11850469][here]] for details.
+  This snippet will download all of them in a parallel fashion, see [[https://stackoverflow.com/a/11850469][here]] for ~xargs~ parameters details.
   ~wget -c~ ensure each file is downloaded once, even if it is stopped and resumed.
 
   #+BEGIN_SRC bash :var dataset_urls=dataset_urls :tangle scripts/1_download.sh
@@ -17,7 +17,16 @@
 
 * Preprocessing
 ** Convert tcpdump files to csv
-   Here follows WireShark names for fields we are interested into.
+   Here follows a list of all compressed ~pcap~ files.
+   The first one is a testing trace: it will not be analyzed, of course.
+
+   #+NAME: pcap_files
+   - pcap_data/dummy_capture.pcap.gz
+   - pcap_data/201802061400.pcap.gz
+   - pcap_data/201806171400.pcap.gz
+   - pcap_data/201806161400.pcap.gz
+
+   We are interested only in some properties of the traffic, whose Wireshark keywords are further listed.
    Note that time is expressed in seconds and packet length in bytes.
 
    #+NAME: field_names
@@ -27,15 +36,7 @@
    - frame.len
    - frame.protocols
 
-   Here follows a list of all compressed ~pcap~ files.
-
-   #+NAME: pcap_files
-   - pcap_data/dummy_capture.pcap.gz
-   - pcap_data/201802061400.pcap.gz
-   - pcap_data/201806171400.pcap.gz
-   - pcap_data/201806161400.pcap.gz
-
-   Perform actual procedure, using previous information.
+   Now we are ready to convert all ~pcap~ files to ~csv~.
 
    #+BEGIN_SRC bash :var field_names=field_names pcap_files=pcap_files :results output :tangle scripts/2_convert.sh
      # put "-e " before each field
@@ -81,8 +82,8 @@
    #+END_SRC
 
 ** Normalize time series
-   Every file time stamp are set relative to the first aquired data.
-   Lines are also sorted to ensure order is correct.
+   To improve the data structure, every timestamp is set to be relative to the first aquired data.
+   Lines are also sorted to ensure time order is correct.
 
    #+BEGIN_SRC bash :tangle scripts/3_normalize_time.sh :var pcap_files=pcap_files
      for pcap_file in "${pcap_files[@]}"
@@ -115,16 +116,17 @@
      done
    #+END_SRC
 
-   Extract time deltas for measuring interarrival distribution.
+** Interarrival distribution
+   Time deltas are stored in a proper ~csv~ in order to measure interarrival distribution.
 
-   #+BEGIN_SRC bash :tangle scripts/4_interarrival.sh :var pcap_files=pcap_files
+   #+BEGIN_SRC bash :tangle scripts/4_interarrival.sh :var pcap_files=pcap_files :results none
      for pcap_file in "${pcap_files[@]}"
      do
          csv_file="${pcap_file%%.*}.csv.gz"
 
-         awk_snippet='BEGIN   {FS=","; OFS=","}
+         awk_snippet='BEGIN   { FS=","; OFS="," }
                       NR == 1 { print "interarrival_times" }
-                      NR == 2 { prev_time=$1 }
+                      NR == 2 { prev_time = $1 }
                       NR > 2  {
                         delta = $1 - prev_time;
                         prev_time = $1;
@@ -137,8 +139,6 @@
              | gzip -c > ${csv_file%%.*}_interarrival.csv.gz
      done
    #+END_SRC
-
-   #+RESULTS:
 
 * Local variables
   # Local Variables:
