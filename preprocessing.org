@@ -34,11 +34,11 @@
 
    Perform actual procedure, using previous information.
 
-   #+BEGIN_SRC bash :var field_names=field_names pcap_files=pcap_files :results none :tangle scripts/2_convert.sh
+   #+BEGIN_SRC bash :var field_names=field_names pcap_files=pcap_files :results output :tangle scripts/2_convert.sh
      # put "-e " before each field
      field_params=" -e $(echo ${field_names[*]} | sed "s/ / -e /g")"
 
-     for pcap_file in $(echo ${pcap_files[*]} | sed "s/ /\n/g")
+     for pcap_file in "${pcap_files[@]}"
      do
          output_path="${pcap_file%%.*}.csv.gz"
 
@@ -77,33 +77,23 @@
      done
    #+END_SRC
 
-   Convert ~csv~ dataset to ~HDF5~.
-
-   #+BEGIN_SRC python :var pcap_files=pcap_files :results output :tangle scripts/second_step.py
-     import pandas as pd
-
-     stems = [pcap_path[0].split('.')[0] for pcap_path in pcap_files]
-     csv_files = ['{}.csv.gz'.format(stem) for stem in stems]
-     h5_files = ['{}.csv.'.format(stem) for stem in stems]
-
-     for stem in stems:
-         csv_file = '{}.csv.gz'.format(stem)
-         print('Working on {}'.format(csv_file))
-         # chunksize is the number of rows
-         chunksize = 1000
-         current_data = pd.read_csv(csv_file, chunksize=chunksize)
-
-         with pd.HDFStore('{}.h5'.format(stem), mode='w', complevel=9) as store:
-             for n, chunk in enumerate(current_data):
-                 print("{} rows parsed".format(n * chunksize), end='\r')
-                 store.append('table', chunk, index=False)
-   #+END_SRC
-
 * Convert data to time series
-  #+BEGIN_SRC sh
-    for pcap_file in $(echo $pcap_files | sed "s/ /\n/g")
+  #+BEGIN_SRC bash :tangle scripts/3_normalize_time.sh :var pcap_files=pcap_files
+    for pcap_file in "${pcap_files[@]}"
     do
+        csv_file="${pcap_file%%.*}.csv.gz"
 
+        # make time start from 0
+        min_time=$(zcat $csv_file \
+                       | awk -v min_time=inf -F, '$1<min_time && NR>1 { min_time=$1 } END {print min_time}')
+
+        echo "Working on $csv_file"
+        pv $csv_file \
+            | zcat \
+            | awk -v min_time=$min_time 'BEGIN {FS=","; OFS=","} NR==1 {print $0} NR>1 { $1=$1-min_time; print $0 }' \
+            | gzip -c > ${csv_file}_temp
+
+        mv ${csv_file}_temp $csv_file
     done
   #+END_SRC
 
