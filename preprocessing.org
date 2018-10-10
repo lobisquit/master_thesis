@@ -116,6 +116,7 @@
 * Local variables
 
   # Local Variables:
+  # sh-indent-after-continuation: nil
   # eval: (add-hook 'before-save-hook (lambda () (indent-region (point-min) (point-max) nil)) t t)
   # eval: (add-hook 'after-save-hook 'org-babel-tangle t t)
   # End:
