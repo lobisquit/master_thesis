@@ -8,35 +8,32 @@
   - http://mawi.nezu.wide.ad.jp/mawi/samplepoint-F/2018/201806171400.pcap.gz
   - http://mawi.nezu.wide.ad.jp/mawi/samplepoint-F/2018/201806161400.pcap.gz
 
-  #+BEGIN_SRC sh :var dataset_urls=dataset_urls :tangle scripts/1_download.sh
-    for url in $(echo $dataset_urls | sed "s/ /\n/g")
-    do
-        if [ -f "pcap_data/$(basename url)" ]; then
-            echo "$url already downloaded"
-            continue
-        else
-            echo "Downloading $pcap_file"
-        fi
+  Download all of them in a parallel fashion, see [[https://stackoverflow.com/a/11850469][here]] for details.
+  ~wget -c~ ensure each file is not downloaded twice.
 
-        wget $url -P pcap_data
-    done
+  #+BEGIN_SRC bash :var dataset_urls=dataset_urls :tangle scripts/1_download.sh
+    echo ${dataset_urls[*]} | xargs -n 1 -P 8 wget -q -P pcap_data -c
   #+END_SRC
 
 * Preprocessing
 ** Convert tcpdump files to csv
    Here follows WireShark names for fields we are interested into.
+
    #+NAME: field_names
    - frame.time_epoch
+
    - ip.src
    - ip.dst
    - frame.len
    - frame.protocols
 
    Here follows a list of all compressed ~pcap~ files.
+
    #+NAME: pcap_files
    - pcap_data/dummy_capture.pcap.gz
 
    Perform actual procedure, using previous information.
+
    #+BEGIN_SRC bash :var field_names=field_names pcap_files=pcap_files :results none :tangle scripts/2_convert.sh
      # put "-e " before each field
      field_params=" -e $(echo ${field_names[*]} | sed "s/ / -e /g")"
@@ -81,6 +78,7 @@
    #+END_SRC
 
    Convert ~csv~ dataset to ~HDF5~.
+
    #+BEGIN_SRC python :var pcap_files=pcap_files :results output :tangle scripts/second_step.py
      import pandas as pd
 
@@ -100,6 +98,14 @@
                  print("{} rows parsed".format(n * chunksize), end='\r')
                  store.append('table', chunk, index=False)
    #+END_SRC
+
+* Convert data to time series
+  #+BEGIN_SRC sh
+    for pcap_file in $(echo $pcap_files | sed "s/ /\n/g")
+    do
+
+    done
+  #+END_SRC
 
 * Useful python code
   Convert IP addresses to integer and viceversa.
