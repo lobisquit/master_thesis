@@ -90,17 +90,19 @@
          csv_file="${pcap_file%%.*}.csv.gz"
 
          # make time start from 0
-         min_time=$(zcat $csv_file \
-                        | awk -v min_time=inf -F, '$1 < min_time && NR>1 { min_time=$1 }
-                                                   END {print min_time}')
+         awk_snippet='$1 < min_time && NR>1 { min_time=$1 }
+                      END                   { print min_time }'
+         min_time=$(zcat $csv_file | awk -v min_time=inf -F, $awk_snippet)
 
          echo "Working on $csv_file"
+
+         awk_snippet='BEGIN   { FS=","; OFS="," }
+                      NR == 1 { print $0 }
+                      NR > 1  { $1 = $1 - min_time; print $0 }'
          pv $csv_file \
-             | zcat \
-             | awk -v min_time=$min_time 'BEGIN {FS=","; OFS=","}
-                                          NR == 1 {print $0}
-                                          NR > 1 { $1=$1-min_time; print $0 }' \
-                                              | gzip -c > ${csv_file}_temp
+             | gunzip -c \
+             | awk -v min_time=$min_time $awk_snippet \
+             | gzip -c > ${csv_file}_temp
 
          # sort by time, to be 100% sure the time serie is in order
          (
@@ -110,6 +112,29 @@
              | gzip -c > ${csv_file}
 
          rm ${csv_file}_temp
+     done
+   #+END_SRC
+
+   Extract time deltas for measuring interarrival distribution.
+
+   #+BEGIN_SRC bash :tangle scripts/4_interarrival.sh :var pcap_files=pcap_files
+     for pcap_file in "${pcap_files[@]}"
+     do
+         csv_file="${pcap_file%%.*}.csv.gz"
+
+         awk_snippet='BEGIN   {FS=","; OFS=","}
+                      NR == 1 { print "interarrival_times" }
+                      NR == 2 { prev_time=$1 }
+                      NR > 2  {
+                        delta = $1 - prev_time;
+                        prev_time = $1;
+                        print delta;
+                      }'
+
+         pv $csv_file \
+             | gunzip -c \
+             | awk $awk_snippet \
+             | gzip -c > ${csv_file%%.*}_interarrival.csv.gz
      done
    #+END_SRC
 
