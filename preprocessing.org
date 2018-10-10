@@ -77,44 +77,40 @@
      done
    #+END_SRC
 
-* Convert data to time series
-  #+BEGIN_SRC bash :tangle scripts/3_normalize_time.sh :var pcap_files=pcap_files
-    for pcap_file in "${pcap_files[@]}"
-    do
-        csv_file="${pcap_file%%.*}.csv.gz"
+** Normalize time series
+   Every file time stamp are set relative to the first aquired data.
+   Lines are also sorted to ensure order is correct.
 
-        # make time start from 0
-        min_time=$(zcat $csv_file \
-                       | awk -v min_time=inf -F, '$1<min_time && NR>1 { min_time=$1 } END {print min_time}')
+   #+BEGIN_SRC bash :tangle scripts/3_normalize_time.sh :var pcap_files=pcap_files
+     for pcap_file in "${pcap_files[@]}"
+     do
+         csv_file="${pcap_file%%.*}.csv.gz"
 
-        echo "Working on $csv_file"
-        pv $csv_file \
-            | zcat \
-            | awk -v min_time=$min_time 'BEGIN {FS=","; OFS=","} NR==1 {print $0} NR>1 { $1=$1-min_time; print $0 }' \
-            | gzip -c > ${csv_file}_temp
+         # make time start from 0
+         min_time=$(zcat $csv_file \
+                        | awk -v min_time=inf -F, '$1 < min_time && NR>1 { min_time=$1 }
+                                                   END {print min_time}')
 
-        mv ${csv_file}_temp $csv_file
-    done
-  #+END_SRC
+         echo "Working on $csv_file"
+         pv $csv_file \
+             | zcat \
+             | awk -v min_time=$min_time 'BEGIN {FS=","; OFS=","}
+                                          NR == 1 {print $0}
+                                          NR > 1 { $1=$1-min_time; print $0 }' \
+                                              | gzip -c > ${csv_file}_temp
 
-* Useful python code
-  Convert IP addresses to integer and viceversa.
+         # sort by time, to be 100% sure the time serie is in order
+         (
+             zcat ${csv_file}_temp | head -n1; # ignore the title
+             zcat ${csv_file}_temp | tail -n +2 | LC_ALL=C sort -k1 -n -t,
+         ) \
+             | gzip -c > ${csv_file}
 
-  #+BEGIN_SRC python :results output
-    import ipaddress
-
-    print(int(ipaddress.IPv4Address("192.168.0.1")))
-    print(str(ipaddress.IPv4Address(3232235521)))
-  #+END_SRC
-
-  #+RESULTS:
-  : 3232235521
-  : 192.168.0.1
-
-
+         rm ${csv_file}_temp
+     done
+   #+END_SRC
 
 * Local variables
-
   # Local Variables:
   # sh-indent-after-continuation: nil
   # eval: (add-hook 'before-save-hook (lambda () (indent-region (point-min) (point-max) nil)) t t)
