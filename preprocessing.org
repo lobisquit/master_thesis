@@ -34,17 +34,15 @@
 
    Here follows a list of all compressed ~pcap~ files.
    #+NAME: pcap_files
-   - pcap_data/201805090130.pcap.gz
+   - pcap_data/dummy_capture.pcap.gz
 
    Perform actual procedure, using previous information.
-   #+BEGIN_SRC sh :var field_names=field_names pcap_files=pcap_files :results none :tangle scripts/2_convert.sh
+   #+BEGIN_SRC bash :var field_names=field_names pcap_files=pcap_files :results none :tangle scripts/2_convert.sh
      # put "-e " before each field
-     field_params=" -e $(echo $field_names | sed "s/ / -e /g")"
+     field_params=" -e $(echo ${field_names[*]} | sed "s/ / -e /g")"
 
-     for pcap_file in $(echo $pcap_files | sed "s/ /\n/g")
+     for pcap_file in $(echo ${pcap_files[*]} | sed "s/ /\n/g")
      do
-         mkdir -p pcap_data/temp/
-
          output_path="${pcap_file%%.*}.csv.gz"
 
          # stop iteration immediately if output file already exists
@@ -57,6 +55,7 @@
 
          # PROBLEM tshark has a memory leak and cannot deal with file that are too big
          # we need to split each source file in 100MB chunks using tcpdump
+         echo "  Creating temporary directory"
          mkdir -p pcap_data/temp/
 
          echo "  Splitting main file"
@@ -66,7 +65,6 @@
          echo "  Working on each slice"
          for slice in $(ls $slices_path* | sed "s/ /\n/g")
          do
-             echo "$(ls pcap_data/temp/*.dump | wc -l)/$(ls pcap_data/temp/!(*.dump) | wc -l)"
              tshark -r $slice \
                     -T fields ${field_params} \
                     -Y "ip.src" \
