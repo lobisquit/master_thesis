@@ -46,12 +46,13 @@
      do
          output_path="${pcap_file%%.*}.csv.gz"
 
+         echo ""
          # stop iteration immediately if output file already exists
          if [ -f $output_path ]; then
-             echo "Jumping $pcap_file, output already exists"
-             continue
+             echo "CONVERT: Jumping $pcap_file, output already exists"
+             # continue
          else
-             echo "Working on $pcap_file"
+             echo "CONVERT: Working on $pcap_file"
          fi
 
          # PROBLEM tshark has a memory leak and cannot deal with file that are too big
@@ -64,12 +65,17 @@
          pv $pcap_file | gunzip -c | tcpdump -r - -w $slices_path -C 100
 
          echo "  Working on each slice"
-         for slice in $(ls $slices_path* | sed "s/ /\n/g")
+
+         slices=$(ls $slices_path* | sed "s/ /\n/g")
+         n_slices=$(echo $slices | wc -l)
+         for slice in $slices
          do
              tshark -r $slice \
                     -T fields ${field_params} \
                     -Y "ip.src" \
                     -E separator=, -E occurrence=f > "$slice.dump"
+
+             printf "  $(ls pcap_data/temp/*.dump 2> /dev/null | wc -l)/$n_slices\r"
          done
 
          echo "  Merging results"
@@ -90,16 +96,22 @@
      do
          csv_file="${pcap_file%%.*}.csv.gz"
 
+         echo ""
+         if [ ! -f $csv_file ]; then
+             echo "NORMALIZE: no csv file available"
+             continue
+         else
+             echo "NORMALIZE: Working on $csv_file"
+         fi
+
          # make time start from 0
          awk_snippet='$1 < min_time && NR>1 { min_time=$1 }
                       END                   { print min_time }'
          min_time=$(zcat $csv_file | awk -v min_time=inf -F, "$awk_snippet")
 
-         echo "Working on $csv_file"
-
          awk_snippet='BEGIN   { FS=","; OFS=","}
-                      NR == 1 { print $0 }
-                      NR > 1  { $1 = $1 - min_time; print $0 }'
+                           NR == 1 { print $0 }
+                           NR > 1  { $1 = $1 - min_time; print $0 }'
          pv $csv_file \
              | gunzip -c \
              | awk -v min_time=$min_time -v CONVFMT=%.12f "$awk_snippet" \
@@ -124,13 +136,23 @@
      do
          csv_file="${pcap_file%%.*}.csv.gz"
 
+         echo ""
+         if [ ! -f $csv_file ]; then
+             echo "INTERARRIVAL: no csv file available"
+             continue
+         else
+             echo "INTERARRIVAL: Working on $csv_file"
+         fi
+
          awk_snippet='BEGIN   { FS=","; OFS="," }
                       NR == 1 { print "interarrival_times" }
                       NR == 2 { prev_time = $1 }
                       NR > 2  {
                         delta = $1 - prev_time;
                         prev_time = $1;
-                        printf("%.12f\n", delta);
+                        $1 = delta;
+                        print $0;
+                        # printf("%.12f\n", delta);
                       }'
 
          pv $csv_file \
