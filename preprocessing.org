@@ -268,22 +268,32 @@
 
    Actually apply the Rust binner, after having gathered maximum and minimum for the interarrival realizations.
 
-   #+BEGIN_SRC bash :tangle scripts/5_distribution.sh :var pcap_files=pcap_files :results none
-     echo "  Finding global minimum and maximum interarrival time across captures"
+   #+NAME: n_bins
+   7000
 
-     # ensure field is numeric, not an header
-     awk_snippet='BEGIN { FS="," }
-                  ($1 == $1+0) && $1 > max { max=$1 }
-                  ($1 == $1+0) && $1 < min { min=$1 }
-                  END { print min " " max }'
+   #+BEGIN_SRC bash :tangle scripts/5_distribution.sh :var pcap_files=pcap_files n_bins=n_bins :results none
+     if [ ! -f pcap_data/min_max_interarrival.txt ]; then
+         echo "  Finding global minimum and maximum interarrival time across captures"
 
-     read min max <<< $(
-         echo ${pcap_files[*]} \
-             | sed "s/\.pcap/_interarrival.csv/g" \
-             | xargs pv \
-             | gunzip -c \
-             | awk -v min=inf -v max=0 -v CONVFMT=%.12f "$awk_snippet"
-          )
+         # ensure field is numeric, not an header
+         awk_snippet='BEGIN { FS="," }
+                      ($1 == $1+0) && $1 > max { max=$1 }
+                      ($1 == $1+0) && $1 < min { min=$1 }
+                      END { print min " " max }'
+
+         read min max <<< $(echo ${pcap_files[*]} \
+                                | sed "s/\.pcap/_interarrival.csv/g" \
+                                | xargs pv \
+                                | gunzip -c \
+                                | awk -v min=inf -v max=0 -v CONVFMT=%.12f "$awk_snippet")
+
+         # cache the two numbers
+         echo "$min $max" > pcap_data/min_max_interarrival.txt
+     else
+         echo "  Reading cached global minimum and maximum interarrival time across captures"
+
+         read min max < pcap_data/min_max_interarrival.txt
+     fi
 
      for pcap_file in "${pcap_files[@]}"
      do
@@ -292,15 +302,14 @@
          echo "  Binning $csv_file"
          pv $csv_file \
              | gunzip -c \
-             | cargo run --release --manifest-path=scripts/interarrival_binner/Cargo.toml $min $max 10 2> /dev/null \
+             | cargo run --release --manifest-path=scripts/interarrival_binner/Cargo.toml $min $max $n_bins 2> /dev/null \
                      > ${pcap_file%%.*}.distribution
      done
-
    #+END_SRC
 
    Finally plot the results.
 
-   #+BEGIN_SRC python :tangle scripts/6_plotting.py :var pcap_files=pcap_files
+   #+BEGIN_SRC python :tangle scripts/6_plotting.py :var pcap_files=pcap_files n_bins=n_bins
      import numpy as np
      import matplotlib.pyplot as plt
 
