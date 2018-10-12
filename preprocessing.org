@@ -128,6 +128,7 @@
      done
    #+END_SRC
 
+* Analysis
 ** Interarrival distribution
    Time deltas are stored in a proper ~csv~ in order to measure interarrival distribution.
 
@@ -230,10 +231,10 @@
 
          // create bins
          let bins_limits: Vec<f32> = linspace::<f32>(min, max, n_bins).collect();
-         let mut counts = vec![0; bins_limits.len() - 1];
+         let mut counts: Vec<i64> = vec![0; bins_limits.len() - 1];
 
          let stdin = io::stdin();
-         let stdin = stdin.lock(); // or just open any normal file
+         let stdin = stdin.lock();
 
          let mut rdr = csv::Reader::from_reader(stdin);
          for result in rdr.records() {
@@ -242,7 +243,7 @@
 
              // assign to proper bin
              for (index, upper_limit) in bins_limits.iter().enumerate() {
-                 // ignore global minimum
+                 // ignore global minimum in bins limits
                  if index == 0 {
                      continue;
                  }
@@ -252,6 +253,7 @@
                      break;
                  }
              }
+             println!("{:?}", counts);
          }
          println!("{:?}\n{:?}", bins_limits, counts);
      }
@@ -291,7 +293,7 @@
 
    Finally plot the results.
 
-   #+BEGIN_SRC python :tangle scripts/6_plotting.py :var pcap_files=pcap_files :results output
+   #+BEGIN_SRC python :tangle scripts/6_plotting.py :var pcap_files=pcap_files
      import numpy as np
      import matplotlib.pyplot as plt
 
@@ -310,9 +312,6 @@
              plt.hist(bins[:-1], weights=counts, bins=bins)
              plt.show()
    #+END_SRC
-
-   #+RESULTS:
-
 
 * Local variables
   # Local Variables:
