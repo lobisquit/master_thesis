@@ -105,8 +105,8 @@
          fi
 
          # make time start from 0
-         awk_snippet='$1 < min_time && NR>1 { min_time=$1 }
-                      END                   { print min_time }'
+         awk_snippet='$1 < min_time && NR > 1 { min_time=$1 }
+                      END                     { print min_time }'
          min_time=$(zcat $csv_file | awk -v min_time=inf -F, "$awk_snippet")
 
          awk_snippet='BEGIN   { FS=","; OFS=","}
@@ -164,6 +164,127 @@
      done
    #+END_SRC
 
+   I decided to perform the binning in Rust, since it is faster than Python.
+   Org babel is not well supported for Rust though, so I tangle the project from here in ~script/~ directory.
+
+   #+BEGIN_SRC toml :tangle scripts/interarrival_binner/Cargo.toml
+     [package]
+     name = "interarrival_binner"
+     version = "0.1.0"
+     authors = ["Enrico Lovisotto <enricolovisotto@gmail.com>"]
+
+     [dependencies]
+     csv = "1"
+     itertools-num = "0.1"
+   #+END_SRC
+
+   Script reads from ~stdin~ and outputs to ~stdout~, for ~bash~ integration.
+
+   #+BEGIN_SRC rust :tangle scripts/interarrival_binner/src/main.rs
+     extern crate csv;
+     extern crate itertools_num;
+
+     use std::io;
+     use std::io::prelude::*;
+     use std::env;
+     use std::process::exit;
+
+     use itertools_num::linspace;
+     fn main() {
+         let args: Vec<String> = env::args().collect();
+
+         if args.len() != 4 {
+             println!("Invalid number of arguments ({}), exiting", args.len());
+             exit(1);
+         }
+
+         // parse minimum and maximum
+         let min = match args[1].parse::<f32>() {
+             Ok(number) => number,
+             Err(_) => {
+                 println!("Invalid maximum");
+                 exit(1);
+             }
+         };
+
+         let max = match args[2].parse::<f32>() {
+             Ok(number) => number,
+             Err(_) => {
+                 println!("Invalid maximum");
+                 exit(1);
+             }
+         };
+
+         let n_bins = match args[3].parse::<usize>() {
+             Ok(number) => number,
+             Err(_) => {
+                 println!("Invalid n_bins");
+                 exit(1);
+             }
+         };
+
+         if max < min {
+             println!("Maximum < minumum");
+             exit(1);
+         }
+
+         // create bins
+         let bins_limits: Vec<f32> = linspace::<f32>(min, max, n_bins).collect();
+         let mut counts = vec![0; bins_limits.len() - 1];
+
+         let stdin = io::stdin();
+         let stdin = stdin.lock(); // or just open any normal file
+
+         let mut rdr = csv::Reader::from_reader(stdin);
+         for result in rdr.records() {
+             let record = result.unwrap();
+             let value = &record[0].parse::<f32>().unwrap();
+
+             // assign to proper bin
+             for (index, upper_limit) in bins_limits.iter().enumerate() {
+                 // ignore global minimum
+                 if index == 0 {
+                     continue;
+                 }
+
+                 if value <= upper_limit {
+                     counts[index - 1] += 1;
+                     break;
+                 }
+             }
+         }
+         println!("{:?}\n{:?}", bins_limits, counts);
+     }
+   #+END_SRC
+
+   Actually apply the Rust binner, after having gathered maximum and minimum for the interarrival realizations.
+   #+BEGIN_SRC bash :tangle scripts/5_distribution.sh :var pcap_files=pcap_files :results none
+     echo "  Finding global minimum and maximum interarrival time across captures"
+
+     awk_snippet='BEGIN   { min=inf; max=0 }
+                       $1 != ($1+0) {} # avoid if non-numeric
+                       $1 > max { max=$1 }
+                       $1 < min { min=$1 }'
+
+     read min max <<< $(
+         echo ${pcap_files[*]} \
+             | sed "s/\.pcap/_interarrival.csv/g" \
+             | xargs pv \
+             | gunzip -c \
+             | awk  -v CONVFMT=%.12f "$awk_snippet")
+
+     for pcap_file in "${pcap_files[@]}"
+     do
+         csv_file="${pcap_file%%.*}.csv.gz"
+         echo "  Working on $csv_file"
+
+         pv $csv_file \
+             | gunzip -c \
+             | cargo run --release --manifest-path=scripts/interarrival_binner/Cargo.toml $min $max 100 \
+                     > ${csv_file}_distribution
+     done
+
+   #+END_SRC
 * Local variables
   # Local Variables:
   # sh-indent-after-continuation: nil
