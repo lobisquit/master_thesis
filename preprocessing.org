@@ -325,7 +325,7 @@
              line = distribution_file.next()
              counts = [int(element) for element in line[1:-2].split(', ')]
 
-             plt.hist(bins[:-1], weights=counts, bins=bins)
+             plt.hist(bins[:-1], weights=counts, bins=bins, log=True)
              plt.show()
    #+END_SRC
 
