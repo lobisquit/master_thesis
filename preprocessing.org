@@ -258,30 +258,33 @@
    #+END_SRC
 
    Actually apply the Rust binner, after having gathered maximum and minimum for the interarrival realizations.
+
    #+BEGIN_SRC bash :tangle scripts/5_distribution.sh :var pcap_files=pcap_files :results none
      echo "  Finding global minimum and maximum interarrival time across captures"
 
-     awk_snippet='BEGIN   { min=inf; max=0 }
-                       $1 != ($1+0) {} # avoid if non-numeric
-                       $1 > max { max=$1 }
-                       $1 < min { min=$1 }'
+     # ensure field is numeric, not an header
+     awk_snippet='BEGIN { FS="," }
+                  ($1 == $1+0) && $1 > max { max=$1 }
+                  ($1 == $1+0) && $1 < min { min=$1 }
+                  END { print min " " max }'
 
      read min max <<< $(
          echo ${pcap_files[*]} \
              | sed "s/\.pcap/_interarrival.csv/g" \
              | xargs pv \
              | gunzip -c \
-             | awk  -v CONVFMT=%.12f "$awk_snippet")
+             | awk -v min=inf -v max=0 -v CONVFMT=%.12f "$awk_snippet"
+          )
 
      for pcap_file in "${pcap_files[@]}"
      do
          csv_file="${pcap_file%%.*}.csv.gz"
-         echo "  Working on $csv_file"
 
+         echo "  Binning $csv_file"
          pv $csv_file \
              | gunzip -c \
-             | cargo run --release --manifest-path=scripts/interarrival_binner/Cargo.toml $min $max 100 \
-                     > ${csv_file}_distribution
+             | cargo run --release --manifest-path=scripts/interarrival_binner/Cargo.toml $min $max 100 2> /dev/null \
+                     > ${csv_file%%.*}.distribution
      done
 
    #+END_SRC
