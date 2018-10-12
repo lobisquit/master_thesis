@@ -242,6 +242,7 @@
              let value = &record[0].parse::<f32>().unwrap();
 
              // assign to proper bin
+             let mut assigned = false;
              for (index, upper_limit) in bins_limits.iter().enumerate() {
                  // ignore global minimum in bins limits
                  if index == 0 {
@@ -250,10 +251,16 @@
 
                  if value <= upper_limit {
                      counts[index - 1] += 1;
+                     assigned = true;
                      break;
                  }
              }
-             println!("{:?}", counts);
+
+             // check everything is ok
+             if !assigned {
+                 println!("error with {}", value);
+                 exit(1);
+             }
          }
          println!("{:?}\n{:?}", bins_limits, counts);
      }
@@ -280,13 +287,13 @@
 
      for pcap_file in "${pcap_files[@]}"
      do
-         csv_file="${pcap_file%%.*}.csv.gz"
+         csv_file="${pcap_file%%.*}_interarrival.csv.gz"
 
          echo "  Binning $csv_file"
          pv $csv_file \
              | gunzip -c \
-             | cargo run --release --manifest-path=scripts/interarrival_binner/Cargo.toml $min $max 100 2> /dev/null \
-                     > ${csv_file%%.*}.distribution
+             | cargo run --release --manifest-path=scripts/interarrival_binner/Cargo.toml $min $max 10 2> /dev/null \
+                     > ${pcap_file%%.*}.distribution
      done
 
    #+END_SRC
