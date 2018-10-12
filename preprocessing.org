@@ -145,14 +145,16 @@
          fi
 
          awk_snippet='BEGIN   { FS=","; OFS="," }
-                      NR == 1 { print "interarrival_times" }
+                      NR == 1 {
+                         $1="interarrival_times";
+                         print $0
+                      }
                       NR == 2 { prev_time = $1 }
                       NR > 2  {
                         delta = $1 - prev_time;
                         prev_time = $1;
                         $1 = delta;
                         print $0;
-                        # printf("%.12f\n", delta);
                       }'
 
          pv $csv_file \
