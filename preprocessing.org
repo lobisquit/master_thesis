@@ -65,18 +65,13 @@
          pv $pcap_file | gunzip -c | tcpdump -r - -w $slices_path -C 100
 
          echo "  Working on each slice"
-
-         slices=$(ls $slices_path* | sed "s/ /\n/g")
-         n_slices=$(echo $slices | wc -l)
-         for slice in $slices
-         do
-             tshark -r $slice \
-                    -T fields ${field_params} \
-                    -Y "ip.src" \
-                    -E separator=, -E occurrence=f > "$slice.dump"
-
-             printf "  $(ls pcap_data/temp/*.dump 2> /dev/null | wc -l)/$n_slices\r"
-         done
+         ls $slices_path* \
+             | sed "s/ /\n/g" \
+             | parallel --bar -P 8 \
+                        tshark -r $slice \
+                        -T fields ${field_params} \
+                        -Y "ip.src" \
+                        -E separator=, -E occurrence=f > "$slice.dump"
 
          echo "  Merging results"
          # write first row of csv output and then everything else
