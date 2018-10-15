@@ -46,6 +46,10 @@
   #+RESULTS:
   #+NAME: records
   - equinix-nyc.dirA.20180315-125910.UTC.anon
+  - equinix-nyc.dirA.20180315-130000.UTC.anon
+  - equinix-nyc.dirA.20180315-130100.UTC.anon
+  - equinix-nyc.dirA.20180315-130200.UTC.anon
+  - equinix-nyc.dirA.20180315-130300.UTC.anon
 
 * Preprocessing
   In this step we convert ~tcpdump~ files to ~csv~.
@@ -94,7 +98,7 @@
         # extract wanted fields
         # merge with timestamps, from dedicated file
         paste -d"," \
-              <(echo "time," && zcat $times_file) \
+              <(echo "time" && zcat $times_file) \
               <(pv $pcap_file \
                     | gunzip -c \
                     | tcpdump -r - -ntv \
@@ -111,7 +115,7 @@
 ** Interarrival distribution
    Time deltas are stored in a proper ~csv~ in order to measure interarrival distribution.
 
-   #+BEGIN_SRC bash :tangle scripts/4_interarrival.sh :var records=records :results none
+   #+BEGIN_SRC bash :tangle scripts/3_interarrival.sh :var records=records :results none
      for record in "${records[@]}"
      do
          csv_file="data/csv/${record}.csv.gz"
@@ -139,7 +143,7 @@
          pv $csv_file \
              | gunzip -c \
              | awk "$awk_snippet" \
-             | gzip -c > ${csv_file%%.*}_interarrival.csv.gz
+             | gzip -c > "data/csv/${record}_interarrival.csv.gz"
      done
    #+END_SRC
 
@@ -159,7 +163,7 @@
          )
    #+END_SRC
 
-   #+BEGIN_SRC R :var records=records :noweb yes :tangle scripts/5_interarrival_plot.r :results none
+   #+BEGIN_SRC R :var records=records :noweb yes :tangle scripts/4_interarrival_plot.r :results none
      <<utils>>
 
      for (record in records[[1]]) {
@@ -178,7 +182,7 @@
              my_theme
 
          ggsave(plot = p,
-                filename = paste('plots/', record, '.pdf', sep=''),
+                filename = paste('plots/', record, '_interarrival_CDF.pdf', sep=''),
                 device = 'pdf',
                 width = 3,
                 height = 3,
