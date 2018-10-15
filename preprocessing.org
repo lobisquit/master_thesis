@@ -148,14 +148,14 @@
          awk_snippet='BEGIN   { FS=","; OFS="," }
                       NR == 1 {
                          $1="interarrival_times";
-                         print $0
+                         print $1
                       }
                       NR == 2 { prev_time = $1 }
                       NR > 2  {
                         delta = $1 - prev_time;
                         prev_time = $1;
                         $1 = delta;
-                        print $0;
+                        printf("%.8f\n", $1);
                       }'
 
          pv $csv_file \
@@ -165,169 +165,51 @@
      done
    #+END_SRC
 
-   I decided to perform the binning in Rust, since it is faster than Python.
-   Org babel is not well supported for Rust though, so I tangle the project from here in ~script/~ directory.
+   Finally plot the results.
+   Check [[https://cran.r-project.org/web/packages/extrafont/README.html][here]] in order to use Charis SIL font.
 
-   #+BEGIN_SRC toml :tangle scripts/interarrival_binner/Cargo.toml
-     [package]
-     name = "interarrival_binner"
-     version = "0.1.0"
-     authors = ["Enrico Lovisotto <enricolovisotto@gmail.com>"]
+   #+NAME: utils
+   #+BEGIN_SRC R
+     library(ggplot2)
+     library(readr)
+     library(extrafont)
 
-     [dependencies]
-     csv = "1"
-     itertools-num = "0.1"
+     my_theme <- theme_bw() +
+         theme(
+             text = element_text(family = 'Charis SIL'),
+             plot.title = element_text(hjust = 0.5)
+         )
    #+END_SRC
 
-   Script reads from ~stdin~ and outputs to ~stdout~, for ~bash~ integration.
+   #+BEGIN_SRC R :var pcap_files=pcap_files :noweb yes :tangle scripts/5_interarrival_plot.r
+     <<utils>>
 
-   #+BEGIN_SRC rust :tangle scripts/interarrival_binner/src/main.rs
-     extern crate csv;
-     extern crate itertools_num;
+     for (pcap_file in pcap_files[[1]]) {
+         stem <- strsplit(pcap_file, '[.]')[[1]][1]
+         name <- strsplit(stem, '/')[[1]][-1]
+         print(paste(stem, '_interarrival.csv.gz', sep = ''))
+         dataset <- as.data.frame(
+             read_csv(paste(stem, '_interarrival.csv.gz', sep = ''))
+         )
 
-     use std::io;
-     use std::io::prelude::*;
-     use std::env;
-     use std::process::exit;
+         p <- ggplot(dataset, aes(x = interarrival_times * 1000)) +
+             geom_histogram(aes(y = ..density..)) +
+             labs(title = name,
+                  x = 'Packet delay [ms]',
+                  y = 'Probability density') +
+             scale_x_log10() +
+             my_theme
 
-     use itertools_num::linspace;
-     fn main() {
-         let args: Vec<String> = env::args().collect();
-
-         if args.len() != 4 {
-             println!("Invalid number of arguments ({}), exiting", args.len());
-             exit(1);
-         }
-
-         // parse minimum and maximum
-         let min = match args[1].parse::<f32>() {
-             Ok(number) => number,
-             Err(_) => {
-                 println!("Invalid maximum");
-                 exit(1);
-             }
-         };
-
-         let max = match args[2].parse::<f32>() {
-             Ok(number) => number,
-             Err(_) => {
-                 println!("Invalid maximum");
-                 exit(1);
-             }
-         };
-
-         let n_bins = match args[3].parse::<usize>() {
-             Ok(number) => number,
-             Err(_) => {
-                 println!("Invalid n_bins");
-                 exit(1);
-             }
-         };
-
-         if max < min {
-             println!("Maximum < minumum");
-             exit(1);
-         }
-
-         // create bins
-         let bins_limits: Vec<f32> = linspace::<f32>(min, max, n_bins).collect();
-         let mut counts: Vec<i64> = vec![0; bins_limits.len() - 1];
-
-         let stdin = io::stdin();
-         let stdin = stdin.lock();
-
-         let mut rdr = csv::Reader::from_reader(stdin);
-         for result in rdr.records() {
-             let record = result.unwrap();
-             let value = &record[0].parse::<f32>().unwrap();
-
-             // assign to proper bin
-             let mut assigned = false;
-             for (index, upper_limit) in bins_limits.iter().enumerate() {
-                 // ignore global minimum in bins limits
-                 if index == 0 {
-                     continue;
-                 }
-
-                 if value <= upper_limit {
-                     counts[index - 1] += 1;
-                     assigned = true;
-                     break;
-                 }
-             }
-
-             // check everything is ok
-             if !assigned {
-                 println!("error with {}", value);
-                 exit(1);
-             }
-         }
-         println!("{:?}\n{:?}", bins_limits, counts);
+         ggsave(plot = p,
+                filename = paste('plots/', name, '.pdf', sep=''),
+                device = 'pdf',
+                width = 3,
+                height = 3,
+                unit = 'in')
      }
    #+END_SRC
 
-   Actually apply the Rust binner, after having gathered maximum and minimum for the interarrival realizations.
-
-   #+NAME: n_bins
-   7000
-
-   #+BEGIN_SRC bash :tangle scripts/5_distribution.sh :var pcap_files=pcap_files n_bins=n_bins :results none
-     if [ ! -f pcap_data/min_max_interarrival.txt ]; then
-         echo "  Finding global minimum and maximum interarrival time across captures"
-
-         # ensure field is numeric, not an header
-         awk_snippet='BEGIN { FS="," }
-                      ($1 == $1+0) && $1 > max { max=$1 }
-                      ($1 == $1+0) && $1 < min { min=$1 }
-                      END { print min " " max }'
-
-         read min max <<< $(echo ${pcap_files[*]} \
-                                | sed "s/\.pcap/_interarrival.csv/g" \
-                                | xargs pv \
-                                | gunzip -c \
-                                | awk -v min=inf -v max=0 -v CONVFMT=%.12f "$awk_snippet")
-
-         # cache the two numbers
-         echo "$min $max" > pcap_data/min_max_interarrival.txt
-     else
-         echo "  Reading cached global minimum and maximum interarrival time across captures"
-
-         read min max < pcap_data/min_max_interarrival.txt
-     fi
-
-     for pcap_file in "${pcap_files[@]}"
-     do
-         csv_file="${pcap_file%%.*}_interarrival.csv.gz"
-
-         echo "  Binning $csv_file"
-         pv $csv_file \
-             | gunzip -c \
-             | cargo run --release --manifest-path=scripts/interarrival_binner/Cargo.toml $min $max $n_bins 2> /dev/null \
-                     > ${pcap_file%%.*}.distribution
-     done
-   #+END_SRC
-
-   Finally plot the results.
-
-   #+BEGIN_SRC python :tangle scripts/6_plotting.py :var pcap_files=pcap_files n_bins=n_bins
-     import numpy as np
-     import matplotlib.pyplot as plt
-
-     for element in pcap_files:
-         pcap_file = element[0]
-
-         distribution_path = pcap_file.replace('.pcap.gz', '.distribution')
-
-         with open(distribution_path, 'r') as distribution_file:
-             line = distribution_file.next()
-             bins = [float(element) for element in line[1:-2].split(', ')]
-
-             line = distribution_file.next()
-             counts = [int(element) for element in line[1:-2].split(', ')]
-
-             plt.hist(bins[:-1], weights=counts, bins=bins, log=True)
-             plt.show()
-   #+END_SRC
+   #+RESULTS:
 
 * Local variables
   # Local Variables:
