@@ -194,7 +194,7 @@
          )
 
          p <- ggplot(dataset, aes(x = interarrival_times * 1000)) +
-             geom_histogram(aes(y = ..density..), bins=100) +
+             stat_ecdf(geom = "step") +
              labs(title = paste(name, 'dataset'),
                   x = 'Packet delay [ms]',
                   y = 'Probability density') +
@@ -209,8 +209,6 @@
                 unit = 'in')
      }
    #+END_SRC
-
-   #+RESULTS:
 
 * Local variables
   # Local Variables:
