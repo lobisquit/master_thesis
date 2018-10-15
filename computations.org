@@ -147,15 +147,15 @@
 
          awk_snippet='BEGIN   { FS=","; OFS="," }
                       NR == 1 {
-                         $1="interarrival_times";
-                         print $1
+                         print "interarrival_times";
                       }
                       NR == 2 { prev_time = $1 }
                       NR > 2  {
                         delta = $1 - prev_time;
                         prev_time = $1;
-                        $1 = delta;
-                        printf("%.8f\n", $1);
+
+                        # choose only half of the times (for memory constraints)
+                        if (rand() <= .1) printf("%.8f\n", delta);
                       }'
 
          pv $csv_file \
@@ -181,20 +181,21 @@
          )
    #+END_SRC
 
-   #+BEGIN_SRC R :var pcap_files=pcap_files :noweb yes :tangle scripts/5_interarrival_plot.r
+   #+BEGIN_SRC R :var pcap_files=pcap_files :noweb yes :tangle scripts/5_interarrival_plot.r :results none
      <<utils>>
 
      for (pcap_file in pcap_files[[1]]) {
+         gc()
          stem <- strsplit(pcap_file, '[.]')[[1]][1]
          name <- strsplit(stem, '/')[[1]][-1]
-         print(paste(stem, '_interarrival.csv.gz', sep = ''))
+
          dataset <- as.data.frame(
              read_csv(paste(stem, '_interarrival.csv.gz', sep = ''))
          )
 
          p <- ggplot(dataset, aes(x = interarrival_times * 1000)) +
-             geom_histogram(aes(y = ..density..)) +
-             labs(title = name,
+             geom_histogram(aes(y = ..density..), bins=100) +
+             labs(title = paste(name, 'dataset'),
                   x = 'Packet delay [ms]',
                   y = 'Probability density') +
              scale_x_log10() +
