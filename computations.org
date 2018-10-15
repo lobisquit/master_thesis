@@ -58,7 +58,6 @@
   Note that packet length is expressed in bytes and time is ignored, as it is taken by proper times file (more precise).
 
   #+BEGIN_SRC bash :var records=records :results output :tangle scripts/2_convert.sh
-    # put "-e " before each field
     for record in "${records[@]}"
     do
         pcap_file="data/pcap/${record}.pcap.gz"
@@ -110,6 +109,14 @@
 
   #+RESULTS:
   : CONVERT: Working on dummy_capture
+
+  Just to be sure, ~csv~ files can be validated with ~xsv~ tool.
+  #+BEGIN_SRC bash
+    for record in "${records[@]}"
+    do
+        pv "data/csv/${record}.csv.gz" | gunzip -c | xsv stats
+    done
+  #+END_SRC
 
 * Analysis
 ** Interarrival distribution

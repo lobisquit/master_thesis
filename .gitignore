@@ -2,8 +2,10 @@ auto/
 ltximg/
 ns-3-allinone/
 
-pcap_data/
-pcap_data/!dummy_capture.pcap.gz
+data/
+!data/pcap/README
+!data/times/README
+!data/csv/README
 
 scripts/*
 scripts/!README
