@@ -1,143 +1,121 @@
-
 * Obtaining the dataset
-  Dataset is available in [[http://mawi.wide.ad.jp/mawi/][MAWI Working Group Traffic Archive]].
-  Here I chose only few of those, as the work required to process them is huge.
+  Dataset is available at [[https://data.caida.org/][CAIDA website]], but a permit is needed, as stated in their FAQ.
+  More details about the various files provided can be found in their [[https://data.caida.org/datasets/passive-2018/README-2018.txt][README]].
 
   #+NAME: dataset_urls
-  - http://mawi.nezu.wide.ad.jp/mawi/samplepoint-F/2018/201802061400.pcap.gz
-  - http://mawi.nezu.wide.ad.jp/mawi/samplepoint-F/2018/201806171400.pcap.gz
-  - http://mawi.nezu.wide.ad.jp/mawi/samplepoint-F/2018/201806161400.pcap.gz
+  - https://data.caida.org/datasets/passive-2018/equinix-nyc/20180315-130000.UTC/equinix-nyc.dirA.20180315-125910.UTC.anon.pcap.gz
+  - https://data.caida.org/datasets/passive-2018/equinix-nyc/20180315-130000.UTC/equinix-nyc.dirA.20180315-130000.UTC.anon.pcap.gz
+  - https://data.caida.org/datasets/passive-2018/equinix-nyc/20180315-130000.UTC/equinix-nyc.dirA.20180315-130100.UTC.anon.pcap.gz
+  - https://data.caida.org/datasets/passive-2018/equinix-nyc/20180315-130000.UTC/equinix-nyc.dirA.20180315-130200.UTC.anon.pcap.gz
+  - https://data.caida.org/datasets/passive-2018/equinix-nyc/20180315-130000.UTC/equinix-nyc.dirA.20180315-130300.UTC.anon.pcap.gz
 
   This snippet will download all of them in a parallel fashion, see [[https://stackoverflow.com/a/11850469][here]] for ~xargs~ parameters details.
   ~wget -c~ ensure each file is downloaded once, even if it is stopped and resumed.
 
-  #+BEGIN_SRC bash :var dataset_urls=dataset_urls :tangle scripts/1_download.sh
-    echo ${dataset_urls[*]} | xargs -n 1 -P 8 wget -q -P pcap_data/ -c
+  #+BEGIN_SRC bash :var dataset_urls=dataset_urls :tangle scripts/1_download.sh :results none
+    # read username and password from file
+    read caida_user caida_password < secrets.txt
+
+    for dataset_url in ${dataset_urls[@]}
+    do
+        # download dump
+        wget -q -P data/pcap/ -c \
+             --http-user=$caida_user \
+             --http-password=$caida_password \
+             $dataset_url
+
+        # download nanosecond precision times
+        wget -q -P data/times/ -c \
+             --http-user=$caida_user \
+             --http-password=$caida_password \
+             "${dataset_url%%.pcap*}".times.gz
+    done
   #+END_SRC
 
+  Here follows a list of all downloaded files, automatically generated from provided links.
+
+  #+BEGIN_SRC bash :var dataset_urls=dataset_urls :results raw replace
+    echo "#+NAME: records"
+    for dataset_url in ${dataset_urls[@]}
+    do
+        pcap_file="- $(basename $dataset_url)"
+        echo ${pcap_file%%.pcap*}
+    done
+  #+END_SRC
+
+  #+RESULTS:
+  #+NAME: records
+  - equinix-nyc.dirA.20180315-125910.UTC.anon
+
 * Preprocessing
-** Convert tcpdump files to csv
-   Here follows a list of all compressed ~pcap~ files.
-   The first one is a testing trace: it will not be analyzed, of course.
+  In this step we convert ~tcpdump~ files to ~csv~.
 
-   #+NAME: pcap_files
-   - pcap_data/dummy_capture.pcap.gz
-   - pcap_data/201802061400.pcap.gz
-   - pcap_data/201806171400.pcap.gz
-   - pcap_data/201806161400.pcap.gz
+  We are interested only in some properties of the traffic, whose Wireshark keywords are further listed.
+  Note that packet length is expressed in bytes and time is ignored, as it is taken by proper times file (more precise).
 
-   We are interested only in some properties of the traffic, whose Wireshark keywords are further listed.
-   Note that time is expressed in seconds and packet length in bytes.
+  #+BEGIN_SRC bash :var records=records :results output :tangle scripts/2_convert.sh
+    # put "-e " before each field
+    for record in "${records[@]}"
+    do
+        pcap_file="data/pcap/${record}.pcap.gz"
+        times_file="data/times/${record}.times.gz"
 
-   #+NAME: field_names
-   - frame.time_epoch
-   - ip.src
-   - ip.dst
-   - frame.len
-   - frame.protocols
+        output_path="data/csv/${record}.csv.gz"
 
-   Now we are ready to convert all ~pcap~ files to ~csv~.
+        # stop iteration immediately if output file already exists
+        if [ -f $output_path ]; then
+            echo "CONVERT: Jumping $record, output already exists"
+            continue
+        else
+            echo "CONVERT: Working on $record"
+        fi
 
-   #+BEGIN_SRC bash :var field_names=field_names pcap_files=pcap_files :results output :tangle scripts/2_convert.sh
-     # put "-e " before each field
-     field_params=" -e $(echo ${field_names[*]} | sed "s/ / -e /g")"
+        # custom awk script from tcpdump instead of crappy memory-leanking tshark
+        # NOTE that all packets are IP, layer 2 header is removed by CAIDA project
+        awk_snippet='BEGIN { IFS=" "; print "ip.src,port.src,ip.dst,port.dst,length,protocol" }
+                           {
+                             split($17, src, "\\.");
+                             split($19, dst, "\\.");
 
-     for pcap_file in "${pcap_files[@]}"
-     do
-         output_path="${pcap_file%%.*}.csv.gz"
+                             # "." source ip/port couple
+                             printf src[1] "." src[2] "." src[3] "." src[4] ",";
+                             printf src[5] ",";
 
-         echo ""
-         # stop iteration immediately if output file already exists
-         if [ -f $output_path ]; then
-             echo "CONVERT: Jumping $pcap_file, output already exists"
-             continue
-         else
-             echo "CONVERT: Working on $pcap_file"
-         fi
+                             # destination ip/port couple
+                             printf dst[1] "." dst[2] "." dst[3] "." dst[4] ",";
+                             printf dst[5] ",";
 
-         # PROBLEM tshark has a memory leak and cannot deal with file that are too big
-         # we need to split each source file in 100MB chunks using tcpdump
-         echo "  Creating temporary directory"
-         mkdir -p pcap_data/temp/
+                             print $16 "," $13
+                           }'
 
-         echo "  Splitting main file"
-         slices_path="pcap_data/temp/slice_$(basename ${pcap_file%%.*}).pcap"
-         pv $pcap_file | gunzip -c | tcpdump -r - -w $slices_path -C 100
+        # read pcap file with tcpdump
+        # remove added newline between packet infos
+        # remove parenthesis
+        # extract wanted fields
+        # merge with timestamps, from dedicated file
+        paste -d"," \
+              <(echo "time," && zcat $times_file) \
+              <(pv $pcap_file \
+                    | gunzip -c \
+                    | tcpdump -r - -ntv \
+                    | sed ':begin;$!N;/)\n/s/\n//;tbegin;P;D' \
+                    | sed 's/[():]//g' \
+                    | awk "$awk_snippet") | gzip > $output_path
+    done
+  #+END_SRC
 
-         echo "  Working on each slice"
-
-         slices=$(ls $slices_path* | sed "s/ /\n/g")
-         n_slices=$(ls $slices_path* | wc -l)
-         for slice in $slices
-         do
-             tshark -r $slice \
-                    -T fields ${field_params} \
-                    -Y "ip.src" \
-                    -E separator=, -E occurrence=f > "$slice.dump"
-
-             printf "  $(ls pcap_data/temp/*.dump 2> /dev/null | wc -l)/$n_slices\r"
-         done
-
-         echo "  Merging results"
-         # write first row of csv output and then everything else
-         title=$(echo ${field_names[*]} | sed "s/ /,/g")
-         (echo $title && cat $slices_path*.dump) | gzip > $output_path
-
-         rm -rf pcap_data/temp/
-     done
-   #+END_SRC
-
-** Normalize time series
-   To improve the data structure, every timestamp is set to be relative to the first aquired data.
-   Lines are also sorted to ensure time order is correct.
-
-   #+BEGIN_SRC bash :tangle scripts/3_normalize_time.sh :var pcap_files=pcap_files
-     for pcap_file in "${pcap_files[@]}"
-     do
-         csv_file="${pcap_file%%.*}.csv.gz"
-
-         echo ""
-         if [ ! -f $csv_file ]; then
-             echo "NORMALIZE: no csv file available"
-             continue
-         else
-             echo "NORMALIZE: Working on $csv_file"
-         fi
-
-         # make time start from 0
-         awk_snippet='$1 < min_time && NR > 1 { min_time=$1 }
-                      END                     { print min_time }'
-         min_time=$(zcat $csv_file | awk -v min_time=inf -F, "$awk_snippet")
-
-         awk_snippet='BEGIN   { FS=","; OFS=","}
-                           NR == 1 { print $0 }
-                           NR > 1  { $1 = $1 - min_time; print $0 }'
-         pv $csv_file \
-             | gunzip -c \
-             | awk -v min_time=$min_time -v CONVFMT=%.12f "$awk_snippet" \
-             | gzip -c > ${csv_file}_temp
-
-         # sort by time, to be 100% sure the time serie is in order
-         (
-             zcat ${csv_file}_temp | head -n1; # ignore the title
-             zcat ${csv_file}_temp | tail -n +2 | LC_ALL=C sort -k1 -n -t,
-         ) \
-             | gzip -c > ${csv_file}
-
-         rm ${csv_file}_temp
-     done
-   #+END_SRC
+  #+RESULTS:
+  : CONVERT: Working on dummy_capture
 
 * Analysis
 ** Interarrival distribution
    Time deltas are stored in a proper ~csv~ in order to measure interarrival distribution.
 
-   #+BEGIN_SRC bash :tangle scripts/4_interarrival.sh :var pcap_files=pcap_files :results none
-     for pcap_file in "${pcap_files[@]}"
+   #+BEGIN_SRC bash :tangle scripts/4_interarrival.sh :var records=records :results none
+     for record in "${records[@]}"
      do
-         csv_file="${pcap_file%%.*}.csv.gz"
+         csv_file="data/csv/${record}.csv.gz"
 
-         echo ""
          if [ ! -f $csv_file ]; then
              echo "INTERARRIVAL: no csv file available"
              continue
@@ -155,12 +133,12 @@
                         prev_time = $1;
 
                         # choose only half of the times (for memory constraints)
-                        if (rand() <= .1) printf("%.8f\n", delta);
+                        if (rand() <= .1) printf("%.10f\n", delta);
                       }'
 
          pv $csv_file \
              | gunzip -c \
-             | awk -v CONVFMT=%.12f "$awk_snippet" \
+             | awk "$awk_snippet" \
              | gzip -c > ${csv_file%%.*}_interarrival.csv.gz
      done
    #+END_SRC
@@ -181,16 +159,14 @@
          )
    #+END_SRC
 
-   #+BEGIN_SRC R :var pcap_files=pcap_files :noweb yes :tangle scripts/5_interarrival_plot.r :results none
+   #+BEGIN_SRC R :var records=records :noweb yes :tangle scripts/5_interarrival_plot.r :results none
      <<utils>>
 
-     for (pcap_file in pcap_files[[1]]) {
+     for (record in records[[1]]) {
          gc()
-         stem <- strsplit(pcap_file, '[.]')[[1]][1]
-         name <- strsplit(stem, '/')[[1]][-1]
 
          dataset <- as.data.frame(
-             read_csv(paste(stem, '_interarrival.csv.gz', sep = ''))
+             read_csv(paste('data/csv/', record, '_interarrival.csv.gz', sep = ''))
          )
 
          p <- ggplot(dataset, aes(x = interarrival_times * 1000)) +
@@ -202,7 +178,7 @@
              my_theme
 
          ggsave(plot = p,
-                filename = paste('plots/', name, '.pdf', sep=''),
+                filename = paste('plots/', record, '.pdf', sep=''),
                 device = 'pdf',
                 width = 3,
                 height = 3,

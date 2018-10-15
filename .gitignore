@@ -10,3 +10,5 @@ scripts/!README
 
 plots/*
 plots/!README
+
+secrets.txt
