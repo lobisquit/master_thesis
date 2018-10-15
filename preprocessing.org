@@ -50,7 +50,7 @@
          # stop iteration immediately if output file already exists
          if [ -f $output_path ]; then
              echo "CONVERT: Jumping $pcap_file, output already exists"
-             # continue
+             continue
          else
              echo "CONVERT: Working on $pcap_file"
          fi
@@ -67,7 +67,7 @@
          echo "  Working on each slice"
 
          slices=$(ls $slices_path* | sed "s/ /\n/g")
-         n_slices=$(echo $slices | wc -l)
+         n_slices=$(ls $slices_path* | wc -l)
          for slice in $slices
          do
              tshark -r $slice \
