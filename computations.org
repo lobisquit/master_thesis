@@ -65,7 +65,12 @@
   In this step we convert ~tcpdump~ files to ~csv~.
 
   We are interested only in some properties of the traffic, which we extract with a custom ~awk~ script from ~tcpdump~ formatted output.
-  Note that packet length is expressed in bytes and time is ignored, as it is taken by proper times file (more precise).
+  This is a workaround for a nasty memory leak problem on ~tshark~ side.
+
+  Note that
+  - all packets are viewed from layer 3 (IP and above information)
+  - packet length is expressed in bytes
+  - time is expressed in nanoseconds and it is taken by proper times file
 
   #+NAME: awk_convert
   #+BEGIN_SRC awk
@@ -86,7 +91,7 @@
     }
   #+END_SRC
 
-  #+BEGIN_SRC bash :var records=records :results output :tangle scripts/2_convert.sh :noweb yes
+  #+BEGIN_SRC bash :var records=records :results none :tangle scripts/2_convert.sh :noweb yes
     for record in "${records[@]}"
     do
         pcap_file="data/pcap/${record}.pcap.gz"
@@ -102,29 +107,28 @@
             echo "CONVERT: Working on $record"
         fi
 
-        # custom awk script from tcpdump instead of crappy memory-leanking tshark
-        # NOTE that all packets are IP, layer 2 header is removed by CAIDA project
-
         # read pcap file with tcpdump
         # remove added newline between packet infos
         # remove parenthesis
         # extract wanted fields
         # merge with timestamps column from dedicated file
+        # those timestamps, however, need to be premultiplied (using bc) since awk loses precision
+        # when dealing with floating point numbers in order to remove the fractional part
         paste -d"," \
-              <(echo "time" && zcat $times_file) \
+              <(echo "time" \
+                    && paste <(zcat $times_file) \
+                             <(while true; do echo "* 1000000000"; done) \
+                        | bc -l | cut -d"." -f1) \
               <(pv $pcap_file \
                     | gunzip -c \
                     | tcpdump -r - -ntv \
                     | sed ':begin;$!N;/)\n/s/\n//;tbegin;P;D' \
                     | sed 's/[():]//g' \
                     | awk ' \
-                          <<awk_convert>>') \
+                              <<awk_convert>>') \
             | gzip > $output_path
     done
   #+END_SRC
-
-  #+RESULTS:
-  : CONVERT: Working on dummy_capture
 
   Just to be sure, ~csv~ files can be validated with ~xsv~ tool.
   #+BEGIN_SRC bash
@@ -150,7 +154,7 @@
          prev_time = $1;
 
          # choose only part of the measures (for memory constraints)
-         if (rand() <= .1) printf("%.10f\n", delta);
+         if (rand() <= .1) print delta;
      }
    #+END_SRC
 
@@ -184,6 +188,7 @@
      library(ggplot2)
      library(readr)
      library(extrafont)
+     library(MASS)
 
      my_theme <- theme_bw() +
          theme(
