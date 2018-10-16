@@ -205,6 +205,9 @@
                 height = 3,
                 unit = 'in')
      }
+
+     ## remove annoying Rplots.pdf file
+     system("rm -f Rplots.pdf")
    #+END_SRC
 
 * Local variables
