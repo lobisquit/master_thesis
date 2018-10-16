@@ -54,7 +54,7 @@
 * Preprocessing
   In this step we convert ~tcpdump~ files to ~csv~.
 
-  We are interested only in some properties of the traffic, whose Wireshark keywords are further listed.
+  We are interested only in some properties of the traffic, which we extract with a custom ~awk~ script from ~tcpdump~ formatted output.
   Note that packet length is expressed in bytes and time is ignored, as it is taken by proper times file (more precise).
 
   #+BEGIN_SRC bash :var records=records :results output :tangle scripts/2_convert.sh
@@ -95,7 +95,7 @@
         # remove added newline between packet infos
         # remove parenthesis
         # extract wanted fields
-        # merge with timestamps, from dedicated file
+        # merge with timestamps column from dedicated file
         paste -d"," \
               <(echo "time" && zcat $times_file) \
               <(pv $pcap_file \
@@ -143,7 +143,7 @@
                         delta = $1 - prev_time;
                         prev_time = $1;
 
-                        # choose only half of the times (for memory constraints)
+                        # choose only part of the measures (for memory constraints)
                         if (rand() <= .1) printf("%.10f\n", delta);
                       }'
 
@@ -200,6 +200,7 @@
 * Local variables
   # Local Variables:
   # sh-indent-after-continuation: nil
+  # org-export-babel-evaluate: nil
   # eval: (add-hook 'before-save-hook (lambda () (indent-region (point-min) (point-max) nil)) t t)
   # eval: (add-hook 'after-save-hook 'org-babel-tangle t t)
   # End:
