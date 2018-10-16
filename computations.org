@@ -115,10 +115,7 @@
         # those timestamps, however, need to be premultiplied (using bc) since awk loses precision
         # when dealing with floating point numbers in order to remove the fractional part
         paste -d"," \
-              <(echo "time" \
-                    && paste <(zcat $times_file) \
-                             <(while true; do echo "* 1000000000"; done) \
-                        | bc -l | cut -d"." -f1) \
+              <(echo "time" && zcat $times_file) \
               <(pv $pcap_file \
                     | gunzip -c \
                     | tcpdump -r - -ntv \
@@ -144,17 +141,13 @@
 
    #+NAME: awk_interarrival
    #+BEGIN_SRC awk
-     BEGIN   { FS=","; OFS="," }
-     NR == 1 {
-         print "interarrival_times";
-     }
+     BEGIN   { FS="," }
      NR == 2 { prev_time = $1 }
      NR > 2  {
-         delta = $1 - prev_time;
-         prev_time = $1;
-
          # choose only part of the measures (for memory constraints)
-         if (rand() <= .1) print delta;
+         if (rand() <= .1) print $1 "-" prev_time;
+
+         prev_time = $1;
      }
    #+END_SRC
 
@@ -170,12 +163,14 @@
              echo "INTERARRIVAL: Working on $csv_file"
          fi
 
-         awk_snippet=''
-
-         pv $csv_file \
-             | gunzip -c \
-             | awk ' \
-               <<awk_interarrival>>' \
+         (
+             echo "deltas" \
+                 && pv $csv_file \
+                     | gunzip -c \
+                     | awk ' \
+                       <<awk_interarrival>>' \
+                     | bc -l
+         ) \
              | gzip -c > "data/csv/${record}_interarrival.csv.gz"
      done
    #+END_SRC
@@ -207,7 +202,7 @@
              read_csv(paste('data/csv/', record, '_interarrival.csv.gz', sep = ''))
          )
 
-         p <- ggplot(dataset, aes(x = interarrival_times * 1000)) +
+         p <- ggplot(dataset, aes(x = deltas)) +
              stat_ecdf(geom = "step") +
              labs(title = paste(record, 'dataset'),
                   x = 'Packet delay [ms]',
