@@ -67,7 +67,26 @@
   We are interested only in some properties of the traffic, which we extract with a custom ~awk~ script from ~tcpdump~ formatted output.
   Note that packet length is expressed in bytes and time is ignored, as it is taken by proper times file (more precise).
 
-  #+BEGIN_SRC bash :var records=records :results output :tangle scripts/2_convert.sh
+  #+NAME: awk_convert
+  #+BEGIN_SRC awk
+    BEGIN { IFS=" "; print "ip.src,port.src,ip.dst,port.dst,length,protocol" }
+    {
+        split($17, src, "\\.");
+        split($19, dst, "\\.");
+
+        # "." source ip/port couple
+        printf src[1] "." src[2] "." src[3] "." src[4] ",";
+        printf src[5] ",";
+
+        # destination ip/port couple
+        printf dst[1] "." dst[2] "." dst[3] "." dst[4] ",";
+        printf dst[5] ",";
+
+        print $16 "," $13
+    }
+  #+END_SRC
+
+  #+BEGIN_SRC bash :var records=records :results output :tangle scripts/2_convert.sh :noweb yes
     for record in "${records[@]}"
     do
         pcap_file="data/pcap/${record}.pcap.gz"
@@ -77,7 +96,7 @@
 
         # stop iteration immediately if output file already exists
         if [ -f $output_path ]; then
-            echo "CONVERT: Jumping $record, output already exists"
+            echo "CONVERT: Skipping $record, output already exists"
             continue
         else
             echo "CONVERT: Working on $record"
@@ -85,21 +104,6 @@
 
         # custom awk script from tcpdump instead of crappy memory-leanking tshark
         # NOTE that all packets are IP, layer 2 header is removed by CAIDA project
-        awk_snippet='BEGIN { IFS=" "; print "ip.src,port.src,ip.dst,port.dst,length,protocol" }
-                           {
-                             split($17, src, "\\.");
-                             split($19, dst, "\\.");
-
-                             # "." source ip/port couple
-                             printf src[1] "." src[2] "." src[3] "." src[4] ",";
-                             printf src[5] ",";
-
-                             # destination ip/port couple
-                             printf dst[1] "." dst[2] "." dst[3] "." dst[4] ",";
-                             printf dst[5] ",";
-
-                             print $16 "," $13
-                           }'
 
         # read pcap file with tcpdump
         # remove added newline between packet infos
@@ -113,7 +117,9 @@
                     | tcpdump -r - -ntv \
                     | sed ':begin;$!N;/)\n/s/\n//;tbegin;P;D' \
                     | sed 's/[():]//g' \
-                    | awk "$awk_snippet") | gzip > $output_path
+                    | awk ' \
+                          <<awk_convert>>') \
+            | gzip > $output_path
     done
   #+END_SRC
 
@@ -132,7 +138,23 @@
 ** Interarrival distribution
    Time deltas are stored in a proper ~csv~ in order to measure interarrival distribution.
 
-   #+BEGIN_SRC bash :tangle scripts/3_interarrival.sh :var records=records :results none
+   #+NAME: awk_interarrival
+   #+BEGIN_SRC awk
+     BEGIN   { FS=","; OFS="," }
+     NR == 1 {
+         print "interarrival_times";
+     }
+     NR == 2 { prev_time = $1 }
+     NR > 2  {
+         delta = $1 - prev_time;
+         prev_time = $1;
+
+         # choose only part of the measures (for memory constraints)
+         if (rand() <= .1) printf("%.10f\n", delta);
+     }
+   #+END_SRC
+
+   #+BEGIN_SRC bash :tangle scripts/3_interarrival.sh :var records=records :results none :noweb yes
      for record in "${records[@]}"
      do
          csv_file="data/csv/${record}.csv.gz"
@@ -144,22 +166,12 @@
              echo "INTERARRIVAL: Working on $csv_file"
          fi
 
-         awk_snippet='BEGIN   { FS=","; OFS="," }
-                      NR == 1 {
-                         print "interarrival_times";
-                      }
-                      NR == 2 { prev_time = $1 }
-                      NR > 2  {
-                        delta = $1 - prev_time;
-                        prev_time = $1;
-
-                        # choose only part of the measures (for memory constraints)
-                        if (rand() <= .1) printf("%.10f\n", delta);
-                      }'
+         awk_snippet=''
 
          pv $csv_file \
              | gunzip -c \
-             | awk "$awk_snippet" \
+             | awk ' \
+               <<awk_interarrival>>' \
              | gzip -c > "data/csv/${record}_interarrival.csv.gz"
      done
    #+END_SRC
