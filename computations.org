@@ -8,6 +8,11 @@
   - https://data.caida.org/datasets/passive-2018/equinix-nyc/20180315-130000.UTC/equinix-nyc.dirA.20180315-130100.UTC.anon.pcap.gz
   - https://data.caida.org/datasets/passive-2018/equinix-nyc/20180315-130000.UTC/equinix-nyc.dirA.20180315-130200.UTC.anon.pcap.gz
   - https://data.caida.org/datasets/passive-2018/equinix-nyc/20180315-130000.UTC/equinix-nyc.dirA.20180315-130300.UTC.anon.pcap.gz
+  - https://data.caida.org/datasets/passive-2018/equinix-nyc/20180816-130000.UTC/equinix-nyc.dirA.20180816-133200.UTC.anon.pcap.gz
+  - https://data.caida.org/datasets/passive-2018/equinix-nyc/20180816-130000.UTC/equinix-nyc.dirA.20180816-133300.UTC.anon.pcap.gz
+  - https://data.caida.org/datasets/passive-2018/equinix-nyc/20180816-130000.UTC/equinix-nyc.dirA.20180816-133400.UTC.anon.pcap.gz
+  - https://data.caida.org/datasets/passive-2018/equinix-nyc/20180816-130000.UTC/equinix-nyc.dirA.20180816-133500.UTC.anon.pcap.gz
+  - https://data.caida.org/datasets/passive-2018/equinix-nyc/20180816-130000.UTC/equinix-nyc.dirA.20180816-133600.UTC.anon.pcap.gz
 
   This snippet will download all of them in a parallel fashion, see [[https://stackoverflow.com/a/11850469][here]] for ~xargs~ parameters details.
   ~wget -c~ ensure each file is downloaded once, even if it is stopped and resumed.
@@ -19,13 +24,13 @@
     for dataset_url in ${dataset_urls[@]}
     do
         # download dump
-        wget -q -P data/pcap/ -c \
+        wget -P data/pcap/ -c \
              --http-user=$caida_user \
              --http-password=$caida_password \
              $dataset_url
 
         # download nanosecond precision times
-        wget -q -P data/times/ -c \
+        wget -P data/times/ -c \
              --http-user=$caida_user \
              --http-password=$caida_password \
              "${dataset_url%%.pcap*}".times.gz
@@ -50,6 +55,11 @@
   - equinix-nyc.dirA.20180315-130100.UTC.anon
   - equinix-nyc.dirA.20180315-130200.UTC.anon
   - equinix-nyc.dirA.20180315-130300.UTC.anon
+  - equinix-nyc.dirA.20180816-133200.UTC.anon
+  - equinix-nyc.dirA.20180816-133300.UTC.anon
+  - equinix-nyc.dirA.20180816-133400.UTC.anon
+  - equinix-nyc.dirA.20180816-133500.UTC.anon
+  - equinix-nyc.dirA.20180816-133600.UTC.anon
 
 * Preprocessing
   In this step we convert ~tcpdump~ files to ~csv~.
