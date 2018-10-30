@@ -10,7 +10,7 @@ For the roads details, see [[https://simonb83.github.io/making-a-map-in-matplotl
 #+NAME: roads
 http://download.geofabrik.de/europe/germany/nordrhein-westfalen-latest-free.shp.zip
 
-#+BEGIN_SRC bash :var population_density=population_density district_map=district_map roads=roads :tangle temp.sh
+#+BEGIN_SRC bash :var population_density=population_density district_map=district_map roads=roads :results none
   mkdir -p data/
 
   # download
@@ -33,14 +33,6 @@ http://download.geofabrik.de/europe/germany/nordrhein-westfalen-latest-free.shp.
   unzip -p data/roads_map.zip gis_osm_roads_free_1.dbf > data/aachen_roads_map.dbf
 #+END_SRC
 
-#+RESULTS:
-| Archive:   | data/district_map.zip              |
-| inflating: | data/StatistischeBezirkeAachen.dbf |
-| inflating: | data/StatistischeBezirkeAachen.prj |
-| inflating: | data/StatistischeBezirkeAachen.qpj |
-| inflating: | data/StatistischeBezirkeAachen.shp |
-| inflating: | data/StatistischeBezirkeAachen.shx |
-
 Initialize the datasets, moving everything in the same projection coordinates.
 See [[https://gis.stackexchange.com/questions/17341/projection-pyproj-puzzle-and-understanding-srs-format][here]] for getting projection from ~prj~ file.
 
@@ -59,6 +51,7 @@ See [[https://gis.stackexchange.com/questions/17341/projection-pyproj-puzzle-and
   district_map = gpd.read_file("data/aachen_district_map.shp")
   del district_map['FLäcHE'] # whole zero column
 
+  # copy-pasta code
   prj_content = open('data/aachen_district_map.prj', 'r').read()
   srs = osr.SpatialReference()
   srs.ImportFromWkt(prj_content)
@@ -68,24 +61,22 @@ See [[https://gis.stackexchange.com/questions/17341/projection-pyproj-puzzle-and
 Extract the union of Aachen metropolitan area, in order to filter roads properly.
 #+BEGIN_SRC python :results none :noweb yes
   <<init_datasets>>
-
-  # extract border
-  aachen_area = cascaded_union(district_map['geometry'])
-
-  # convert back to (lat, long) for this purpose
-  p = Proj(projection)
-  latlong = [p(*coord[0:2], inverse=True) for coord in aachen_area.exterior.coords]
-  aachen_area = Polygon(latlong)
-
   with open('data/aachen_border', 'w') as outfile:
+      # extract border
+      aachen_area = cascaded_union(district_map['geometry'])
+
+      # convert back to (lat, long) for this purpose
+      p = Proj(projection)
+      aachen_area = Polygon([p(*coord[0:2], inverse=True) \
+                             for coord in aachen_area.exterior.coords])
+
       # convert border from 3D to 2D
-      outfile.write(aachen_area.buffer(0).to_wkt())
+      outfile.write(aachen_area.to_wkt())
 #+END_SRC
 
-~postgresql~ is needed: step to install.
-#+NAME: postgres_commands
+~postgresql~ database is needed: give following commands as ~postgres~ user.
+
 #+BEGIN_SRC bash :results none
-  # run as postgres user
   initdb -D '/var/lib/postgres/data'
   dropdb mapping
   createdb mapping
@@ -95,7 +86,11 @@ Extract the union of Aachen metropolitan area, in order to filter roads properly
       echo "This take some time..."
       shp2pgsql -s 4326 data/aachen_roads_map.shp roads | psql mapping > /dev/null
   fi
+#+END_SRC
 
+Create output ~shp~ as normal user.
+
+#+BEGIN_SRC bash :results none
   # extract roads around aachen border
   read aachen_border < data/aachen_border
   pgsql2shp -f data/extracted_roads -h localhost -u postgres mapping \
@@ -103,6 +98,7 @@ Extract the union of Aachen metropolitan area, in order to filter roads properly
              WHERE ST_Intersects(geom, ST_SetSRID(ST_GeomFromText('$aachen_border'), 4326));"
 #+END_SRC
 
+Create final plot, with roads as well as population density.
 
 #+BEGIN_SRC python :results none :noweb yes
   <<init_datasets>>
