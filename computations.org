@@ -21,7 +21,7 @@
     # read username and password from file
     read caida_user caida_password < secrets.txt
 
-    for dataset_url in ${dataset_urls[@]}
+    for dataset_url in $(echo $dataset_urls | sed 's/ /\n/g')
     do
         # download dump
         wget -P data/pcap/ -c \
@@ -92,7 +92,7 @@
   #+END_SRC
 
   #+BEGIN_SRC bash :var records=records :results none :tangle scripts/2_convert.sh :noweb yes
-    for record in "${records[@]}"
+    for record in $(echo $records | sed 's/ /\n/g')
     do
         pcap_file="data/pcap/${record}.pcap.gz"
         times_file="data/times/${record}.times.gz"
@@ -122,14 +122,14 @@
                     | sed ':begin;$!N;/)\n/s/\n//;tbegin;P;D' \
                     | sed 's/[():]//g' \
                     | awk ' \
-                              <<awk_convert>>') \
+                      <<awk_convert>>') \
             | gzip > $output_path
     done
   #+END_SRC
 
   Just to be sure, ~csv~ files can be validated with ~xsv~ tool.
   #+BEGIN_SRC bash
-    for record in "${records[@]}"
+    for record in $(echo $records | sed 's/ /\n/g')
     do
         pv "data/csv/${record}.csv.gz" | gunzip -c | xsv stats
     done
@@ -152,7 +152,7 @@
    #+END_SRC
 
    #+BEGIN_SRC bash :tangle scripts/3_interarrival.sh :var records=records :results none :noweb yes
-     for record in "${records[@]}"
+     for record in $(echo $records | sed 's/ /\n/g')
      do
          csv_file="data/csv/${record}.csv.gz"
 

@@ -1,7 +1,5 @@
 #+STARTUP: latexpreview
 
-# bibliography:material.bib
-
 * ANALOGY Virtual Network Overlay as group of organizers of a fair
 
 - people coming in are packets to be forwarded
@@ -58,6 +56,10 @@
   - [ ] write a reinforcement learning algo
   - [ ] run it
 
+- [ ] design the network, based on Aachen population and topology
+- [ ] check if traffic shaping can be performed by a controller, with packet recognition and with deep packet inspection
+- [ ] measure performance
+
 * things I have found
 - o'Reilly book on MPLS/SDN: nice overwiev of the protocol cite:Szarkowicz2015
 - overwiev on traditional packet generation techniques
@@ -66,3 +68,8 @@
   - Transformed Arma Models cite:Laner2014
   - time variant Poisson processed cite:Karagiannis2004
   - MFSG, GFSD cite:Anderson2017 (best paper, super recent)
+
+* Aachen network estimation
+  - city has 200.000 people, spread across 160km2
+  - each person has (estimated) 40Mb/s in download and 8Mb/s in upload
+  - a single DSLAM can serve from 100 to 2000 people, with corresponding throughput required

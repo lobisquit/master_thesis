@@ -1,0 +1,94 @@
+Download all needed files from Aachen city repository.
+
+#+NAME: population_density
+http://offenedaten.aachen.de/dataset/81650028-ef21-4f1b-a991-9e3a3f01c729/resource/460bfe18-7df4-49fb-b5d0-6dfc1d0cffd5/download/20170630opendataaachen-daten-statistische-bezirkealle.csv
+
+#+NAME: district_map
+http://offenedaten.aachen.de/dataset/5ea893af-8f1d-4658-9066-8f05daed1022/resource/6dfc1b81-26d9-4ed8-b8c4-a61013659f51/download/statistischebezirkeaachen.zip
+
+#+NAME: roads
+http://download.geofabrik.de/europe/germany/nordrhein-westfalen-latest-free.shp.zip
+
+
+#+BEGIN_SRC bash :var population_density=population_density district_map=district_map roads=roads :tangle ciao.sh
+  mkdir -p data/
+
+  # download
+  wget -c $population_density -O data/20170630_population_density_temp.csv
+  wget -c $district_map -O data/district_map.zip
+  wget -c $roads -O data/roads_map.zip
+
+  # preprocess
+  awk -F, '{print $1 "," $3}' data/20170630_population_density_temp.csv > data/20170630_population_density.csv
+  rm -f data/20170630_population_density_temp.csv
+
+  unzip -o data/district_map.zip -d data/
+
+  mv data/StatistischeBezirkeAachen.shp data/aachen_district_map.shp
+  mv data/StatistischeBezirkeAachen.shx data/aachen_district_map.shx
+  mv data/StatistischeBezirkeAachen.dbf data/aachen_district_map.dbf
+#+END_SRC
+
+#+RESULTS:
+| Archive:   | data/district_map.zip              |
+| inflating: | data/StatistischeBezirkeAachen.dbf |
+| inflating: | data/StatistischeBezirkeAachen.prj |
+| inflating: | data/StatistischeBezirkeAachen.qpj |
+| inflating: | data/StatistischeBezirkeAachen.shp |
+| inflating: | data/StatistischeBezirkeAachen.shx |
+
+#+BEGIN_SRC python :results none
+  import geopandas as gpd
+  import matplotlib.pyplot as plt
+  import pandas as pd
+
+  district_map = gpd.read_file("data/aachen_district_map.shp")
+
+  # set projection
+  district_map.crs = {'init': 'epsg:1989'}
+  # district_map = district_map.to_crs({'init': 'epsg:3857'})
+
+  # whole zero column
+  del district_map['FLäcHE']
+
+  district_population = pd.read_csv("data/20170630_population_density.csv")
+  district_population.columns = ['STATBEZ', 'PERS']
+
+  # join using index
+  district_map.set_index('STATBEZ', inplace=True)
+  district_population.set_index('STATBEZ', inplace=True)
+
+  district_map['population'] = district_population['PERS']
+
+  # compute area in km^2: I checked some in wikipedia to be sure
+  district_map['area'] = district_map['geometry'].area / 10**6
+  district_map['density'] = district_map['population'] / district_map['area']
+
+  fig = plt.figure(figsize=(3, 3), frameon=False)
+  ax = fig.gca()
+
+  ax.set_title("Population density in Aachen")
+  ax.set_label("people / km2")
+
+  district_map.plot(column='density',
+                    cmap='summer',
+                    legend=True,
+                    ax=ax)
+
+  plt.axis('off')
+  plt.tight_layout()
+  plt.show()
+#+END_SRC
+
+Trying to add roads
+
+#+BEGIN_SRC bash
+
+#+END_SRC
+
+* Local variables
+  # Local Variables:
+  # sh-indent-after-continuation: nil
+  # org-export-babel-evaluate: nil
+  # eval: (add-hook 'before-save-hook (lambda () (indent-region (point-min) (point-max) nil)) t t)
+  # End:
