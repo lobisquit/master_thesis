@@ -6,11 +6,11 @@ http://offenedaten.aachen.de/dataset/81650028-ef21-4f1b-a991-9e3a3f01c729/resour
 #+NAME: district_map
 http://offenedaten.aachen.de/dataset/5ea893af-8f1d-4658-9066-8f05daed1022/resource/6dfc1b81-26d9-4ed8-b8c4-a61013659f51/download/statistischebezirkeaachen.zip
 
+For the roads details, see [[https://simonb83.github.io/making-a-map-in-matplotlib.html][here]].
 #+NAME: roads
 http://download.geofabrik.de/europe/germany/nordrhein-westfalen-latest-free.shp.zip
 
-
-#+BEGIN_SRC bash :var population_density=population_density district_map=district_map roads=roads :tangle ciao.sh
+#+BEGIN_SRC bash :var population_density=population_density district_map=district_map roads=roads :tangle temp.sh
   mkdir -p data/
 
   # download
@@ -23,10 +23,14 @@ http://download.geofabrik.de/europe/germany/nordrhein-westfalen-latest-free.shp.
   rm -f data/20170630_population_density_temp.csv
 
   unzip -o data/district_map.zip -d data/
-
   mv data/StatistischeBezirkeAachen.shp data/aachen_district_map.shp
   mv data/StatistischeBezirkeAachen.shx data/aachen_district_map.shx
   mv data/StatistischeBezirkeAachen.dbf data/aachen_district_map.dbf
+  mv data/StatistischeBezirkeAachen.prj data/aachen_district_map.prj
+
+  unzip -p data/roads_map.zip gis_osm_roads_free_1.shp > data/aachen_roads_map.shp
+  unzip -p data/roads_map.zip gis_osm_roads_free_1.shx > data/aachen_roads_map.shx
+  unzip -p data/roads_map.zip gis_osm_roads_free_1.dbf > data/aachen_roads_map.dbf
 #+END_SRC
 
 #+RESULTS:
@@ -37,20 +41,29 @@ http://download.geofabrik.de/europe/germany/nordrhein-westfalen-latest-free.shp.
 | inflating: | data/StatistischeBezirkeAachen.shp |
 | inflating: | data/StatistischeBezirkeAachen.shx |
 
+See [[https://gis.stackexchange.com/questions/17341/projection-pyproj-puzzle-and-understanding-srs-format][here]] for projection reading.
+
 #+BEGIN_SRC python :results none
+  import osr
+
+  from shapely.ops import cascaded_union
   import geopandas as gpd
   import matplotlib.pyplot as plt
   import pandas as pd
 
+  # read district map and its projection details
   district_map = gpd.read_file("data/aachen_district_map.shp")
+  del district_map['FLäcHE'] # whole zero column
 
-  # set projection
-  district_map.crs = {'init': 'epsg:1989'}
-  # district_map = district_map.to_crs({'init': 'epsg:3857'})
+  prj_content = open('data/aachen_district_map.prj', 'r').read()
+  srs = osr.SpatialReference()
+  srs.ImportFromWkt(prj_content)
+  projection = srs.ExportToProj4()
 
-  # whole zero column
-  del district_map['FLäcHE']
-
+  # read roads map and move it to district projection
+  roads_map = gpd.read_file("data/extracted_roads.shp")
+  roads_map.crs = {'init': 'epsg:4326'}
+  roads_map = roads_map.to_crs(projection)
   district_population = pd.read_csv("data/20170630_population_density.csv")
   district_population.columns = ['STATBEZ', 'PERS']
 
@@ -64,7 +77,7 @@ http://download.geofabrik.de/europe/germany/nordrhein-westfalen-latest-free.shp.
   district_map['area'] = district_map['geometry'].area / 10**6
   district_map['density'] = district_map['population'] / district_map['area']
 
-  fig = plt.figure(figsize=(3, 3), frameon=False)
+  fig = plt.figure(frameon=False)
   ax = fig.gca()
 
   ax.set_title("Population density in Aachen")
@@ -75,16 +88,81 @@ http://download.geofabrik.de/europe/germany/nordrhein-westfalen-latest-free.shp.
                     legend=True,
                     ax=ax)
 
+  roads_map.plot(color='grey', linewidth=0.1, ax=ax)
+
+
   plt.axis('off')
   plt.tight_layout()
   plt.show()
 #+END_SRC
 
-Trying to add roads
+Extract the union of Aachen metropolitan area, in order to filter roads properly.
+#+BEGIN_SRC python :results none
+  from shapely.geometry import LineString
+  from shapely.wkt import loads
+  import osr
 
-#+BEGIN_SRC bash
+  from shapely.ops import cascaded_union
+  import geopandas as gpd
+  import matplotlib.pyplot as plt
+  import pandas as pd
 
+  # read district map and its projection details
+  district_map = gpd.read_file("data/aachen_district_map.shp")
+
+  # extract border
+  aachen_area = cascaded_union(district_map['geometry'])
+
+  with open('data/aachen_border', 'w') as outfile:
+      # convert border from 3D to 2D
+      border = LineString([xy[0:2] for xy in list(aachen_area.exterior.coords)])
+      outfile.write(str(border))
 #+END_SRC
+
+~postgresql~ is needed: step to install.
+#+NAME: postgres_commands
+#+BEGIN_SRC bash :results none
+  # run as postgres user
+  initdb -D '/var/lib/postgres/data'
+  dropdb mapping
+  createdb mapping
+  psql mapping -c 'CREATE EXTENSION postgis'
+  echo "This take some time..."
+  shp2pgsql -s 4326 data/aachen_roads_map.shp roads | psql mapping > /dev/null
+
+  read aachen_border < data/aachen_border
+
+  # extract roads around aachen
+  pgsql2shp -f /tmp/extracted_roads -h localhost -u postgres mapping \
+            "SELECT osm_id, geom FROM roads
+             WHERE fclass NOT IN ('UNCLASSIFIED', 'SERVICE')
+             AND ST_Within(geom,
+             ST_SetSRID(ST_GeomFromText('$aachen_border'), 4326));"
+#+END_SRC
+
+
+#+BEGIN_SRC python
+  import matplotlib.pyplot as plt
+  from mpl_toolkits.basemap import Basemap
+  import numpy as np
+
+  fig, ax = plt.subplots(figsize=(10,15))
+
+  m = Basemap(
+      resolution = 'c',
+      projection = 'merc',
+      llcrnrlon=5.9683, llcrnrlat=50.6886, urcrnrlon=6.3007, urcrnrlat=50.8961)
+
+  m.fillcontinents(color='#f0f0f0')
+
+  m.readshapefile('data/extracted_roads', 'roads', drawbounds = True,
+                  color='grey')
+
+  plt.show()
+#+END_SRC
+
+#+RESULTS:
+: None
 
 * Local variables
   # Local Variables:
