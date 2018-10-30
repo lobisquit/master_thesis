@@ -41,15 +41,19 @@ http://download.geofabrik.de/europe/germany/nordrhein-westfalen-latest-free.shp.
 | inflating: | data/StatistischeBezirkeAachen.shp |
 | inflating: | data/StatistischeBezirkeAachen.shx |
 
-See [[https://gis.stackexchange.com/questions/17341/projection-pyproj-puzzle-and-understanding-srs-format][here]] for projection reading.
+Initialize the datasets, moving everything in the same projection coordinates.
+See [[https://gis.stackexchange.com/questions/17341/projection-pyproj-puzzle-and-understanding-srs-format][here]] for getting projection from ~prj~ file.
 
-#+BEGIN_SRC python :results none
+#+NAME: init_datasets
+#+BEGIN_SRC python
   import osr
 
   from shapely.ops import cascaded_union
+  from shapely.geometry.polygon import Polygon
   import geopandas as gpd
   import matplotlib.pyplot as plt
   import pandas as pd
+  from pyproj import Proj
 
   # read district map and its projection details
   district_map = gpd.read_file("data/aachen_district_map.shp")
@@ -59,11 +63,55 @@ See [[https://gis.stackexchange.com/questions/17341/projection-pyproj-puzzle-and
   srs = osr.SpatialReference()
   srs.ImportFromWkt(prj_content)
   projection = srs.ExportToProj4()
+#+END_SRC
+
+Extract the union of Aachen metropolitan area, in order to filter roads properly.
+#+BEGIN_SRC python :results none :noweb yes
+  <<init_datasets>>
+
+  # extract border
+  aachen_area = cascaded_union(district_map['geometry'])
+
+  # convert back to (lat, long) for this purpose
+  p = Proj(projection)
+  latlong = [p(*coord[0:2], inverse=True) for coord in aachen_area.exterior.coords]
+  aachen_area = Polygon(latlong)
+
+  with open('data/aachen_border', 'w') as outfile:
+      # convert border from 3D to 2D
+      outfile.write(aachen_area.buffer(0).to_wkt())
+#+END_SRC
+
+~postgresql~ is needed: step to install.
+#+NAME: postgres_commands
+#+BEGIN_SRC bash :results none
+  # run as postgres user
+  initdb -D '/var/lib/postgres/data'
+  dropdb mapping
+  createdb mapping
+  psql mapping -c 'CREATE EXTENSION postgis'
+
+  if [ ! -f data/aachen_roads_map.shp ]; then
+      echo "This take some time..."
+      shp2pgsql -s 4326 data/aachen_roads_map.shp roads | psql mapping > /dev/null
+  fi
+
+  # extract roads around aachen border
+  read aachen_border < data/aachen_border
+  pgsql2shp -f data/extracted_roads -h localhost -u postgres mapping \
+            "SELECT osm_id, geom FROM roads
+             WHERE ST_Intersects(geom, ST_SetSRID(ST_GeomFromText('$aachen_border'), 4326));"
+#+END_SRC
+
+
+#+BEGIN_SRC python :results none :noweb yes
+  <<init_datasets>>
 
   # read roads map and move it to district projection
   roads_map = gpd.read_file("data/extracted_roads.shp")
   roads_map.crs = {'init': 'epsg:4326'}
   roads_map = roads_map.to_crs(projection)
+
   district_population = pd.read_csv("data/20170630_population_density.csv")
   district_population.columns = ['STATBEZ', 'PERS']
 
@@ -88,7 +136,7 @@ See [[https://gis.stackexchange.com/questions/17341/projection-pyproj-puzzle-and
                     legend=True,
                     ax=ax)
 
-  roads_map.plot(color='grey', linewidth=0.1, ax=ax)
+  roads_map.plot(color='black', linewidth=0.1, ax=ax)
 
 
   plt.axis('off')
@@ -96,73 +144,6 @@ See [[https://gis.stackexchange.com/questions/17341/projection-pyproj-puzzle-and
   plt.show()
 #+END_SRC
 
-Extract the union of Aachen metropolitan area, in order to filter roads properly.
-#+BEGIN_SRC python :results none
-  from shapely.geometry import LineString
-  from shapely.wkt import loads
-  import osr
-
-  from shapely.ops import cascaded_union
-  import geopandas as gpd
-  import matplotlib.pyplot as plt
-  import pandas as pd
-
-  # read district map and its projection details
-  district_map = gpd.read_file("data/aachen_district_map.shp")
-
-  # extract border
-  aachen_area = cascaded_union(district_map['geometry'])
-
-  with open('data/aachen_border', 'w') as outfile:
-      # convert border from 3D to 2D
-      border = LineString([xy[0:2] for xy in list(aachen_area.exterior.coords)])
-      outfile.write(str(border))
-#+END_SRC
-
-~postgresql~ is needed: step to install.
-#+NAME: postgres_commands
-#+BEGIN_SRC bash :results none
-  # run as postgres user
-  initdb -D '/var/lib/postgres/data'
-  dropdb mapping
-  createdb mapping
-  psql mapping -c 'CREATE EXTENSION postgis'
-  echo "This take some time..."
-  shp2pgsql -s 4326 data/aachen_roads_map.shp roads | psql mapping > /dev/null
-
-  read aachen_border < data/aachen_border
-
-  # extract roads around aachen
-  pgsql2shp -f /tmp/extracted_roads -h localhost -u postgres mapping \
-            "SELECT osm_id, geom FROM roads
-             WHERE fclass NOT IN ('UNCLASSIFIED', 'SERVICE')
-             AND ST_Within(geom,
-             ST_SetSRID(ST_GeomFromText('$aachen_border'), 4326));"
-#+END_SRC
-
-
-#+BEGIN_SRC python
-  import matplotlib.pyplot as plt
-  from mpl_toolkits.basemap import Basemap
-  import numpy as np
-
-  fig, ax = plt.subplots(figsize=(10,15))
-
-  m = Basemap(
-      resolution = 'c',
-      projection = 'merc',
-      llcrnrlon=5.9683, llcrnrlat=50.6886, urcrnrlon=6.3007, urcrnrlat=50.8961)
-
-  m.fillcontinents(color='#f0f0f0')
-
-  m.readshapefile('data/extracted_roads', 'roads', drawbounds = True,
-                  color='grey')
-
-  plt.show()
-#+END_SRC
-
-#+RESULTS:
-: None
 
 * Local variables
   # Local Variables:
