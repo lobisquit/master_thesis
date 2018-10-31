@@ -93,10 +93,10 @@
 
   Create output ~shp~ as normal user.
 
-  #+BEGIN_SRC bash :results none
+  #+BEGIN_SRC bash :results output
     # extract roads around aachen border
     read aachen_border < data/citymap/aachen_border
-    pgsql2shp -f data/citymap/extracted_roads -h localhost -u postgres -P postgres mapping \
+    pgsql2shp -f data/citymap/extracted_roads -h localhost -u postgres mapping \
               "SELECT osm_id, geom FROM roads
                WHERE fclass NOT IN ('trunk_link', 'bridleway', 'motorway', 'motorway_link', 'path',
                                     'primary_link', 'secondary_link', 'service', 'steps', 'tertiary_link',
@@ -164,8 +164,8 @@
 * Create graph from city roads
   See [[https://github.com/caesar0301/s2g][here]] fopr details.
 
-  #+BEGIN_SRC python :noweb yes
-    <<initialize_datasets>>
+  #+BEGIN_SRC python :noweb yes :tangle prova.py
+    <<init_datasets>>
 
     from math import sqrt
 
