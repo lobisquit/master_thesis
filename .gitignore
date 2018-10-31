@@ -10,7 +10,7 @@ data/
 scripts/*
 scripts/!README
 
-plots/*
-plots/!README
+figures/*
+figures/!README
 
 secrets.txt

@@ -37,7 +37,7 @@ Initialize the datasets, moving everything in the same projection coordinates.
 See [[https://gis.stackexchange.com/questions/17341/projection-pyproj-puzzle-and-understanding-srs-format][here]] for getting projection from ~prj~ file.
 
 #+NAME: init_datasets
-#+BEGIN_SRC python
+#+BEGIN_SRC python :results none
   import geopandas as gpd
   import matplotlib.pyplot as plt
   import osr
@@ -75,6 +75,7 @@ Extract the union of Aachen metropolitan area, in order to filter roads properly
 #+END_SRC
 
 ~postgresql~ database is needed: give following commands as ~postgres~ user.
+~postgis~ extension is needed, as in following commands.
 
 #+BEGIN_SRC bash :results none
   initdb -D '/var/lib/postgres/data'
@@ -136,6 +137,7 @@ Create final plot, with roads as well as population density.
   district_map.plot(column='density',
                     cmap='autumn_r',
                     legend=True,
+                    linewidth=0, # remove districts borders
                     alpha=0.8,
                     ax=ax)
 
