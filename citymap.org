@@ -61,6 +61,8 @@
 
 * Create city map
   Extract the union of Aachen metropolitan area, in order to filter roads properly.
+  See [[https://simonb83.github.io/making-a-map-in-matplotlib.html][here]] for details.
+
   #+BEGIN_SRC python :results none :noweb yes
     <<init_datasets>>
     with open('data/citymap/aachen_border', 'w') as outfile:
@@ -94,9 +96,12 @@
   #+BEGIN_SRC bash :results none
     # extract roads around aachen border
     read aachen_border < data/citymap/aachen_border
-    pgsql2shp -f data/citymap/extracted_roads -h localhost -u postgres mapping \
+    pgsql2shp -f data/citymap/extracted_roads -h localhost -u postgres -P postgres mapping \
               "SELECT osm_id, geom FROM roads
-               WHERE ST_Intersects(geom, ST_SetSRID(ST_GeomFromText('$aachen_border'), 4326));"
+               WHERE fclass NOT IN ('trunk_link', 'bridleway', 'motorway', 'motorway_link', 'path',
+                                    'primary_link', 'secondary_link', 'service', 'steps', 'tertiary_link',
+                                    'track', 'track_grade2', 'track_grade3', 'track_grade4', 'track_grade5', 'unclassified', 'unknown') AND
+               ST_Intersects(geom, ST_SetSRID(ST_GeomFromText('$aachen_border'), 4326));"
   #+END_SRC
 
   Create final plot, with roads as well as population density.
