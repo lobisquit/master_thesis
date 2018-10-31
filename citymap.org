@@ -98,7 +98,7 @@ Create output ~shp~ as normal user.
 
 Create final plot, with roads as well as population density.
 
-#+BEGIN_SRC python :results none :noweb yes :tangle ciao.py
+#+BEGIN_SRC python :results none :noweb yes
   <<init_datasets>>
 
   font_spec = {
