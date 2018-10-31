@@ -38,14 +38,14 @@ See [[https://gis.stackexchange.com/questions/17341/projection-pyproj-puzzle-and
 
 #+NAME: init_datasets
 #+BEGIN_SRC python
-  import osr
-
-  from shapely.ops import cascaded_union
-  from shapely.geometry.polygon import Polygon
   import geopandas as gpd
   import matplotlib.pyplot as plt
+  import osr
   import pandas as pd
+  from matplotlib import rcParams
   from pyproj import Proj
+  from shapely.geometry.polygon import Polygon
+  from shapely.ops import cascaded_union
 
   # read district map and its projection details
   district_map = gpd.read_file("data/aachen_district_map.shp")
@@ -100,8 +100,15 @@ Create output ~shp~ as normal user.
 
 Create final plot, with roads as well as population density.
 
-#+BEGIN_SRC python :results none :noweb yes
+#+BEGIN_SRC python :results none :noweb yes :tangle ciao.py
   <<init_datasets>>
+
+  font_spec = {
+      'font.family':'sans-serif',
+      'font.sans-serif':['Fira Sans'],
+      'font.weight': 'regular'
+  }
+  rcParams.update(font_spec)
 
   # read roads map and move it to district projection
   roads_map = gpd.read_file("data/extracted_roads.shp")
@@ -121,25 +128,30 @@ Create final plot, with roads as well as population density.
   district_map['area'] = district_map['geometry'].area / 10**6
   district_map['density'] = district_map['population'] / district_map['area']
 
-  fig = plt.figure(frameon=False)
+  fig = plt.figure(figsize=(6, 6), frameon=False)
   ax = fig.gca()
 
-  ax.set_title("Population density in Aachen")
-  ax.set_label("people / km2")
+  ax.set_title("Population density in Aachen\n",
+               fontweight=font_spec['font.weight'])
 
   district_map.plot(column='density',
-                    cmap='summer',
+                    cmap='autumn_r',
                     legend=True,
+                    alpha=0.8,
                     ax=ax)
 
-  roads_map.plot(color='black', linewidth=0.1, ax=ax)
+  roads_map.plot(color='black', linewidth=0.15, ax=ax)
 
+  # set title of colorbar (dirty trick)
+  fig.get_axes()[1].set_title('people/km²', fontweight=font_spec['font.weight'])
 
   plt.axis('off')
-  plt.tight_layout()
-  plt.show()
-#+END_SRC
+  plt.tight_layout(rect=[-1.25, -0.04, 1.2, 1])
+  plt.savefig('citymap.pdf')
 
+  plt.close('all')
+
+#+END_SRC
 
 * Local variables
   # Local Variables:
