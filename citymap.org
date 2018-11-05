@@ -166,15 +166,33 @@
   #+BEGIN_SRC python :noweb yes :tangle prova.py
     <<init_datasets>>
 
+    import json
     from math import sqrt
 
+    import fiona
     import networkx as nx
-
+    from networkx.readwrite import json_graph
     from s2g import ShapeGraph
-    import networkx as nx
+    from shapely.geometry import LineString, shape
 
-    sg = ShapeGraph(shapefile='data/citymap/extracted_roads.shp', to_graph=True)
-    assert isinstance(sg.graph, nx.Graph)
+    path = 'data/citymap/extracted_roads.shp'
+    # path = '/home/enrico/Scaricati/gis_osm_roads_free_1.shp' # test path
+
+    sg = ShapeGraph(shapefile=path, to_graph=True)
+
+    # convert graph to json
+    G = json_graph.node_link_data(sg.graph)
+
+    for node in G['nodes']:
+        node['lat'], node['long'] = sg.node_xy[node['id']]
+
+    with open('data/citymap/connected_roads.json', 'w') as output:
+        output.write(json.dumps(G))
+
+    # with open('data/citymap/connected_roads.json') as f:
+    #     js_graph = json.load(f)
+    #     a = json_graph.node_link_graph(js_graph)
+    #     print(a.nodes(data=True))
   #+END_SRC
 
 * Local variables
