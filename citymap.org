@@ -163,7 +163,7 @@
 * Create graph from city roads
   See [[https://github.com/caesar0301/s2g][here]] for details.
 
-  #+BEGIN_SRC python :noweb yes :tangle prova.py
+  #+BEGIN_SRC python :noweb yes :tangle scripts/road_graph.py
     <<init_datasets>>
 
     import json
@@ -175,8 +175,8 @@
     from s2g import ShapeGraph
     from shapely.geometry import LineString, shape
 
-    path = 'data/citymap/extracted_roads.shp'
-    # path = '/home/enrico/Scaricati/gis_osm_roads_free_1.shp' # test path
+    # path = 'data/citymap/extracted_roads.shp'
+    path = '/home/enrico/Scaricati/gis_osm_roads_free_1.shp' # test path
 
     sg = ShapeGraph(shapefile=path, to_graph=True)
 
@@ -188,11 +188,6 @@
 
     with open('data/citymap/connected_roads.json', 'w') as output:
         output.write(json.dumps(G))
-
-    # with open('data/citymap/connected_roads.json') as f:
-    #     js_graph = json.load(f)
-    #     a = json_graph.node_link_graph(js_graph)
-    #     print(a.nodes(data=True))
   #+END_SRC
 
 * Local variables
