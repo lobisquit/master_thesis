@@ -194,6 +194,21 @@
         output.write(json.dumps(G))
   #+END_SRC
 
+* Job file for cluster execution
+
+  #+BEGIN_SRC bash :tangle scripts/citymap.job
+    #!/bin/bash
+
+    # create ouput files in job directory
+    #$ -o ~/master_thesis/out_simulation.txt
+    #$ -e ~/master_thesis/err_simulation.txt
+
+    cd ~/master_thesis/
+
+    source venv/bin/activate
+    python scripts/citymap/6_roads_graph.py
+  #+END_SRC
+
 * Local variables
   # Local Variables:
   # sh-indent-after-continuation: nil
