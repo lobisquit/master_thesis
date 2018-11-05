@@ -56,7 +56,7 @@
     prj_content = open('data/citymap/aachen_district_map.prj', 'r').read()
     srs = osr.SpatialReference()
     srs.ImportFromWkt(prj_content)
-    projection = srs.ExportToProj4()
+    projection = Proj(srs.ExportToProj4())
   #+END_SRC
 
 * Create city map
@@ -70,8 +70,7 @@
         aachen_area = cascaded_union(district_map['geometry'])
 
         # convert back to (lat, long) for this purpose
-        p = Proj(projection)
-        aachen_area = Polygon([p(*coord[0:2], inverse=True) \
+        aachen_area = Polygon([projection(*coord[0:2], inverse=True) \
                                for coord in aachen_area.exterior.coords])
 
         # convert border from 3D to 2D
@@ -119,7 +118,7 @@
     # read roads map and move it to district projection
     roads_map = gpd.read_file("data/citymap/extracted_roads.shp")
     roads_map.crs = {'init': 'epsg:4326'}
-    roads_map = roads_map.to_crs(projection)
+    roads_map = roads_map.to_crs(projection.srs)
 
     district_population = pd.read_csv("data/citymap/20170630_population_density.csv")
     district_population.columns = ['STATBEZ', 'PERS']
