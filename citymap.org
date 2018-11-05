@@ -161,7 +161,7 @@
   #+END_SRC
 
 * Create graph from city roads
-  See [[https://github.com/caesar0301/s2g][here]] fopr details.
+  See [[https://github.com/caesar0301/s2g][here]] for details.
 
   #+BEGIN_SRC python :noweb yes :tangle prova.py
     <<init_datasets>>
