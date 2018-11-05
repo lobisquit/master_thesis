@@ -17,7 +17,7 @@
   This snippet will download all of them in a parallel fashion, see [[https://stackoverflow.com/a/11850469][here]] for ~xargs~ parameters details.
   ~wget -c~ ensure each file is downloaded once, even if it is stopped and resumed.
 
-  #+BEGIN_SRC bash :var dataset_urls=dataset_urls :tangle scripts/1_download.sh :results none
+  #+BEGIN_SRC bash :var dataset_urls=dataset_urls :tangle scripts/computations/1_download.sh :results none
     # read username and password from file
     read caida_user caida_password < secrets.txt
 
@@ -91,7 +91,7 @@
     }
   #+END_SRC
 
-  #+BEGIN_SRC bash :var records=records :results none :tangle scripts/2_convert.sh :noweb yes
+  #+BEGIN_SRC bash :var records=records :results none :tangle scripts/computations/2_convert.sh :noweb yes
     for record in $(echo $records | sed 's/ /\n/g')
     do
         pcap_file="data/pcap/${record}.pcap.gz"
@@ -151,7 +151,7 @@
      }
    #+END_SRC
 
-   #+BEGIN_SRC bash :tangle scripts/3_interarrival.sh :var records=records :results none :noweb yes
+   #+BEGIN_SRC bash :tangle scripts/computations/3_interarrival.sh :var records=records :results none :noweb yes
      for record in $(echo $records | sed 's/ /\n/g')
      do
          csv_file="data/csv/${record}.csv.gz"
@@ -192,7 +192,7 @@
          )
    #+END_SRC
 
-   #+BEGIN_SRC R :var records=records :noweb yes :tangle scripts/4_interarrival_plot.r :results none
+   #+BEGIN_SRC R :var records=records :noweb yes :tangle scripts/computations/4_interarrival_plot.r :results none
      <<utils>>
 
      for (record in records[[1]]) {

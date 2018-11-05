@@ -11,7 +11,7 @@
   #+NAME: roads
   http://download.geofabrik.de/europe/germany/nordrhein-westfalen-latest-free.shp.zip
 
-  #+BEGIN_SRC bash :var population_density=population_density district_map=district_map roads=roads :results none
+  #+BEGIN_SRC bash :var population_density=population_density district_map=district_map roads=roads :results none :tangle scripts/citymap/1_download.sh
     mkdir -p data/citymap/
 
     # download
@@ -63,8 +63,9 @@
   Extract the union of Aachen metropolitan area, in order to filter roads properly.
   See [[https://simonb83.github.io/making-a-map-in-matplotlib.html][here]] for details.
 
-  #+BEGIN_SRC python :results none :noweb yes
+  #+BEGIN_SRC python :results none :noweb yes :tangle scripts/citymap/2_city_border.py
     <<init_datasets>>
+
     with open('data/citymap/aachen_border', 'w') as outfile:
         # extract border
         aachen_area = cascaded_union(district_map['geometry'])
@@ -80,7 +81,7 @@
   ~postgresql~ database is needed: give following commands as ~postgres~ user.
   ~postgis~ extension is needed, as in following commands.
 
-  #+BEGIN_SRC bash :results none
+  #+BEGIN_SRC bash :results none :tangle scripts/citymap/3_postgres_init.sh
     initdb -D '/var/lib/postgres/data'
     dropdb mapping
     createdb mapping
@@ -92,20 +93,23 @@
 
   Create output ~shp~ as normal user.
 
-  #+BEGIN_SRC bash :results output
+  #+BEGIN_SRC bash :results output :tangle scripts/citymap/4_extraction.sh
     # extract roads around aachen border
     read aachen_border < data/citymap/aachen_border
     pgsql2shp -f data/citymap/extracted_roads -h localhost -u postgres mapping \
               "SELECT osm_id, geom FROM roads
-               WHERE fclass NOT IN ('trunk_link', 'bridleway', 'motorway', 'motorway_link', 'path',
-                                    'primary_link', 'secondary_link', 'service', 'steps', 'tertiary_link',
-                                    'track', 'track_grade2', 'track_grade3', 'track_grade4', 'track_grade5', 'unclassified', 'unknown') AND
-               ST_Intersects(geom, ST_SetSRID(ST_GeomFromText('$aachen_border'), 4326));"
+               WHERE fclass NOT IN ('trunk_link', 'bridleway', 'motorway',
+                                    'motorway_link', 'path', 'primary_link',
+                                    'secondary_link', 'service', 'steps',
+                                    'tertiary_link', 'track', 'track_grade2',
+                                    'track_grade3', 'track_grade4', 'track_grade5',
+                                    'unclassified', 'unknown')
+               AND ST_Intersects(geom, ST_SetSRID(ST_GeomFromText('$aachen_border'), 4326));"
   #+END_SRC
 
   Create final plot, with roads as well as population density.
 
-  #+BEGIN_SRC python :results none :noweb yes
+  #+BEGIN_SRC python :results none :noweb yes :tangle scripts/citymap/5_plot_map.py
     <<init_datasets>>
 
     font_spec = {
@@ -163,7 +167,7 @@
 * Create graph from city roads
   See [[https://github.com/caesar0301/s2g][here]] for details.
 
-  #+BEGIN_SRC python :noweb yes :tangle scripts/road_graph.py
+  #+BEGIN_SRC python :noweb yes :tangle scripts/citymap/6_roads_graph.py
     <<init_datasets>>
 
     import json
