@@ -1,3 +1,5 @@
+#+PROPERTY: header-args :mkdirp yes
+
 * Obtaining the dataset
   Dataset is available at [[https://data.caida.org/][CAIDA website]], but a permit is needed, as stated in their FAQ.
   More details about the various files provided can be found in their [[https://data.caida.org/datasets/passive-2018/README-2018.txt][README]].

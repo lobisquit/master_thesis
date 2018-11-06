@@ -1,3 +1,5 @@
+#+PROPERTY: header-args :mkdirp yes
+
 * Retrieve datasets
   Download all needed files from Aachen city repository.
 
