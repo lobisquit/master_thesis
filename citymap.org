@@ -1,7 +1,5 @@
 #+PROPERTY: header-args :mkdirp yes
 
-#+INCLUDE: "./utils.org"
-
 * Retrieve datasets
   Download all needed files from Aachen city repository.
 
@@ -256,7 +254,6 @@
 
 * Local variables
   # Local Variables:
-  # sh-indent-after-continuation: nil
-  # org-export-babel-evaluate: nil
   # eval: (add-hook 'before-save-hook (lambda () (indent-region (point-min) (point-max) nil)) t t)
+  # eval: (org-babel-lob-ingest "utils.org")
   # End:
