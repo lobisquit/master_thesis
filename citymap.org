@@ -167,7 +167,8 @@
   #+END_SRC
 
 * Create graph from city roads
-  See [[https://github.com/caesar0301/s2g][here]] for details.
+  Output graph will be saved in ~json~ format.
+  See [[https://github.com/caesar0301/s2g][here]] for details on the ~s2g~ library used for conversion.
 
   #+BEGIN_SRC python :tangle scripts/citymap/6_roads_graph.py
     import json
@@ -194,7 +195,7 @@
         output.write(json.dumps(G))
   #+END_SRC
 
-* Job file for cluster execution
+  Here comes an handy job file for cluster execution.
 
   #+BEGIN_SRC bash :tangle scripts/citymap.job
     #!/bin/bash
@@ -208,6 +209,65 @@
     source venv/bin/activate
     python scripts/citymap/6_roads_graph.py
   #+END_SRC
+
+  #+BEGIN_SRC python :tangle scripts/citymap/7_graph_analysis.py :results output
+    import json
+
+    import geopandas as gpd
+    import matplotlib.pyplot as plt
+    import networkx as nx
+    import pandas as pd
+    from networkx.readwrite import json_graph
+    from shapely.geometry import Point, LineString
+
+    plt.close('all')
+
+    with open('data/citymap/connected_roads.json', 'r') as f:
+        graph_data = json.load(f)
+
+    G = json_graph.node_link_graph(graph_data)
+    nodes = G.nodes(data=True)
+
+    # build a gpd GeoDataFrame for nodes
+    nodes_info = []
+    for id_, data in nodes:
+        point = Point(data['lat'], data['long'])
+        nodes_info.append({'id': id_, 'geometry': point})
+
+    nodes_df = gpd.GeoDataFrame(nodes_info)
+
+    # build a gpd GeoDataFrame for edges
+    edges_info = []
+    for node_id1, node_id2, data in G.edges(data=True):
+        edge = LineString((
+            (nodes[node_id1]['lat'], nodes[node_id1]['long']),
+            (nodes[node_id2]['lat'], nodes[node_id2]['long'])
+        ))
+
+        edges_info.append({'geometry': edge, **data})
+
+    edges_df = gpd.GeoDataFrame(edges_info)
+
+    # plot the one on top of the other
+    fig = plt.figure(figsize=(6, 6), frameon=False)
+    ax = fig.gca()
+
+    nodes_df.plot(ax=ax,
+                  markersize=0.05,
+                  color='black',
+                  zorder=2)
+
+    edges_df.plot(ax=ax,
+                  color='grey',
+                  # column='weight',
+                  linewidth=1,
+                  zorder=1)
+
+    plt.axis('equal')
+    plt.show()
+  #+END_SRC
+
+  #+RESULTS:
 
 * Local variables
   # Local Variables:
