@@ -1,0 +1,39 @@
+Import all needed libraries and read default projection from district dataset.
+This is shared to enable consistency across all the city plots.
+
+#+NAME: init
+#+BEGIN_SRC python
+  import json
+
+  import geopandas as gpd
+  import matplotlib.pyplot as plt
+  import networkx as nx
+  import osr
+  import pandas as pd
+  from matplotlib import rcParams
+  from networkx.readwrite import json_graph, read_graphml
+  from pyproj import Proj
+  from shapely.geometry import LineString, Point
+  from shapely.geometry.polygon import Polygon
+  from shapely.ops import cascaded_union
+
+  # copy-pasta code
+  prj_content = open('data/citymap/aachen_district_map.prj', 'r').read()
+  srs = osr.SpatialReference()
+  srs.ImportFromWkt(prj_content)
+  projection = Proj(srs.ExportToProj4())
+#+END_SRC
+
+Default settings for ~matplotlib~.
+
+#+NAME: matplotlib_defaults
+#+BEGIN_SRC python
+  from matplotlib import rcParams
+
+  font_spec = {
+      'font.family':'sans-serif',
+      'font.sans-serif':['Fira Sans'],
+      'font.weight': 'regular'
+  }
+  rcParams.update(font_spec)
+#+END_SRC

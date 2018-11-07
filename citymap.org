@@ -1,5 +1,7 @@
 #+PROPERTY: header-args :mkdirp yes
 
+#+INCLUDE: "./utils.org"
+
 * Retrieve datasets
   Download all needed files from Aachen city repository.
 
@@ -39,25 +41,13 @@
   Initialize the datasets, moving everything in the same projection coordinates.
   See [[https://gis.stackexchange.com/questions/17341/projection-pyproj-puzzle-and-understanding-srs-format][here]] for getting projection from ~prj~ file.
 
-  #+NAME: init_datasets
-  #+BEGIN_SRC python :results none
-    import geopandas as gpd
-    import matplotlib.pyplot as plt
-    import osr
-    import pandas as pd
-    from pyproj import Proj
-    from shapely.geometry.polygon import Polygon
-    from shapely.ops import cascaded_union
+  #+NAME: init_district_map
+  #+BEGIN_SRC python :results none :noweb yes
+    <<init>>
 
     # read district map and its projection details
     district_map = gpd.read_file("data/citymap/aachen_district_map.shp")
     del district_map['FLäcHE'] # whole zero column
-
-    # copy-pasta code
-    prj_content = open('data/citymap/aachen_district_map.prj', 'r').read()
-    srs = osr.SpatialReference()
-    srs.ImportFromWkt(prj_content)
-    projection = Proj(srs.ExportToProj4())
   #+END_SRC
 
 * Create city map
@@ -65,7 +55,7 @@
   See [[https://simonb83.github.io/making-a-map-in-matplotlib.html][here]] for details.
 
   #+BEGIN_SRC python :results none :noweb yes :tangle scripts/citymap/2_city_border.py
-    <<init_datasets>>
+    <<init_district_map>>
 
     with open('data/citymap/aachen_border', 'w') as outfile:
         # extract border
@@ -110,23 +100,9 @@
 
   Create final plot, with roads as well as population density.
 
-  Use following ~matplotlib~ defaults.
-
-  #+NAME: matplotlib_defaults
-  #+BEGIN_SRC python
-    from matplotlib import rcParams
-
-    font_spec = {
-        'font.family':'sans-serif',
-        'font.sans-serif':['Fira Sans'],
-        'font.weight': 'regular'
-    }
-    rcParams.update(font_spec)
-
-  #+END_SRC
-
   #+BEGIN_SRC python :results none :noweb yes :tangle scripts/citymap/5_plot_map.py
-    <<init_datasets>>
+    <<init_district_map>>
+    <<matplotlib_defaults>>
 
     # read roads map and move it to district projection
     roads_map = gpd.read_file("data/citymap/extracted_roads.shp")
@@ -217,21 +193,9 @@
     python scripts/citymap/6_roads_graph.py
   #+END_SRC
 
-  #+BEGIN_SRC python :tangle scripts/citymap/7_graph_analysis.py :results output :noweb yes
-    # read projection details
-    <<init_datasets>>
-
-    # read matplotlib default configuration
+  #+BEGIN_SRC python :tangle scripts/citymap/7_graph_analysis.py :results none :noweb yes
+    <<init>>
     <<matplotlib_defaults>>
-
-    import json
-
-    import geopandas as gpd
-    import matplotlib.pyplot as plt
-    import networkx as nx
-    import pandas as pd
-    from networkx.readwrite import json_graph
-    from shapely.geometry import Point, LineString
 
     with open('data/citymap/connected_roads.json', 'r') as f:
         graph_data = json.load(f)
@@ -277,9 +241,9 @@
                   zorder=2)
 
     edges_df.plot(ax=ax,
-                  color='grey',
+                  color='black',
                   # column='weight',
-                  linewidth=1,
+                  # linewidth=0.3,
                   zorder=1)
 
     plt.axis('off')
@@ -287,9 +251,8 @@
     # plt.show()
     plt.savefig('figures/citymap-graph.pdf')
     plt.close('all')
-  #+END_SRC
 
-  #+RESULTS:
+  #+END_SRC
 
 * Local variables
   # Local Variables:
