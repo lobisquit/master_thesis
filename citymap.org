@@ -128,7 +128,7 @@
                  fontweight=font_spec['font.weight'])
 
     district_map.plot(column='density',
-                      cmap='autumn_r',
+                      cmap='viridis',
                       legend=True,
                       linewidth=0, # remove districts borders
                       alpha=0.8,
