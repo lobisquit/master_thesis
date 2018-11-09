@@ -49,7 +49,7 @@
    | Frankfurt  | left   | bottom |
    | Wurzburg   | center | top    |
    | Bremen     | right  | center |
-   | Hanover    | right  | center |
+   | Hannover   | right  | center |
    | Brunswick  | left   | bottom |
    | Hertford   | right  | center |
    | Gutersloh  | left   | top    |
@@ -120,6 +120,10 @@
      # Paris and Amsterdam (why are they in Germany?)
      G.remove_node('20')
      G.remove_node('34')
+
+     # fix Hannover spelling
+     G.node['40']['label'] = 'Hannover'
+
      ## collect data into proper lists
      nodes = G.nodes(data=True)
 
@@ -196,9 +200,9 @@
 
      plt.axis('off')
      plt.tight_layout(rect=[-0.1, -0.05, 1.1, 1])
-     plt.show()
-     # plt.savefig('figures/german_backbone.pdf')
-     # plt.close('all')
+     # plt.show()
+     plt.savefig('figures/german_backbone.pdf')
+     plt.close('all')
    #+END_SRC
 
 * Local variables
