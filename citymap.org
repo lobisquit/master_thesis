@@ -56,20 +56,29 @@
 
 * Create city map
   Put all relevant NRW data inside a ~postgresql~ database with ~postgis~ extension installed.
-  NOTE give following commands as ~postgres~ user.
+  Database is run localy as normal user inside a proper socket directory.
 
-  #+BEGIN_SRC bash :results none :tangle scripts/citymap/2_postgres_init.sh
-    initdb -D '/var/lib/postgres/data'
-    dropdb roads
-    dropdb buildings
-    createdb roads
-    createdb buildings
-    psql roads -c 'CREATE EXTENSION postgis'
+  See [[https://simonb83.github.io/making-a-map-in-matplotlib.html][here]] for details on moving ~shp~ to ~postgresql~.
+
+  #+NAME: socket_dir
+  - $(pwd)/data/citymap/postgres/socket_dir/
+
+  #+BEGIN_SRC bash :results none :tangle scripts/citymap/2_postgres_init.sh :var socket_dir=socket_dir
+    # create and start local postgres session
+    mkdir -p data/citymap/postgres/
+    initdb -D data/citymap/postgres/
+
+    mkdir -p $socket_dir
+    postgres -D data/citymap/postgres/ -k $socket_dir &
+
+    dropdb nrw -h $socket_dir
+    createdb nrw -h $socket_dir
+    psql nrw -c 'CREATE EXTENSION postgis' -h $socket_dir
 
     echo "WARNING: this takes some time..."
 
-    shp2pgsql -s 4326 data/citymap/NRW_roads.shp roads | psql roads > /dev/null
-    shp2pgsql -s 4326 data/citymap/NRW_buildings.shp roads | psql buildings > /dev/null
+    shp2pgsql -s 4326 data/citymap/NRW_roads.shp roads | psql nrw -h $socket_dir > /dev/null
+    shp2pgsql -s 4326 data/citymap/NRW_buildings.shp buildings | psql nrw -h $socket_dir > /dev/null
   #+END_SRC
 
 ** Retrieve city border
@@ -90,9 +99,8 @@
          outfile.write(aachen_area.to_wkt())
    #+END_SRC
 
-** City information extraction
+** City area extraction
    Create output ~shp~ for roads and buildings as normal user using the following queries.
-   See [[https://simonb83.github.io/making-a-map-in-matplotlib.html][here]] for details.
 
    #+NAME: roads_query
    #+BEGIN_SRC sql
