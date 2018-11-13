@@ -61,24 +61,26 @@
   See [[https://simonb83.github.io/making-a-map-in-matplotlib.html][here]] for details on moving ~shp~ to ~postgresql~.
 
   #+NAME: socket_dir
-  - $(pwd)/data/citymap/postgres/socket_dir/
+  - data/citymap/postgres/socket_dir/
+
+  #+RESULTS:
 
   #+BEGIN_SRC bash :results none :tangle scripts/citymap/2_postgres_init.sh :var socket_dir=socket_dir
     # create and start local postgres session
     mkdir -p data/citymap/postgres/
     initdb -D data/citymap/postgres/
 
-    mkdir -p $socket_dir
-    postgres -D data/citymap/postgres/ -k $socket_dir &
+    mkdir -p $(pwd)/$socket_dir
+    postgres -D data/citymap/postgres/ -k $(pwd)/$socket_dir &
 
-    dropdb nrw -h $socket_dir
-    createdb nrw -h $socket_dir
-    psql nrw -c 'CREATE EXTENSION postgis' -h $socket_dir
+    dropdb nrw -h $(pwd)/$socket_dir
+    createdb nrw -h $(pwd)/$socket_dir
+    psql nrw -c 'CREATE EXTENSION postgis' -h $(pwd)/$socket_dir
 
     echo "WARNING: this takes some time..."
 
-    shp2pgsql -s 4326 data/citymap/NRW_roads.shp roads | psql nrw -h $socket_dir > /dev/null
-    shp2pgsql -s 4326 data/citymap/NRW_buildings.shp buildings | psql nrw -h $socket_dir > /dev/null
+    shp2pgsql -s 4326 data/citymap/NRW_roads.shp roads | psql nrw -h $(pwd)/$socket_dir > /dev/null
+    shp2pgsql -s 4326 data/citymap/NRW_buildings.shp buildings | psql nrw -h $(pwd)/$socket_dir > /dev/null
   #+END_SRC
 
 ** Retrieve city border
@@ -118,17 +120,29 @@
    #+BEGIN_SRC sql
      SELECT osm_id, geom FROM buildings
       WHERE ST_Intersects(geom, ST_SetSRID(ST_GeomFromText('$aachen_border'), 4326));
+     -- still evaluating to filter by type (they do not seem reliable)
+
+     -- AND type IN ('house', 'residential', 'apartments', 'industrial',
+     --              'school', 'farm', 'retail', 'allotment_house', 'warehouse',
+     --              'office', 'public', 'civic', 'hospital', 'university',
+     --              'manufacture', 'dormitory', 'community_centre',
+     --              'hotel', 'bungalow', 'family_house', 'commercial');
    #+END_SRC
 
-   #+BEGIN_SRC bash :noweb yes :results output :tangle scripts/citymap/4_extraction.sh
+   #+BEGIN_SRC bash :noweb yes :results output :tangle scripts/citymap/4_extraction.sh :var socket_dir=socket_dir
      # extract roads around aachen border
      read aachen_border < data/citymap/aachen_border.txt
 
-     pgsql2shp -f data/citymap/aachen_roads -h localhost -u postgres roads "
-                 <<roads_query>>"
+     # due to noweb shortcomings, first newline and leading whitespaces have to be removed
+     query="
+            <<roads_query>>"
+     pgsql2shp -f data/citymap/aachen_roads -h $(pwd)/$socket_dir nrw \
+               "$(echo ${query:1:${#query}} | sed 's/^[\t ]*//g')"
 
-     pgsql2shp -f data/citymap/aachen_roads -h localhost -u postgres buildings "
-                 <<buildings_query>>"
+     query="
+            <<buildings_query>>"
+     pgsql2shp -f data/citymap/aachen_buildings -h $(pwd)/$socket_dir nrw \
+               "$(echo ${query:1:${#query}} | sed 's/^[\t ]*//g')"
    #+END_SRC
 
 ** Plot population density on the map
