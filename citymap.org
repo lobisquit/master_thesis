@@ -10,30 +10,36 @@
   http://offenedaten.aachen.de/dataset/5ea893af-8f1d-4658-9066-8f05daed1022/resource/6dfc1b81-26d9-4ed8-b8c4-a61013659f51/download/statistischebezirkeaachen.zip
 
   For the roads details, see [[https://simonb83.github.io/making-a-map-in-matplotlib.html][here]].
-  #+NAME: roads
+  #+NAME: NRW_map
   http://download.geofabrik.de/europe/germany/nordrhein-westfalen-latest-free.shp.zip
 
-  #+BEGIN_SRC bash :var population_density=population_density district_map=district_map roads=roads :results none :tangle scripts/citymap/1_download.sh
+  #+BEGIN_SRC bash :var population_density=population_density district_map=district_map NRW_map=NRW_map :results none :tangle scripts/citymap/1_download.sh
     mkdir -p data/citymap/
 
     # download
     wget -c $population_density -O data/citymap/20170630_population_density_temp.csv
     wget -c $district_map -O data/citymap/district_map.zip
-    wget -c $roads -O data/citymap/roads_map.zip
+    wget -c $NRW_map -O data/citymap/NRW_map.zip
 
     # preprocess
     awk -F, '{print $1 "," $3}' data/citymap/20170630_population_density_temp.csv > data/citymap/20170630_population_density.csv
     rm -f data/citymap/20170630_population_density_temp.csv
 
-    unzip -o data/citymap/district_map.zip -d data/citymap/
-    mv data/citymap/StatistischeBezirkeAachen.shp data/citymap/aachen_district_map.shp
-    mv data/citymap/StatistischeBezirkeAachen.shx data/citymap/aachen_district_map.shx
-    mv data/citymap/StatistischeBezirkeAachen.dbf data/citymap/aachen_district_map.dbf
-    mv data/citymap/StatistischeBezirkeAachen.prj data/citymap/aachen_district_map.prj
+    # gather city district borders
+    unzip -p data/citymap/district_map.zip StatistischeBezirkeAachen.shp > data/citymap/aachen_district_map.shp
+    unzip -p data/citymap/district_map.zip StatistischeBezirkeAachen.shx > data/citymap/aachen_district_map.shx
+    unzip -p data/citymap/district_map.zip StatistischeBezirkeAachen.dbf > data/citymap/aachen_district_map.dbf
+    unzip -p data/citymap/district_map.zip StatistischeBezirkeAachen.prj > data/citymap/aachen_district_map.prj
 
-    unzip -p data/citymap/roads_map.zip gis_osm_roads_free_1.shp > data/citymap/aachen_roads_map.shp
-    unzip -p data/citymap/roads_map.zip gis_osm_roads_free_1.shx > data/citymap/aachen_roads_map.shx
-    unzip -p data/citymap/roads_map.zip gis_osm_roads_free_1.dbf > data/citymap/aachen_roads_map.dbf
+    # gather NRW roads
+    unzip -p data/citymap/NRW_map.zip gis_osm_roads_free_1.shp > data/citymap/NRW_roads.shp
+    unzip -p data/citymap/NRW_map.zip gis_osm_roads_free_1.shx > data/citymap/NRW_roads.shx
+    unzip -p data/citymap/NRW_map.zip gis_osm_roads_free_1.dbf > data/citymap/NRW_roads.dbf
+
+    # gather NRW buildings
+    unzip -p data/citymap/NRW_map.zip gis_osm_buildings_a_free_1.shp > data/citymap/NRW_buildings.shp
+    unzip -p data/citymap/NRW_map.zip gis_osm_buildings_a_free_1.shx > data/citymap/NRW_buildings.shx
+    unzip -p data/citymap/NRW_map.zip gis_osm_buildings_a_free_1.dbf > data/citymap/NRW_buildings.dbf
   #+END_SRC
 
   Initialize the datasets, moving everything in the same projection coordinates.
@@ -49,103 +55,125 @@
   #+END_SRC
 
 * Create city map
-  Extract the union of Aachen metropolitan area, in order to filter roads properly.
-  See [[https://simonb83.github.io/making-a-map-in-matplotlib.html][here]] for details.
+  Put all relevant NRW data inside a ~postgresql~ database with ~postgis~ extension installed.
+  NOTE give following commands as ~postgres~ user.
 
-  #+BEGIN_SRC python :results none :noweb yes :tangle scripts/citymap/2_city_border.py
-    <<init_district_map>>
-
-    with open('data/citymap/aachen_border', 'w') as outfile:
-        # extract border
-        aachen_area = cascaded_union(district_map['geometry'])
-
-        # convert back to (lat, long) for this purpose
-        aachen_area = Polygon([projection(*coord[0:2], inverse=True) \
-                               for coord in aachen_area.exterior.coords])
-
-        # convert border from 3D to 2D
-        outfile.write(aachen_area.to_wkt())
-  #+END_SRC
-
-  ~postgresql~ database is needed: give following commands as ~postgres~ user.
-  ~postgis~ extension is needed, as in following commands.
-
-  #+BEGIN_SRC bash :results none :tangle scripts/citymap/3_postgres_init.sh
+  #+BEGIN_SRC bash :results none :tangle scripts/citymap/2_postgres_init.sh
     initdb -D '/var/lib/postgres/data'
-    dropdb mapping
-    createdb mapping
-    psql mapping -c 'CREATE EXTENSION postgis'
+    dropdb roads
+    dropdb buildings
+    createdb roads
+    createdb buildings
+    psql roads -c 'CREATE EXTENSION postgis'
 
-    echo "This take some time..."
-    shp2pgsql -s 4326 data/citymap/aachen_roads_map.shp roads | psql mapping > /dev/null
+    echo "WARNING: this takes some time..."
+
+    shp2pgsql -s 4326 data/citymap/NRW_roads.shp roads | psql roads > /dev/null
+    shp2pgsql -s 4326 data/citymap/NRW_buildings.shp roads | psql buildings > /dev/null
   #+END_SRC
 
-  Create output ~shp~ as normal user.
+** Retrieve city border
+   Extract the union of Aachen metropolitan area, in order to filter roads properly.
 
-  #+BEGIN_SRC bash :results output :tangle scripts/citymap/4_extraction.sh
-    # extract roads around aachen border
-    read aachen_border < data/citymap/aachen_border
-    pgsql2shp -f data/citymap/extracted_roads -h localhost -u postgres mapping \
-              "SELECT osm_id, geom FROM roads
-               WHERE fclass NOT IN ('trunk_link', 'bridleway', 'motorway',
-                                    'motorway_link', 'path', 'primary_link',
-                                    'secondary_link', 'service', 'steps',
-                                    'tertiary_link', 'track', 'track_grade2',
-                                    'track_grade3', 'track_grade4', 'track_grade5',
-                                    'unclassified', 'unknown')
-               AND ST_Intersects(geom, ST_SetSRID(ST_GeomFromText('$aachen_border'), 4326));"
-  #+END_SRC
+   #+BEGIN_SRC python :results none :noweb yes :tangle scripts/citymap/3_city_border.py
+     <<init_district_map>>
 
-  Create final plot, with roads as well as population density.
+     with open('data/citymap/aachen_border.txt', 'w') as outfile:
+         # extract border
+         aachen_area = cascaded_union(district_map['geometry'])
 
-  #+BEGIN_SRC python :results none :noweb yes :tangle scripts/citymap/5_plot_map.py
-    <<init_district_map>>
-    <<matplotlib_defaults>>
+         # convert back to (lat, long) for this purpose
+         aachen_area = Polygon([projection(*coord[0:2], inverse=True) \
+                                for coord in aachen_area.exterior.coords])
 
-    # read roads map and move it to district projection
-    roads_map = gpd.read_file("data/citymap/extracted_roads.shp")
-    roads_map.crs = {'init': 'epsg:4326'}
-    roads_map = roads_map.to_crs(projection.srs)
+         # convert border from 3D to 2D
+         outfile.write(aachen_area.to_wkt())
+   #+END_SRC
 
-    district_population = pd.read_csv("data/citymap/20170630_population_density.csv")
-    district_population.columns = ['STATBEZ', 'PERS']
+** City information extraction
+   Create output ~shp~ for roads and buildings as normal user using the following queries.
+   See [[https://simonb83.github.io/making-a-map-in-matplotlib.html][here]] for details.
 
-    # join using index
-    district_map.set_index('STATBEZ', inplace=True)
-    district_population.set_index('STATBEZ', inplace=True)
+   #+NAME: roads_query
+   #+BEGIN_SRC sql
+     SELECT osm_id, geom FROM roads
+      WHERE fclass NOT IN ('trunk_link', 'bridleway', 'motorway',
+                           'motorway_link', 'path', 'primary_link',
+                           'secondary_link', 'service', 'steps',
+                           'tertiary_link', 'track', 'track_grade2',
+                           'track_grade3', 'track_grade4', 'track_grade5',
+                           'unclassified', 'unknown')
+        AND ST_Intersects(geom, ST_SetSRID(ST_GeomFromText('$aachen_border'), 4326));
+   #+END_SRC
 
-    district_map['population'] = district_population['PERS']
+   #+NAME: buildings_query
+   #+BEGIN_SRC sql
+     SELECT osm_id, geom FROM buildings
+      WHERE ST_Intersects(geom, ST_SetSRID(ST_GeomFromText('$aachen_border'), 4326));
+   #+END_SRC
 
-    # compute area in km^2: I checked some in wikipedia to be sure
-    district_map['area'] = district_map['geometry'].area / 10**6
-    district_map['density'] = district_map['population'] / district_map['area']
+   #+BEGIN_SRC bash :noweb yes :results output :tangle scripts/citymap/4_extraction.sh
+     # extract roads around aachen border
+     read aachen_border < data/citymap/aachen_border.txt
 
-    fig = plt.figure(figsize=(6, 6), frameon=False)
-    ax = fig.gca()
+     pgsql2shp -f data/citymap/aachen_roads -h localhost -u postgres roads "
+                 <<roads_query>>"
 
-    ax.set_title("Population density in Aachen\n",
-                 fontsize=15,
-                 fontweight=font_spec['font.weight'])
+     pgsql2shp -f data/citymap/aachen_roads -h localhost -u postgres buildings "
+                 <<buildings_query>>"
+   #+END_SRC
 
-    district_map.plot(column='density',
-                      cmap='viridis',
-                      legend=True,
-                      linewidth=0, # remove districts borders
-                      alpha=0.8,
-                      ax=ax)
+** Plot population density on the map
+   Create final plot, with roads as well as population density.
 
-    roads_map.plot(color='black', linewidth=0.15, ax=ax)
+   #+BEGIN_SRC python :results none :noweb yes :tangle scripts/citymap/5_plot_map.py
+     <<init_district_map>>
+     <<matplotlib_defaults>>
 
-    # set title of colorbar (dirty trick)
-    fig.get_axes()[1].set_title('    people/km²',
-                                fontweight=font_spec['font.weight'])
+     # read roads map and move it to district projection
+     roads_map = gpd.read_file("data/citymap/aachen_roads.shp")
+     roads_map.crs = {'init': 'epsg:4326'}
+     roads_map = roads_map.to_crs(projection.srs)
 
-    plt.axis('off')
-    plt.tight_layout(rect=[-1.25, -0.04, 1.2, 1])
-    plt.savefig('figures/citymap.pdf')
+     district_population = pd.read_csv("data/citymap/20170630_population_density.csv")
+     district_population.columns = ['STATBEZ', 'PERS']
 
-    plt.close('all')
-  #+END_SRC
+     # join using index
+     district_map.set_index('STATBEZ', inplace=True)
+     district_population.set_index('STATBEZ', inplace=True)
+
+     district_map['population'] = district_population['PERS']
+
+     # compute area in km^2: I checked some in wikipedia to be sure
+     district_map['area'] = district_map['geometry'].area / 10**6
+     district_map['density'] = district_map['population'] / district_map['area']
+
+     fig = plt.figure(figsize=(6, 6), frameon=False)
+     ax = fig.gca()
+
+     ax.set_title("Population density in Aachen\n",
+                  fontsize=15,
+                  fontweight=font_spec['font.weight'])
+
+     district_map.plot(column='density',
+                       cmap='viridis',
+                       legend=True,
+                       linewidth=0, # remove districts borders
+                       alpha=0.8,
+                       ax=ax)
+
+     roads_map.plot(color='black', linewidth=0.15, ax=ax)
+
+     # set title of colorbar (dirty trick)
+     fig.get_axes()[1].set_title('    people/km²',
+                                 fontweight=font_spec['font.weight'])
+
+     plt.axis('off')
+     plt.tight_layout(rect=[-1.25, -0.04, 1.2, 1])
+     plt.savefig('figures/citymap.pdf')
+
+     plt.close('all')
+   #+END_SRC
 
 * Create graph from city roads
   Output graph will be saved in ~json~ format.
@@ -161,7 +189,7 @@
     from s2g import ShapeGraph
     from shapely.geometry import LineString, shape
 
-    path = 'data/citymap/extracted_roads.shp'
+    path = 'data/citymap/aachen_roads.shp'
     # path = '/home/enrico/Scaricati/gis_osm_roads_free_1.shp' # test path
 
     sg = ShapeGraph(shapefile=path, to_graph=True)
