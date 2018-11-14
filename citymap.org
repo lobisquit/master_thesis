@@ -3,17 +3,17 @@
 * Retrieve datasets
   Download all needed files from Aachen city repository.
 
-  #+NAME: population_density
+  #+NAME: population_density_link
   http://offenedaten.aachen.de/dataset/81650028-ef21-4f1b-a991-9e3a3f01c729/resource/460bfe18-7df4-49fb-b5d0-6dfc1d0cffd5/download/20170630opendataaachen-daten-statistische-bezirkealle.csv
 
-  #+NAME: district_map
+  #+NAME: district_map_link
   http://offenedaten.aachen.de/dataset/5ea893af-8f1d-4658-9066-8f05daed1022/resource/6dfc1b81-26d9-4ed8-b8c4-a61013659f51/download/statistischebezirkeaachen.zip
 
-  For the roads details, see [[https://simonb83.github.io/making-a-map-in-matplotlib.html][here]].
-  #+NAME: NRW_map
+  #+NAME: NRW_map_link
   http://download.geofabrik.de/europe/germany/nordrhein-westfalen-latest-free.shp.zip
+  For the roads details, see [[https://simonb83.github.io/making-a-map-in-matplotlib.html][here]].
 
-  #+BEGIN_SRC bash :var population_density=population_density district_map=district_map NRW_map=NRW_map :results none :tangle scripts/citymap/1_download.sh
+  #+BEGIN_SRC bash :var population_density=population_density_link district_map=district_map_link NRW_map=NRW_map_link :results none :tangle scripts/citymap/1_download.sh
     mkdir -p data/citymap/
 
     # download
@@ -73,18 +73,19 @@
    Extract the union of Aachen metropolitan area, in order to filter roads properly.
 
    #+BEGIN_SRC python :results none :noweb yes :tangle scripts/citymap/3_city_border.py
-     <<init_datasets>>
+     <<imports>>
+     <<districts>>
 
-     with open('data/citymap/aachen_border.txt', 'w') as outfile:
-         # extract border
-         aachen_area = cascaded_union(district_map['geometry'])
+      with open('data/citymap/aachen_border.txt', 'w') as outfile:
+          # extract border
+          aachen_area = cascaded_union(district_map['geometry'])
 
-         # convert back to (lat, long) for this purpose
-         aachen_area = Polygon([projection(*coord[0:2], inverse=True) \
-                                for coord in aachen_area.exterior.coords])
+          # convert back to (lat, long) for this purpose
+          aachen_area = Polygon([projection(*coord[0:2], inverse=True) \
+                                 for coord in aachen_area.exterior.coords])
 
-         # convert border from 3D to 2D
-         outfile.write(aachen_area.to_wkt())
+          # convert border from 3D to 2D
+          outfile.write(aachen_area.to_wkt())
    #+END_SRC
 
 ** City area extraction
@@ -106,13 +107,6 @@
    #+BEGIN_SRC sql
      SELECT osm_id, geom FROM buildings
       WHERE ST_Intersects(geom, ST_SetSRID(ST_GeomFromText('$aachen_border'), 4326));
-     -- still evaluating to filter by type (they do not seem reliable)
-
-     -- AND type IN ('house', 'residential', 'apartments', 'industrial',
-     --              'school', 'farm', 'retail', 'allotment_house', 'warehouse',
-     --              'office', 'public', 'civic', 'hospital', 'university',
-     --              'manufacture', 'dormitory', 'community_centre',
-     --              'hotel', 'bungalow', 'family_house', 'commercial');
    #+END_SRC
 
    #+BEGIN_SRC bash :noweb yes :results output :tangle scripts/citymap/4_extraction.sh :var socket_dir=socket_dir
@@ -134,8 +128,8 @@
 ** Plot population density on the map
    Create final plot, with roads as well as population density.
 
-   #+BEGIN_SRC python :results none :noweb yes :tangle scripts/citymap/5_plot_map.py
-     <<init_datasets>>
+   #+BEGIN_SRC python :results none :noweb yes :tangle scripts/citymap/5_plot_map.py :var valid_types=utils.org:valid_types
+     <<all_datasets>>
      <<matplotlib_defaults>>
 
      fig = plt.figure(figsize=(6, 6), frameon=False)
@@ -180,57 +174,35 @@
 
   First, filter buildings based on their type.
   Note that the majority of them is not set, so ~None~ is a valid type.
-  #+NAME: valid_types
-  | house            |
-  | residential      |
-  | apartments       |
-  | industrial       |
-  | school           |
-  | farm             |
-  | retail           |
-  | allotment_house  |
-  | warehouse        |
-  | office           |
-  | public           |
-  | civic            |
-  | hospital         |
-  | university       |
-  | manufacture      |
-  | dormitory        |
-  | community_centre |
-  | hotel            |
-  | bungalow         |
-  | family_house     |
-  | commercial       |
 
-  #+BEGIN_SRC python :tangle scripts/citymap/6_roads_graph.py :var valid_types=valid_types
+  #+BEGIN_SRC python :tangle scripts/citymap/6_roads_graph.py :var valid_types=utils.org:valid_types
     import json
     from math import sqrt
 
-        import fiona
-        import networkx as nx
-        from networkx.readwrite import json_graph
-        from s2g import ShapeGraph
-        from shapely.geometry import LineString, shape
+    import fiona
+    import networkx as nx
+    from networkx.readwrite import json_graph
+    from s2g import ShapeGraph
+    from shapely.geometry import LineString, shape
 
-        path = 'data/citymap/aachen_roads.shp'
-        # path = '/home/enrico/Scaricati/gis_osm_roads_free_1.shp' # test path
+    path = 'data/citymap/aachen_roads.shp'
+    # path = '/home/enrico/Scaricati/gis_osm_roads_free_1.shp' # test path
 
     # set a custom label instead of None
-        buildings_map.loc[buildings_map['TYPE'].isnull(), 'TYPE'] = "UNSET"
+    buildings_map.loc[buildings_map['TYPE'].isnull(), 'TYPE'] = "UNSET"
 
-        sg = ShapeGraph(shapefile=path, to_graph=True)
+    sg = ShapeGraph(shapefile=path, to_graph=True)
 
-        buildings_map = gpd.read_file("data/citymap/aachen_buildings.shp")
+    buildings_map = gpd.read_file("data/citymap/aachen_buildings.shp")
 
-        # convert graph to json
-        G = json_graph.node_link_data(sg.graph)
+    # convert graph to json
+    G = json_graph.node_link_data(sg.graph)
 
-        for node in G['nodes']:
-            node['lat'], node['long'] = sg.node_xy[node['id']]
+    for node in G['nodes']:
+        node['lat'], node['long'] = sg.node_xy[node['id']]
 
-        with open('data/citymap/connected_roads.json', 'w') as output:
-            output.write(json.dumps(G))
+    with open('data/citymap/connected_roads.json', 'w') as output:
+        output.write(json.dumps(G))
   #+END_SRC
 
   Here comes an handy job file for cluster execution.
@@ -306,11 +278,10 @@
     # plt.show()
     plt.savefig('figures/citymap-graph.pdf')
     plt.close('all')
-
   #+END_SRC
 
 * Local variables
   # Local Variables:
   # eval: (add-hook 'before-save-hook (lambda () (indent-region (point-min) (point-max) nil)) t t)
-  # eval: (org-babel-lob-ingest "utils.org")
+  # eval: (add-hook 'org-babel-pre-tangle-hook (lambda () (org-babel-lob-ingest "utils.org")) t t)
   # End:
