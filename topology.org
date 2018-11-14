@@ -176,7 +176,8 @@
             ax.annotate(s=x.label,
                         xy=x.geometry.centroid.coords[0],
                         ha=label_details.loc[x.label][1],
-                        va=label_details.loc[x.label][2])
+                        va=label_details.loc[x.label][2],
+                        zorder=5)
 
      edges_df.plot(ax=ax,
                    color='black',
