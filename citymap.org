@@ -169,118 +169,45 @@
    #+END_SRC
 
 * Create graph from city roads
-  Output graph will be saved in ~json~ format.
-  See [[https://github.com/caesar0301/s2g][here]] for details on the ~s2g~ library used for conversion.
 
-  First, filter buildings based on their type.
-  Note that the majority of them is not set, so ~None~ is a valid type.
+** Match house with its road
+   Find the closest road on the map for each house, in order to set the house as a node on the road graph.
+   #+BEGIN_SRC python :noweb yes :tangle scripts/citymap/6_get_closest_roads.py :var valid_types=utils.org:valid_types
+     <<imports_&_defaults>>
+     <<roads>>
+     <<buildings>>
 
-  #+BEGIN_SRC python :tangle scripts/citymap/6_roads_graph.py :var valid_types=utils.org:valid_types
-    import json
-    from math import sqrt
+     # compute minimum distance between each building and the roads
+     def nearest_road(building, roads_map):
+         road_index = roads_map.geometry.distance(building.geometry).values.argmin()
+         return pd.Series([building.OSM_ID, roads_map.iloc[road_index].OSM_ID],
+                          index=['building_OSM_ID', 'road_OSM_ID'])
 
-    import fiona
-    import networkx as nx
-    from networkx.readwrite import json_graph
-    from s2g import ShapeGraph
-    from shapely.geometry import LineString, shape
+     closest_roads = buildings_map.apply(
+         lambda row: nearest_road(row, roads_map),
+         axis=1
+     )
 
-    path = 'data/citymap/aachen_roads.shp'
-    # path = '/home/enrico/Scaricati/gis_osm_roads_free_1.shp' # test path
+     closest_roads.to_csv('data/citymap/closest_roads.csv',
+                          index=None)
+   #+END_SRC
 
-    # set a custom label instead of None
-    buildings_map.loc[buildings_map['TYPE'].isnull(), 'TYPE'] = "UNSET"
+   Here comes an handy job file for cluster execution.
 
-    sg = ShapeGraph(shapefile=path, to_graph=True)
+   #+BEGIN_SRC bash :tangle scripts/citymap.job
+     #!/bin/bash
 
-    buildings_map = gpd.read_file("data/citymap/aachen_buildings.shp")
+     # create ouput files in job directory
+     #$ -o ~/master_thesis/out.txt
+     #$ -e ~/master_thesis/err.txt
 
-    # convert graph to json
-    G = json_graph.node_link_data(sg.graph)
+     cd ~/master_thesis/
 
-    for node in G['nodes']:
-        node['lat'], node['long'] = sg.node_xy[node['id']]
+     source venv/bin/activate
+     python scripts/citymap/6_get_closest_roads.py
+   #+END_SRC
 
-    with open('data/citymap/connected_roads.json', 'w') as output:
-        output.write(json.dumps(G))
-  #+END_SRC
-
-  Here comes an handy job file for cluster execution.
-
-  #+BEGIN_SRC bash :tangle scripts/citymap.job
-    #!/bin/bash
-
-    # create ouput files in job directory
-    #$ -o ~/master_thesis/out_simulation.txt
-    #$ -e ~/master_thesis/err_simulation.txt
-
-    cd ~/master_thesis/
-
-    source venv/bin/activate
-    python scripts/citymap/6_roads_graph.py
-  #+END_SRC
-
-  #+BEGIN_SRC python :tangle scripts/citymap/7_graph_analysis.py :results none :noweb yes
-    <<init_datasets>>
-    <<matplotlib_defaults>>
-
-    with open('data/citymap/connected_roads.json', 'r') as f:
-        graph_data = json.load(f)
-
-    G = json_graph.node_link_graph(graph_data)
-    nodes = G.nodes(data=True)
-
-    # build a gpd GeoDataFrame for nodes
-    nodes_info = []
-    for id_, data in nodes:
-        point = Point(data['lat'], data['long'])
-        nodes_info.append({'id': id_, 'geometry': point})
-
-    nodes_df = gpd.GeoDataFrame(nodes_info)
-    nodes_df.crs = {'init' :'epsg:4326'} # long-lat projection
-    nodes_df = nodes_df.to_crs(projection.srs)
-
-    # build a gpd GeoDataFrame for edges
-    edges_info = []
-    for node_id1, node_id2, data in G.edges(data=True):
-        edge = LineString((
-            (nodes[node_id1]['lat'], nodes[node_id1]['long']),
-            (nodes[node_id2]['lat'], nodes[node_id2]['long'])
-        ))
-
-        edges_info.append({'geometry': edge, **data})
-
-    edges_df = gpd.GeoDataFrame(edges_info)
-    edges_df.crs = {'init' :'epsg:4326'} # long-lat projection
-    edges_df = edges_df.to_crs(projection.srs)
-
-    # plot the one on top of the other
-    fig = plt.figure(figsize=(6, 6), frameon=False)
-    ax = fig.gca()
-
-    ax.set_title("Graph of city roads\n",
-                 fontsize=15,
-                 fontweight=font_spec['font.weight'])
-
-    nodes_df.plot(ax=ax,
-                  markersize=0.05,
-                  color='black',
-                  zorder=2)
-
-    edges_df.plot(ax=ax,
-                  color='black',
-                  # column='weight',
-                  # linewidth=0.3,
-                  zorder=1)
-
-    plt.axis('off')
-    plt.tight_layout(rect=[-0.1, -0.05, 1.1, 1])
-    # plt.show()
-    plt.savefig('figures/citymap-graph.pdf')
-    plt.close('all')
-  #+END_SRC
-
-* Local variables
+* COMMENT Local variables
   # Local Variables:
   # eval: (add-hook 'before-save-hook (lambda () (indent-region (point-min) (point-max) nil)) t t)
   # eval: (add-hook 'org-babel-pre-tangle-hook (lambda () (org-babel-lob-ingest "utils.org")) t t)
