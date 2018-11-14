@@ -20,6 +20,8 @@
     from shapely.geometry import LineString, Point, shape
     from shapely.geometry.polygon import Polygon
     from shapely.ops import cascaded_union
+
+    print('LOG: import ok')
   #+END_SRC
 
   Default settings for ~matplotlib~.
@@ -32,6 +34,8 @@
         'font.weight': 'regular'
     }
     rcParams.update(font_spec)
+
+    print('LOG: matplotlib ok')
   #+END_SRC
 
   Read district map projection, used as default one across the computations.
@@ -43,6 +47,8 @@
     srs = osr.SpatialReference()
     srs.ImportFromWkt(prj_content)
     projection = Proj(srs.ExportToProj4())
+
+    print('LOG: projection ok')
   #+END_SRC
 
   #+NAME: imports_&_defaults
@@ -59,6 +65,8 @@
   #+BEGIN_SRC python
     district_map = gpd.read_file("data/citymap/aachen_district_map.shp")
     del district_map['FLäcHE'] # whole zero column
+
+    print('LOG: districts ok')
   #+END_SRC
 
   Read population statistics for each district and join them to the district ~GeoDataFrame~.
@@ -77,6 +85,8 @@
     # compute area in km^2: I checked some in wikipedia to be sure
     district_map['area'] = district_map['geometry'].area / 10**6
     district_map['density'] = district_map['population'] / district_map['area']
+
+    print('LOG: population ok')
   #+END_SRC
 
   Read all roads and buildings that are either of ~None~ type or member of this group.
@@ -109,6 +119,8 @@
     roads_map = gpd.read_file(roads_path)
     roads_map.crs = {'init': 'epsg:4326'}
     roads_map = roads_map.to_crs(projection.srs)
+
+    print('LOG: roads ok')
   #+END_SRC
 
   #+NAME: buildings
@@ -124,6 +136,8 @@
     # remove unwanted types, but keep UNSET ones
     valid_types = list(np.array(valid_types).flatten()) # flatten Org table
     buildings_map = buildings_map[buildings_map['TYPE'].isin(valid_types + ['UNSET'])]
+
+    print('LOG: buildings ok')
   #+END_SRC
 
   #+NAME: all_datasets
@@ -134,9 +148,6 @@
     <<roads>>
     <<buildings>>
   #+END_SRC
-
-  #+RESULTS: all_datasets
-  : None
 
 * COMMENT Local variables
   # Local Variables:
