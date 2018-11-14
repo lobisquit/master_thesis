@@ -1,13 +1,12 @@
-Import all needed libraries and read default projection from district dataset.
-This is shared to enable consistency across all the city plots.
-
-* Load all datasets and imports
-  Initialize the datasets, moving everything in the same projection coordinates.
+* Imports and defaults settings
+  All imports should be gathered here.
 
   #+NAME: imports
   #+BEGIN_SRC python
     import json
+    from math import sqrt
 
+    import fiona
     import geopandas as gpd
     import matplotlib.pyplot as plt
     import networkx as nx
@@ -17,23 +16,49 @@ This is shared to enable consistency across all the city plots.
     from matplotlib import rcParams
     from networkx.readwrite import json_graph, read_graphml
     from pyproj import Proj
-    from shapely.geometry import LineString, Point
+    from s2g import ShapeGraph
+    from shapely.geometry import LineString, Point, shape
     from shapely.geometry.polygon import Polygon
     from shapely.ops import cascaded_union
   #+END_SRC
 
-  Read district map and its projection details.
+  Default settings for ~matplotlib~.
+
+  #+NAME: matplotlib_defaults
+  #+BEGIN_SRC python
+    font_spec = {
+        'font.family':'sans-serif',
+        'font.sans-serif':['Fira Sans'],
+        'font.weight': 'regular'
+    }
+    rcParams.update(font_spec)
+  #+END_SRC
+
+  Read district map projection, used as default one across the computations.
   See [[https://gis.stackexchange.com/questions/17341/projection-pyproj-puzzle-and-understanding-srs-format][here]] for getting projection from ~prj~ file.
+
+  #+NAME: projection
+  #+BEGIN_SRC python
+    prj_content = open('data/citymap/aachen_district_map.prj', 'r').read()
+    srs = osr.SpatialReference()
+    srs.ImportFromWkt(prj_content)
+    projection = Proj(srs.ExportToProj4())
+  #+END_SRC
+
+  #+NAME: imports_&_defaults
+  #+BEGIN_SRC python :noweb yes
+    <<imports>>
+    <<matplotlib_defaults>>
+    <<projection>>
+  #+END_SRC
+
+* Datasets reading routines
+  Read district map and its projection details.
 
   #+NAME: districts
   #+BEGIN_SRC python
     district_map = gpd.read_file("data/citymap/aachen_district_map.shp")
     del district_map['FLäcHE'] # whole zero column
-
-    prj_content = open('data/citymap/aachen_district_map.prj', 'r').read()
-    srs = osr.SpatialReference()
-    srs.ImportFromWkt(prj_content)
-    projection = Proj(srs.ExportToProj4())
   #+END_SRC
 
   Read population statistics for each district and join them to the district ~GeoDataFrame~.
@@ -80,14 +105,16 @@ This is shared to enable consistency across all the city plots.
 
   #+NAME: roads
   #+BEGIN_SRC python
-    roads_map = gpd.read_file("data/citymap/aachen_roads.shp")
+    roads_path = "data/citymap/aachen_roads.shp"
+    roads_map = gpd.read_file(roads_path)
     roads_map.crs = {'init': 'epsg:4326'}
     roads_map = roads_map.to_crs(projection.srs)
   #+END_SRC
 
   #+NAME: buildings
   #+BEGIN_SRC python
-    buildings_map = gpd.read_file("data/citymap/aachen_buildings.shp")
+    buildings_path = "data/citymap/aachen_buildings.shp"
+    buildings_map = gpd.read_file(buildings_path)
     buildings_map.crs = {'init': 'epsg:4326'}
     buildings_map = buildings_map.to_crs(projection.srs)
 
@@ -101,29 +128,17 @@ This is shared to enable consistency across all the city plots.
 
   #+NAME: all_datasets
   #+BEGIN_SRC python :noweb yes :var valid_types=valid_types
-    <<imports>>
+    <<imports_&_defaults>>
     <<districts>>
     <<population>>
     <<roads>>
     <<buildings>>
   #+END_SRC
 
-* Plot settings
-  Default settings for ~matplotlib~.
+  #+RESULTS: all_datasets
+  : None
 
-  #+NAME: matplotlib_defaults
-  #+BEGIN_SRC python
-    from matplotlib import rcParams
-
-    font_spec = {
-        'font.family':'sans-serif',
-        'font.sans-serif':['Fira Sans'],
-        'font.weight': 'regular'
-    }
-    rcParams.update(font_spec)
-  #+END_SRC
-
-* Local variables
+* COMMENT Local variables
   # Local Variables:
   # eval: (add-hook 'before-save-hook (lambda () (indent-region (point-min) (point-max) nil)) t t)
   # End:

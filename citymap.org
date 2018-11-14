@@ -73,7 +73,7 @@
    Extract the union of Aachen metropolitan area, in order to filter roads properly.
 
    #+BEGIN_SRC python :results none :noweb yes :tangle scripts/citymap/3_city_border.py
-     <<imports>>
+     <<imports_&_defaults>>
      <<districts>>
 
       with open('data/citymap/aachen_border.txt', 'w') as outfile:
@@ -88,8 +88,8 @@
           outfile.write(aachen_area.to_wkt())
    #+END_SRC
 
-** City area extraction
-   Create output ~shp~ for roads and buildings as normal user using the following queries.
+** Extract city information
+   Create output ~shp~ for roads and buildings using the following queries.
 
    #+NAME: roads_query
    #+BEGIN_SRC sql
@@ -125,12 +125,11 @@
                "$(echo ${query:1:${#query}} | sed 's/^[\t ]*//g')"
    #+END_SRC
 
-** Plot population density on the map
+** Plot the map
    Create final plot, with roads as well as population density.
 
    #+BEGIN_SRC python :results none :noweb yes :tangle scripts/citymap/5_plot_map.py :var valid_types=utils.org:valid_types
      <<all_datasets>>
-     <<matplotlib_defaults>>
 
      fig = plt.figure(figsize=(6, 6), frameon=False)
      ax = fig.gca()
@@ -150,6 +149,7 @@
                     alpha=0.6,
                     linewidth=0.15,
                     ax=ax)
+
      buildings_map.plot(color='black',
                         alpha=0.5,
                         linewidth=0.15,

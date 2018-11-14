@@ -206,7 +206,7 @@
      plt.close('all')
    #+END_SRC
 
-* Local variables
+* COMMENT Local variables
   # Local Variables:
   # eval: (add-hook 'before-save-hook (lambda () (indent-region (point-min) (point-max) nil)) t t)
   # eval: (org-babel-lob-ingest "utils.org")
