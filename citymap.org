@@ -105,7 +105,7 @@
 
    #+NAME: buildings_query
    #+BEGIN_SRC sql
-     SELECT osm_id, geom FROM buildings
+     SELECT osm_id, geom, type FROM buildings
       WHERE ST_Intersects(geom, ST_SetSRID(ST_GeomFromText('$aachen_border'), 4326));
    #+END_SRC
 
