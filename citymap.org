@@ -42,18 +42,6 @@
     unzip -p data/citymap/NRW_map.zip gis_osm_buildings_a_free_1.dbf > data/citymap/NRW_buildings.dbf
   #+END_SRC
 
-  Initialize the datasets, moving everything in the same projection coordinates.
-  See [[https://gis.stackexchange.com/questions/17341/projection-pyproj-puzzle-and-understanding-srs-format][here]] for getting projection from ~prj~ file.
-
-  #+NAME: init_district_map
-  #+BEGIN_SRC python :results none :noweb yes
-    <<init>>
-
-    # read district map and its projection details
-    district_map = gpd.read_file("data/citymap/aachen_district_map.shp")
-    del district_map['FLäcHE'] # whole zero column
-  #+END_SRC
-
 * Create city map
   Put all relevant NRW data inside a ~postgresql~ database with ~postgis~ extension installed.
   Database is run localy as normal user inside a proper socket directory.
@@ -85,7 +73,7 @@
    Extract the union of Aachen metropolitan area, in order to filter roads properly.
 
    #+BEGIN_SRC python :results none :noweb yes :tangle scripts/citymap/3_city_border.py
-     <<init_district_map>>
+     <<init_datasets>>
 
      with open('data/citymap/aachen_border.txt', 'w') as outfile:
          # extract border
@@ -147,30 +135,8 @@
    Create final plot, with roads as well as population density.
 
    #+BEGIN_SRC python :results none :noweb yes :tangle scripts/citymap/5_plot_map.py
-     <<init_district_map>>
+     <<init_datasets>>
      <<matplotlib_defaults>>
-
-     # read roads map and move it to district projection
-     roads_map = gpd.read_file("data/citymap/aachen_roads.shp")
-     roads_map.crs = {'init': 'epsg:4326'}
-     roads_map = roads_map.to_crs(projection.srs)
-
-     buildings_map = gpd.read_file("data/citymap/aachen_buildings.shp")
-     buildings_map.crs = {'init': 'epsg:4326'}
-     buildings_map = buildings_map.to_crs(projection.srs)
-
-     district_population = pd.read_csv("data/citymap/20170630_population_density.csv")
-     district_population.columns = ['STATBEZ', 'PERS']
-
-     # join using index
-     district_map.set_index('STATBEZ', inplace=True)
-     district_population.set_index('STATBEZ', inplace=True)
-
-     district_map['population'] = district_population['PERS']
-
-     # compute area in km^2: I checked some in wikipedia to be sure
-     district_map['area'] = district_map['geometry'].area / 10**6
-     district_map['density'] = district_map['population'] / district_map['area']
 
      fig = plt.figure(figsize=(6, 6), frameon=False)
      ax = fig.gca()
@@ -212,29 +178,59 @@
   Output graph will be saved in ~json~ format.
   See [[https://github.com/caesar0301/s2g][here]] for details on the ~s2g~ library used for conversion.
 
-  #+BEGIN_SRC python :tangle scripts/citymap/6_roads_graph.py
+  First, filter buildings based on their type.
+  Note that the majority of them is not set, so ~None~ is a valid type.
+  #+NAME: valid_types
+  | house            |
+  | residential      |
+  | apartments       |
+  | industrial       |
+  | school           |
+  | farm             |
+  | retail           |
+  | allotment_house  |
+  | warehouse        |
+  | office           |
+  | public           |
+  | civic            |
+  | hospital         |
+  | university       |
+  | manufacture      |
+  | dormitory        |
+  | community_centre |
+  | hotel            |
+  | bungalow         |
+  | family_house     |
+  | commercial       |
+
+  #+BEGIN_SRC python :tangle scripts/citymap/6_roads_graph.py :var valid_types=valid_types
     import json
     from math import sqrt
 
-    import fiona
-    import networkx as nx
-    from networkx.readwrite import json_graph
-    from s2g import ShapeGraph
-    from shapely.geometry import LineString, shape
+        import fiona
+        import networkx as nx
+        from networkx.readwrite import json_graph
+        from s2g import ShapeGraph
+        from shapely.geometry import LineString, shape
 
-    path = 'data/citymap/aachen_roads.shp'
-    # path = '/home/enrico/Scaricati/gis_osm_roads_free_1.shp' # test path
+        path = 'data/citymap/aachen_roads.shp'
+        # path = '/home/enrico/Scaricati/gis_osm_roads_free_1.shp' # test path
 
-    sg = ShapeGraph(shapefile=path, to_graph=True)
+    # set a custom label instead of None
+        buildings_map.loc[buildings_map['TYPE'].isnull(), 'TYPE'] = "UNSET"
 
-    # convert graph to json
-    G = json_graph.node_link_data(sg.graph)
+        sg = ShapeGraph(shapefile=path, to_graph=True)
 
-    for node in G['nodes']:
-        node['lat'], node['long'] = sg.node_xy[node['id']]
+        buildings_map = gpd.read_file("data/citymap/aachen_buildings.shp")
 
-    with open('data/citymap/connected_roads.json', 'w') as output:
-        output.write(json.dumps(G))
+        # convert graph to json
+        G = json_graph.node_link_data(sg.graph)
+
+        for node in G['nodes']:
+            node['lat'], node['long'] = sg.node_xy[node['id']]
+
+        with open('data/citymap/connected_roads.json', 'w') as output:
+            output.write(json.dumps(G))
   #+END_SRC
 
   Here comes an handy job file for cluster execution.
@@ -253,7 +249,7 @@
   #+END_SRC
 
   #+BEGIN_SRC python :tangle scripts/citymap/7_graph_analysis.py :results none :noweb yes
-    <<init>>
+    <<init_datasets>>
     <<matplotlib_defaults>>
 
     with open('data/citymap/connected_roads.json', 'r') as f:

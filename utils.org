@@ -1,39 +1,75 @@
 Import all needed libraries and read default projection from district dataset.
 This is shared to enable consistency across all the city plots.
 
-#+NAME: init
-#+BEGIN_SRC python
-  import json
+* Load all datasets and imports
+  Initialize the datasets, moving everything in the same projection coordinates.
+  See [[https://gis.stackexchange.com/questions/17341/projection-pyproj-puzzle-and-understanding-srs-format][here]] for getting projection from ~prj~ file.
 
-  import geopandas as gpd
-  import matplotlib.pyplot as plt
-  import networkx as nx
-  import osr
-  import pandas as pd
-  from matplotlib import rcParams
-  from networkx.readwrite import json_graph, read_graphml
-  from pyproj import Proj
-  from shapely.geometry import LineString, Point
-  from shapely.geometry.polygon import Polygon
-  from shapely.ops import cascaded_union
+  #+NAME: init_datasets
+  #+BEGIN_SRC python
+    import json
 
-  # copy-pasta code
-  prj_content = open('data/citymap/aachen_district_map.prj', 'r').read()
-  srs = osr.SpatialReference()
-  srs.ImportFromWkt(prj_content)
-  projection = Proj(srs.ExportToProj4())
-#+END_SRC
+    import geopandas as gpd
+    import matplotlib.pyplot as plt
+    import networkx as nx
+    import osr
+    import pandas as pd
+    from matplotlib import rcParams
+    from networkx.readwrite import json_graph, read_graphml
+    from pyproj import Proj
+    from shapely.geometry import LineString, Point
+    from shapely.geometry.polygon import Polygon
+    from shapely.ops import cascaded_union
 
-Default settings for ~matplotlib~.
+    # read district map and its projection details
+    district_map = gpd.read_file("data/citymap/aachen_district_map.shp")
+    del district_map['FLäcHE'] # whole zero column
 
-#+NAME: matplotlib_defaults
-#+BEGIN_SRC python
-  from matplotlib import rcParams
+    prj_content = open('data/citymap/aachen_district_map.prj', 'r').read()
+    srs = osr.SpatialReference()
+    srs.ImportFromWkt(prj_content)
+    projection = Proj(srs.ExportToProj4())
 
-  font_spec = {
-      'font.family':'sans-serif',
-      'font.sans-serif':['Fira Sans'],
-      'font.weight': 'regular'
-  }
-  rcParams.update(font_spec)
-#+END_SRC
+    # read roads map and move it to district projection
+    roads_map = gpd.read_file("data/citymap/aachen_roads.shp")
+    roads_map.crs = {'init': 'epsg:4326'}
+    roads_map = roads_map.to_crs(projection.srs)
+
+    buildings_map = gpd.read_file("data/citymap/aachen_buildings.shp")
+    buildings_map.crs = {'init': 'epsg:4326'}
+    buildings_map = buildings_map.to_crs(projection.srs)
+
+    # set a custom label instead of None
+    buildings_map.loc[buildings_map['TYPE'].isnull(), 'TYPE'] = "UNSET"
+
+    # remove unwanted types, but keep UNSET ones
+    buildings_map = buildings_map[buildings_map['TYPE'].isin(valid_types + ['UNSET'])]
+
+    district_population = pd.read_csv("data/citymap/20170630_population_density.csv")
+    district_population.columns = ['STATBEZ', 'PERS']
+
+    # join using index
+    district_map.set_index('STATBEZ', inplace=True)
+    district_population.set_index('STATBEZ', inplace=True)
+
+    district_map['population'] = district_population['PERS']
+
+    # compute area in km^2: I checked some in wikipedia to be sure
+    district_map['area'] = district_map['geometry'].area / 10**6
+    district_map['density'] = district_map['population'] / district_map['area']
+  #+END_SRC
+
+* Plot settings
+  Default settings for ~matplotlib~.
+
+  #+NAME: matplotlib_defaults
+  #+BEGIN_SRC python
+    from matplotlib import rcParams
+
+    font_spec = {
+        'font.family':'sans-serif',
+        'font.sans-serif':['Fira Sans'],
+        'font.weight': 'regular'
+    }
+    rcParams.update(font_spec)
+  #+END_SRC
