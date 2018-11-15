@@ -1,10 +1,11 @@
-#+LaTeX_CLASS: report
+#+LaTeX_CLASS: book
 #+LATEX_HEADER: \setlength{\parindent}{0pt}
 #+LATEX_HEADER: \usepackage{charter}
 #+LATEX_HEADER: \usepackage{svg}
 #+LATEX_HEADER: \usepackage{subcaption}
 #+LATEX_HEADER: \usepackage[showframe]{geometry}
 #+LATEX_HEADER: \usepackage{etoolbox}
+#+LATEX_HEADER: \usepackage{multirow}
 
 #+LATEX_HEADER: \providetoggle{images_titlepage}
 #+LATEX_HEADER: \settoggle{images_titlepage}{true}
@@ -24,13 +25,13 @@ Download all needed files for titlepage.
 #+END_SRC
 
 #+BEGIN_EXPORT latex
-\newgeometry{top=1in,bottom=1in,right=1in,left=1in}
+\newgeometry{top=1in,bottom=1in,inner=1in,outer=1in}
 
 \begin{titlepage}
-  \hspace{1cm}{\Large University of Padova}
+  {\Large University of Padova}
   \vspace{5mm}
 
-  \hspace{1cm}{\Large Department of Information Engineering}
+  {\Large Department of Information Engineering}
 
   \begin{center}
     \vspace{1cm}
@@ -52,22 +53,22 @@ Download all needed files for titlepage.
   \end{center}
 
   \vfill
-  \hspace{1cm}%
+  \hspace{0.5cm}%
+  \renewcommand{\arraystretch}{2.5}
   \begin{tabular}{lr}
-    \large \textsl{Author}               & \hspace{5mm} \large Enrico Lovisotto     \vspace{5mm} \\
-    \large \textsl{Internal supervisor}  & \hspace{5mm} \large Prof. Andrea Zanella \vspace{5mm} \\
-    \large \textsl{External supervisors} & \hspace{5mm} \large Prof. Petri Mähönen  \vspace{5mm} \\
-                                         & \hspace{5mm} \large Dr. Ljiljana Simić   \vspace{5mm} \\
+    \large \textsl{Author}               & \hspace{5mm} \large Enrico Lovisotto      \\
+    \large \textsl{Internal supervisor}  & \hspace{5mm} \large Prof. Andrea Zanella  \\
+    \large \textsl{External supervisors} & \hspace{5mm} \large Prof. Petri Mähönen  \\
+                                         & \hspace{5mm} \large Dr. Ljiljana Simić   \\
   \end{tabular}
-  \vspace{5mm}
+  \vspace{1.5cm}
 
-  \begin{center}
-    {\large February 6, 2019} \vspace{3mm} \\
-    {\Large Academic year 2018-2019 \par}
-  \end{center}
+  \hfill{\large February 6, 2019} \vspace{3mm}
+
+  \hfill{\Large Academic year 2018-2019 \par}
 \end{titlepage}
 
-\newgeometry{top=1in,bottom=1in,right=0.5in,left=1.5in}
+\restoregeometry
 #+END_EXPORT
 
 * Introduction
