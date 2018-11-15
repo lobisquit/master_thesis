@@ -218,13 +218,23 @@
    #+END_SRC
 
 ** Project each building on its road
+   The graph is filled with buildings, replacing each edge
+   with two edges, with the building node in the middle.
 
-   #+BEGIN_SRC python :noweb yes :var valid_types=utils.org:valid_types
-     <<imports_&_defaults>>
-     <<roads>>
-     <<buildings>>
+   Use projected point of the building on the road point as actual position:
+   line is supposed to be payed by the customer from the road to the home,
+   so there is no cost for the operator.
 
-     closest_roads = pd.read_csv('data/citymap/closest_roads.csv')
+   #+BEGIN_SRC python :noweb yes :var valid_types=utils.org:valid_types :var graph_path=graph_path :var closest_roads_path=closest_roads_path
+     <<all_datasets>>
+
+     # read graph G
+     with open(graph_path) as f:
+         js_graph = json.load(f)
+
+     G = json_graph.node_link_graph(js_graph)
+
+     closest_roads = pd.read_csv(closest_roads_path)
 
      buildings_map.set_index('OSM_ID', inplace=True)
      roads_map.set_index('OSM_ID', inplace=True)
@@ -234,6 +244,35 @@
          road = roads_map.loc[str(row.road_OSM_ID)].geometry
 
          b_point, r_point = nearest_points(building, road)
+
+         # gather population density of the building location
+         district_density = 0 # building center is actually outside Aachen
+         for _, district_row in district_map.iterrows():
+             if building.centroid.within(district_row.geometry):
+                 district_density = district_row.density
+
+         # find edge (road) corresponding to given OSM ID
+         for i, j, data in G.edges(data=True):
+             if data['OSM_ID'] == row.road_OSM_ID:
+                 # replace (i, j) with (i, building, j)
+                 wanted_edge = (i, j, data)
+
+         # remove edge
+         x, y, data = wanted_edge
+         G.remove_edge(i, j)
+
+         # create node and put it in the middle
+         building_attrs = {
+             'lat': b_point.coords[0],
+             'long': b_point.coords[1],
+             'n_people': building.area * district_density
+         }
+         G.add_node(row.building_OSM_ID, **building_attrs)
+         G.add_edge(x, row.building_OSM_ID)
+         G.add_edge(row.building_OSM_ID, y)
+
+     with open(graph_path.replace('.json', '_complete.json'), 'w') as output:
+         output.write(json.dumps(G))
    #+END_SRC
 
 
