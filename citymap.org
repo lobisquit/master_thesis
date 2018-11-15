@@ -169,9 +169,9 @@
    #+END_SRC
 
 * Create graph from city roads
-
-** Match house with its road
+** Match each building with the closest road
    Find the closest road on the map for each house, in order to set the house as a node on the road graph.
+
    #+BEGIN_SRC python :noweb yes :tangle scripts/citymap/6_get_closest_roads.py :var valid_types=utils.org:valid_types
      <<imports_&_defaults>>
      <<roads>>
@@ -198,14 +198,54 @@
      #!/bin/bash
 
      # create ouput files in job directory
-     #$ -o ~/master_thesis/out.txt
-     #$ -e ~/master_thesis/err.txt
+     #$ -o /home/lovisott/master_thesis/out.txt
+     #$ -e /home/lovisott/master_thesis/err.txt
 
-     cd ~/master_thesis/
+     cd /home/lovisott/master_thesis/
 
      source venv/bin/activate
      python scripts/citymap/6_get_closest_roads.py
    #+END_SRC
+
+** Create an abstract graph from the roads
+   When creating the graph, remember ~OSM_ID~, in order to assign each building a proper edge.
+
+   #+BEGIN_SRC python :noweb yes :var valid_types=utils.org:valid_types :tangle scripts/citymap/7_get_roads_graph.py
+     <<imports_&_defaults>>
+     <<roads>>
+     <<buildings>>
+
+     sg = ShapeGraph(shapefile=roads_path, to_graph=True, properties=['OSM_ID'])
+
+     # convert graph to json
+     G = json_graph.node_link_data(sg.graph)
+
+     for node in G['nodes']:
+         node['lat'], node['long'] = sg.node_xy[node['id']]
+
+     with open('data/citymap/connected_roads.json', 'w') as output:
+         output.write(json.dumps(G))
+   #+END_SRC
+
+** Project each building on its road
+
+   #+BEGIN_SRC python :noweb yes :var valid_types=utils.org:valid_types
+     <<imports_&_defaults>>
+     <<roads>>
+     <<buildings>>
+
+     closest_roads = pd.read_csv('data/citymap/closest_roads.csv')
+
+     buildings_map.set_index('OSM_ID', inplace=True)
+     roads_map.set_index('OSM_ID', inplace=True)
+
+     for _, row in closest_roads.iterrows():
+         building = buildings_map.loc[str(row.building_OSM_ID)].geometry
+         road = roads_map.loc[str(row.road_OSM_ID)].geometry
+
+         b_point, r_point = nearest_points(building, road)
+   #+END_SRC
+
 
 * COMMENT Local variables
   # Local Variables:
