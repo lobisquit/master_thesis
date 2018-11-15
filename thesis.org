@@ -1,0 +1,103 @@
+#+LaTeX_CLASS: report
+#+LATEX_HEADER: \setlength{\parindent}{0pt}
+#+LATEX_HEADER: \usepackage{charter}
+#+LATEX_HEADER: \usepackage{svg}
+#+LATEX_HEADER: \usepackage{subcaption}
+#+LATEX_HEADER: \usepackage[showframe]{geometry}
+#+LATEX_HEADER: \usepackage{etoolbox}
+
+#+LATEX_HEADER: \providetoggle{images_titlepage}
+#+LATEX_HEADER: \settoggle{images_titlepage}{true}
+
+#+OPTIONS: toc:nil title:nil
+
+#+BEGIN_COMMENT
+Download all needed files for titlepage.
+#+END_COMMENT
+
+#+BEGIN_SRC bash :exports none :results none
+  wget https://upload.wikimedia.org/wikipedia/it/5/53/Logo_Universit%C3%A0_Padova.svg \
+       -O figures/logo_unipd.svg
+
+  wget https://upload.wikimedia.org/wikipedia/commons/1/11/RWTH_Logo.svg \
+       -O figures/logo_rwth.svg
+#+END_SRC
+
+#+BEGIN_EXPORT latex
+\newgeometry{top=1in,bottom=1in,right=1in,left=1in}
+
+\begin{titlepage}
+  \hspace{1cm}{\Large University of Padova}
+  \vspace{5mm}
+
+  \hspace{1cm}{\Large Department of Information Engineering}
+
+  \begin{center}
+    \vspace{1cm}
+    {\Large \textsl{Master degree in Telecommunication Engineering}} \\
+    \vspace{1cm}
+    {\scshape\huge Title TODO} \\
+
+    \iftoggle{images_titlepage}{
+      \vspace{1cm} \\
+      \begin{figure}[h]
+        \centering
+        \includesvg[height=4cm]{figures/logo_unipd.svg}
+        \vspace{1cm} \\
+        \includesvg[height=1.5cm]{figures/logo_rwth.svg}
+        \vspace{1cm} \\
+      \end{figure}
+    }
+
+  \end{center}
+
+  \vfill
+  \hspace{1cm}%
+  \begin{tabular}{lr}
+    \large \textsl{Author}               & \hspace{5mm} \large Enrico Lovisotto     \vspace{5mm} \\
+    \large \textsl{Internal supervisor}  & \hspace{5mm} \large Prof. Andrea Zanella \vspace{5mm} \\
+    \large \textsl{External supervisors} & \hspace{5mm} \large Prof. Petri Mähönen  \vspace{5mm} \\
+                                         & \hspace{5mm} \large Dr. Ljiljana Simić   \vspace{5mm} \\
+  \end{tabular}
+  \vspace{5mm}
+
+  \begin{center}
+    {\large February 6, 2019} \vspace{3mm} \\
+    {\Large Academic year 2018-2019 \par}
+  \end{center}
+\end{titlepage}
+
+\newgeometry{top=1in,bottom=1in,right=0.5in,left=1.5in}
+#+END_EXPORT
+
+* Introduction
+  #+BEGIN_COMMENT
+  + background: what are we talking about?
+  - SDN => self-optimizing networks
+  - flow balancing (TBF)
+  - routing adaptation
+  #+END_COMMENT
+
+  #+BEGIN_COMMENT
+  + what they do now?
+  - summary of state of the art, /basically/
+  #+END_COMMENT
+
+  #+BEGIN_COMMENT
+  + shortcomings in current knowledge / solutions
+  - limits of SDN over traditional networks: lack of negative results
+  - use of abstract topologies ~> this one is obtained through optimization process
+  #+END_COMMENT
+
+  #+BEGIN_COMMENT
+  + what are we gonna prove?
+  - 99% if the networks are very simple, meant to be more flow aggregators and less clever routers
+  - SDN are not inherently good: /probably/ traditional solutions are good in 99% of the networks
+  - SDN are relevant when the complexity of the network grows
+  #+END_COMMENT
+
+* State of the art
+
+* Methodology
+
+* Results
