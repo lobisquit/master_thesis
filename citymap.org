@@ -192,21 +192,6 @@
                           index=None)
    #+END_SRC
 
-   Here comes an handy job file for cluster execution.
-
-   #+BEGIN_SRC bash :tangle scripts/citymap.job
-     #!/bin/bash
-
-     # create ouput files in job directory
-     #$ -o /home/lovisott/master_thesis/out.txt
-     #$ -e /home/lovisott/master_thesis/err.txt
-
-     cd /home/lovisott/master_thesis/
-
-     source venv/bin/activate
-     python scripts/citymap/6_get_closest_roads.py
-   #+END_SRC
-
 ** Create an abstract graph from the roads
    When creating the graph, remember ~OSM_ID~, in order to assign each building a proper edge.
 

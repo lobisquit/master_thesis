@@ -149,6 +149,23 @@
     <<buildings>>
   #+END_SRC
 
+* Cluster utilities
+  Here comes an handy job file for cluster execution.
+  Just replace the script with the one you want to run.
+
+  #+BEGIN_SRC bash :tangle scripts/citymap.job
+    #!/bin/bash
+
+    # create ouput files in job directory
+    #$ -o /home/lovisott/master_thesis/out.txt
+    #$ -e /home/lovisott/master_thesis/err.txt
+
+    cd /home/lovisott/master_thesis/
+
+    source venv/bin/activate
+    GDAL_DATA=/home/lovisott/gdal python scripts/citymap/6_get_closest_roads.py
+  #+END_SRC
+
 * COMMENT Local variables
   # Local Variables:
   # eval: (add-hook 'before-save-hook (lambda () (indent-region (point-min) (point-max) nil)) t t)
