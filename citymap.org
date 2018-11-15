@@ -172,7 +172,10 @@
 ** Match each building with the closest road
    Find the closest road on the map for each house, in order to set the house as a node on the road graph.
 
-   #+BEGIN_SRC python :noweb yes :tangle scripts/citymap/6_get_closest_roads.py :var valid_types=utils.org:valid_types
+   #+NAME: closest_roads_path
+   - data/citymap/connected_roads.json
+
+   #+BEGIN_SRC python :noweb yes :tangle scripts/citymap/6_get_closest_roads.py :var valid_types=utils.org:valid_types :var closest_roads_path=closest_roads_path
      <<imports_&_defaults>>
      <<roads>>
      <<buildings>>
@@ -188,14 +191,16 @@
          axis=1
      )
 
-     closest_roads.to_csv('data/citymap/closest_roads.csv',
-                          index=None)
+     closest_roads.to_csv(closest_roads_path, index=None)
    #+END_SRC
 
 ** Create an abstract graph from the roads
    When creating the graph, remember ~OSM_ID~, in order to assign each building a proper edge.
 
-   #+BEGIN_SRC python :noweb yes :var valid_types=utils.org:valid_types :tangle scripts/citymap/7_get_roads_graph.py
+   #+NAME: graph_path
+   - data/citymap/connected_roads.json
+
+   #+BEGIN_SRC python :noweb yes :var valid_types=utils.org:valid_types :var graph_path=graph_path :tangle scripts/citymap/7_get_roads_graph.py
      <<imports_&_defaults>>
      <<roads>>
      <<buildings>>
@@ -208,7 +213,7 @@
      for node in G['nodes']:
          node['lat'], node['long'] = sg.node_xy[node['id']]
 
-     with open('data/citymap/connected_roads.json', 'w') as output:
+     with open(graph_path, 'w') as output:
          output.write(json.dumps(G))
    #+END_SRC
 
