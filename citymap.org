@@ -210,8 +210,8 @@
      # convert graph to json
      G = json_graph.node_link_data(sg.graph)
 
-     for node in G.nodes():
-         node['lat'], node['long'] = sg.node_xy[node['id']]
+     for node in G['nodes']:
+         node['lat'], node['lon'] = sg.node_xy[node['id']]
 
      # use of private variable seems to be mandatory here
      edge_osm_id_map = {
@@ -219,7 +219,7 @@
          for edge, info in sg._edges.items() if info.line_index is not None
      }
 
-     for edge in G.edges():
+     for edge in G['edges']:
          if edge in edge_osm_id_map:
              G[edge[0]][edge[1]]['OSM_ID'] = edge_osm_id_map[edge]
 
