@@ -117,6 +117,7 @@
   #+BEGIN_SRC python
     roads_path = "data/citymap/aachen_roads.shp"
     roads_map = gpd.read_file(roads_path)
+    roads_map.OSM_ID = pd.to_numeric(roads_map.OSM_ID)
     roads_map.crs = {'init': 'epsg:4326'}
     roads_map = roads_map.to_crs(projection.srs)
 
@@ -127,6 +128,7 @@
   #+BEGIN_SRC python
     buildings_path = "data/citymap/aachen_buildings.shp"
     buildings_map = gpd.read_file(buildings_path)
+    buildings_map.OSM_ID = pd.to_numeric(buildings_map.OSM_ID)
     buildings_map.crs = {'init': 'epsg:4326'}
     buildings_map = buildings_map.to_crs(projection.srs)
 
