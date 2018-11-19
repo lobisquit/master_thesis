@@ -249,7 +249,9 @@
          _, proj_point = nearest_points(building.geometry, line.values[0])
 
          return pd.Series({
-             'edge': edge,
+             'osm_id': building.OSM_ID,
+             'edge0': edge[0],
+             'edge1': edge[1],
              'line': line.values[0],
              # location of new node
              'new_point': proj_point,
@@ -263,7 +265,7 @@
          axis=1
      )
 
-     closest_lines.to_csv(closest_lines_path[0][0], quoting=csv.QUOTE_NONNUMERIC)
+     closest_lines.to_csv(closest_lines_path[0][0], quoting=csv.QUOTE_NONNUMERIC, index=None)
    #+END_SRC
 
 ** Project each building on its road
