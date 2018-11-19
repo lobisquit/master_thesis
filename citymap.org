@@ -169,31 +169,6 @@
    #+END_SRC
 
 * Create graph from city roads
-** Match each building with the closest road
-   Find the closest road on the map for each house, in order to set the house as a node on the road graph.
-
-   #+NAME: closest_roads_path
-   - data/citymap/closest_roads.csv
-
-   #+BEGIN_SRC python :noweb yes :tangle scripts/citymap/6_get_closest_roads.py :var valid_types=utils.org:valid_types :var closest_roads_path=closest_roads_path
-     <<imports_&_defaults>>
-     <<roads>>
-     <<buildings>>
-
-     # compute minimum distance between each building and the roads
-     def nearest_road(building, roads_map):
-         road_index = roads_map.geometry.distance(building.geometry).values.argmin()
-         return pd.Series([building.OSM_ID, roads_map.iloc[road_index].OSM_ID],
-                          index=['building_OSM_ID', 'road_OSM_ID'])
-
-     closest_roads = buildings_map.apply(
-         lambda row: nearest_road(row, roads_map),
-         axis=1
-     )
-
-     closest_roads.to_csv(closest_roads_path[0][0], index=None)
-   #+END_SRC
-
 ** Create an abstract graph from the roads
    When creating the graph, remember ~OSM_ID~, in order to assign each building a proper edge.
 
@@ -227,6 +202,45 @@
          output.write(json.dumps(G))
    #+END_SRC
 
+** Match each building with the closest road
+   Find the closest road on the map for each house, in order to set the house as a node on the road graph.
+   This has to consider only roads in the major component of the city, not the unconnected ones.
+
+   #+NAME: closest_roads_path
+   - data/citymap/closest_roads.csv
+
+   #+BEGIN_SRC python :noweb yes :tangle scripts/citymap/6_get_closest_roads.py :var valid_types=utils.org:valid_types :var closest_roads_path=closest_roads_path :var graph_path=graph_path
+     <<imports_&_defaults>>
+     <<roads>>
+     <<buildings>>
+
+     # compute minimum distance between each building and the roads
+     def nearest_road(building, roads_map):
+         road_index = roads_map.geometry.distance(building.geometry).values.argmin()
+         return pd.Series([building.OSM_ID, roads_map.iloc[road_index].OSM_ID],
+                          index=['building_OSM_ID', 'road_OSM_ID'])
+
+     # load graph
+     with open(graph_path[0][0]) as f:
+         js_graph = json.load(f)
+
+     G = json_graph.node_link_graph(js_graph)
+
+     # load roads in graph major component
+     valid_road_osm_ids = set(
+         [data['OSM_ID'] for _, _, data in G.edges(data=True) if 'OSM_ID' in data]
+     )
+     valid_roads = roads_map[roads_map.OSM_ID.isin(valid_road_osm_ids)]
+
+     # filter them
+     closest_roads = buildings_map.apply(
+         lambda row: nearest_road(row, valid_roads),
+         axis=1
+     )
+
+     closest_roads.to_csv(closest_roads_path[0][0], index=None)
+   #+END_SRC
+
 ** Project each building on its road
    The graph is filled with buildings, replacing each edge
    with two edges, with the building node in the middle.
@@ -249,6 +263,18 @@
      buildings_map.set_index('OSM_ID', inplace=True)
      roads_map.set_index('OSM_ID', inplace=True)
 
+     # TODO remove buildings too far from the road
+     dists = []
+     for i, (b_ID, r_ID) in closest_roads.iterrows():
+         # print(b_ID, r_ID)
+         road = roads_map.loc[r_ID].geometry
+         building = buildings_map.loc[b_ID].geometry
+         d = road.distance(building)
+         dists.append(d)
+
+     # TODO build proper dictionary for efficiency
+     osm_id_edge_map = {}
+
      for _, row in closest_roads.iterrows():
          building = buildings_map.loc[str(row.building_OSM_ID)].geometry
          road = roads_map.loc[str(row.road_OSM_ID)].geometry
@@ -262,10 +288,10 @@
                  district_density = district_row.density
 
          # find edge (road) corresponding to given OSM ID
-         for i, j, data in G.edges(data=True):
-             if data['OSM_ID'] == row.road_OSM_ID:
-                 # replace (i, j) with (i, building, j)
-                 wanted_edge = (i, j, data)
+         if row.road_OSM_ID in osm_id_edge_map:
+             wanted_edge = osm_id_edge_map[row.road_OSM_ID]
+         else:
+             raise ValueError(row.road_OSM_ID)
 
          # remove edge
          x, y, data = wanted_edge
@@ -274,7 +300,7 @@
          # create node and put it in the middle
          building_attrs = {
              'lat': b_point.coords[0],
-             'long': b_point.coords[1],
+             'lon': b_point.coords[1],
              'n_people': building.area * district_density
          }
          G.add_node(row.building_OSM_ID, **building_attrs)
