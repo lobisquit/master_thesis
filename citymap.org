@@ -208,20 +208,11 @@
    Find the closest road on the map for each house, in order to set the house as a node on the road graph.
    This has to consider only roads in the major component of the city, not the unconnected ones.
 
-   #+NAME: closest_roads_path
-   - data/citymap/closest_roads.csv
+   #+NAME: closest_lines_path
+   - data/citymap/closest_lines.csv
 
-   #+BEGIN_SRC python :noweb yes :tangle scripts/citymap/6_get_closest_roads.py :var valid_types=utils.org:valid_types :var closest_roads_path=closest_roads_path :var graph_path=graph_path
-     <<imports_&_defaults>>
-     <<projection>>
-     <<roads>>
-     <<buildings>>
-
-     # compute minimum distance between each building and the roads
-     def nearest_road(building, roads_map):
-         road_index = roads_map.geometry.distance(building.geometry).values.argmin()
-         return pd.Series([building.OSM_ID, roads_map.iloc[road_index].OSM_ID],
-                          index=['building_OSM_ID', 'road_OSM_ID'])
+   #+BEGIN_SRC python :noweb yes :tangle scripts/citymap/6_get_closest_roads.py :var valid_types=utils.org:valid_types :var closest_lines_path=closest_lines_path :var graph_path=graph_path
+     <<all_datasets>>
 
      # load graph
      with open(graph_path[0][0]) as f:
@@ -229,19 +220,49 @@
 
      G = json_graph.node_link_graph(js_graph)
 
-     # load roads in graph major component
-     valid_road_osm_ids = set(
-         [data['OSM_ID'] for _, _, data in G.edges(data=True) if 'OSM_ID' in data]
-     )
-     valid_roads = roads_map[roads_map.OSM_ID.isin(valid_road_osm_ids)]
+     # precompute {edge: map_line, ...} association
+     lines = {
+         (x, y): LineString([ projection(G.node[x]['lon'], G.node[x]['lat']),
+                              projection(G.node[y]['lon'], G.node[y]['lat']) ])
+         for x, y in G.edges()
+     }
+
+     # convert to dataframe, for convenience
+     lines = gpd.GeoDataFrame.from_dict(lines, orient='index')
+     lines.columns = ['geometry']
+     lines.index.name = 'edge'
+
+     # compute minimum distance between each building and the roads
+     def nearest_line(building, lines_):
+         # get closest edge
+         edge = lines_.geometry.distance(building.geometry).idxmin()
+         line = lines_.loc[[edge]].geometry
+
+         # gather population density of the building location
+         district_density = 0 # building center is actually outside Aachen
+         for _, district_row in district_map.iterrows():
+             if building.geometry.centroid.within(district_row.geometry):
+                 district_density = district_row.density
+
+         # print(building.geometry.to_wkt())
+         _, proj_point = nearest_points(building.geometry, line.values[0])
+
+         return pd.Series({
+             'edge': edge,
+             'line': line.values[0],
+             # location of new node
+             'new_point': proj_point,
+             # weight of new node
+             'population': building.geometry.area * district_density
+         })
 
      # filter them
-     closest_roads = buildings_map.apply(
-         lambda row: nearest_road(row, valid_roads),
+     closest_lines = buildings_map.apply(
+         lambda row: nearest_line(row, lines),
          axis=1
      )
 
-     closest_roads.to_csv(closest_roads_path[0][0], index=None)
+     closest_lines.to_csv(closest_lines_path[0][0], quoting=csv.QUOTE_NONNUMERIC)
    #+END_SRC
 
 ** Project each building on its road
