@@ -1,4 +1,5 @@
 #+PROPERTY: header-args :mkdirp yes
+#+PROPERTY: header-args:python :shebang "#!/usr/bin/python \n# -*- coding: utf-8 -*-"
 
 * Retrieve datasets
   Download all needed files from Aachen city repository.
