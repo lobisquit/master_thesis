@@ -18,6 +18,7 @@
     from networkx.readwrite import json_graph, read_graphml
     from pyproj import Proj
     from s2g import ShapeGraph
+    from shapely import wkt
     from shapely.geometry import LineString, Point, shape
     from shapely.geometry.polygon import Polygon
     from shapely.ops import cascaded_union, nearest_points
