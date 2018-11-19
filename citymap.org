@@ -176,7 +176,7 @@
    #+NAME: graph_path
    - data/citymap/connected_roads.json
 
-   #+BEGIN_SRC python :noweb yes :var valid_types=utils.org:valid_types :var graph_path=graph_path :tangle scripts/citymap/7_get_roads_graph.py
+   #+BEGIN_SRC python :noweb yes :var valid_types=utils.org:valid_types :var graph_path=graph_path :tangle scripts/citymap/6_get_roads_graph.py
      <<imports_&_defaults>>
      <<projection>>
      <<roads>>
@@ -211,7 +211,7 @@
    #+NAME: closest_lines_path
    - data/citymap/closest_lines.csv
 
-   #+BEGIN_SRC python :noweb yes :tangle scripts/citymap/6_get_closest_roads.py :var valid_types=utils.org:valid_types :var closest_lines_path=closest_lines_path :var graph_path=graph_path
+   #+BEGIN_SRC python :noweb yes :tangle scripts/citymap/7_get_closest_roads.py :var valid_types=utils.org:valid_types :var closest_lines_path=closest_lines_path :var graph_path=graph_path
      <<all_datasets>>
 
      # load graph
@@ -273,7 +273,7 @@
    line is supposed to be payed by the customer from the road to the home,
    so there is no cost for the operator.
 
-   #+BEGIN_SRC python :noweb yes :var valid_types=utils.org:valid_types :var graph_path=graph_path :var closest_roads_path=closest_roads_path :tangle scripts/citymap/8_add_buildings_to_graph.py
+   #+BEGIN_SRC python :noweb yes :var valid_types=utils.org:valid_types :var graph_path=graph_path :tangle scripts/citymap/8_add_buildings_to_graph.py
      <<all_datasets>>
 
      # read graph G

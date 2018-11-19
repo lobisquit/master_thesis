@@ -176,7 +176,7 @@
     cd /home/lovisott/master_thesis/
 
     source venv/bin/activate
-    GDAL_DATA=/home/lovisott/gdal python scripts/citymap/6_get_closest_roads.py
+    GDAL_DATA=/home/lovisott/gdal python scripts/citymap/7_get_closest_roads.py
   #+END_SRC
 
 * COMMENT Local variables
