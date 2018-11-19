@@ -5,13 +5,13 @@
   #+BEGIN_SRC python
     import json
     from math import sqrt
+    from pathlib import Path
 
     import fiona
     import geopandas as gpd
     import matplotlib.pyplot as plt
     import networkx as nx
     import numpy as np
-    import osr
     import pandas as pd
     from matplotlib import rcParams
     from networkx.readwrite import json_graph, read_graphml
@@ -38,24 +38,10 @@
     print('LOG: matplotlib ok')
   #+END_SRC
 
-  Read district map projection, used as default one across the computations.
-  See [[https://gis.stackexchange.com/questions/17341/projection-pyproj-puzzle-and-understanding-srs-format][here]] for getting projection from ~prj~ file.
-
-  #+NAME: projection
-  #+BEGIN_SRC python
-    prj_content = open('data/citymap/aachen_district_map.prj', 'r').read()
-    srs = osr.SpatialReference()
-    srs.ImportFromWkt(prj_content)
-    projection = Proj(srs.ExportToProj4())
-
-    print('LOG: projection ok')
-  #+END_SRC
-
   #+NAME: imports_&_defaults
   #+BEGIN_SRC python :noweb yes
     <<imports>>
     <<matplotlib_defaults>>
-    <<projection>>
   #+END_SRC
 
 * Datasets reading routines
@@ -67,6 +53,29 @@
     del district_map['FLäcHE'] # whole zero column
 
     print('LOG: districts ok')
+  #+END_SRC
+
+
+  Read district map projection, used as default one across the computations.
+  See [[https://gis.stackexchange.com/questions/17341/projection-pyproj-puzzle-and-understanding-srs-format][here]] for getting projection from ~prj~ file.
+
+  #+NAME: projection
+  #+BEGIN_SRC python
+    prj_string_file = Path("data/citymap/aachen_district_map_prj.txt")
+    if not prj_string_file.is_file():
+        import osr # troublesome to install in cluster
+
+        prj_content = open('data/citymap/aachen_district_map.prj', 'r').read()
+        srs = osr.SpatialReference()
+        srs.ImportFromWkt(prj_content)
+
+        with open(prj_string_file, 'w') as f:
+            f.write(srs.ExportToProj4())
+
+    prj_string = open(prj_string_file, 'r').read()
+    projection = Proj(prj_string)
+
+    print('LOG: projection ok')
   #+END_SRC
 
   Read population statistics for each district and join them to the district ~GeoDataFrame~.
@@ -145,6 +154,7 @@
   #+NAME: all_datasets
   #+BEGIN_SRC python :noweb yes :var valid_types=valid_types
     <<imports_&_defaults>>
+    <<projection>>
     <<districts>>
     <<population>>
     <<roads>>

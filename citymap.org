@@ -74,6 +74,7 @@
 
    #+BEGIN_SRC python :results none :noweb yes :tangle scripts/citymap/3_city_border.py
      <<imports_&_defaults>>
+     <<projection>>
      <<districts>>
 
       with open('data/citymap/aachen_border.txt', 'w') as outfile:
@@ -177,6 +178,7 @@
 
    #+BEGIN_SRC python :noweb yes :var valid_types=utils.org:valid_types :var graph_path=graph_path :tangle scripts/citymap/7_get_roads_graph.py
      <<imports_&_defaults>>
+     <<projection>>
      <<roads>>
      <<buildings>>
 
@@ -211,6 +213,7 @@
 
    #+BEGIN_SRC python :noweb yes :tangle scripts/citymap/6_get_closest_roads.py :var valid_types=utils.org:valid_types :var closest_roads_path=closest_roads_path :var graph_path=graph_path
      <<imports_&_defaults>>
+     <<projection>>
      <<roads>>
      <<buildings>>
 
