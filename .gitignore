@@ -274,3 +274,7 @@ TSWLatexianTemp*
 
 # standalone packages
 *.sta
+
+*.tex
+thesis.pdf
+svg-inkscape/
