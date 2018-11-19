@@ -69,10 +69,10 @@
         srs = osr.SpatialReference()
         srs.ImportFromWkt(prj_content)
 
-        with open(prj_string_file, 'w') as f:
+        with open(str(prj_string_file), 'w') as f:
             f.write(srs.ExportToProj4())
 
-    prj_string = open(prj_string_file, 'r').read()
+    prj_string = open(str(prj_string_file), 'r').read()
     projection = Proj(prj_string)
 
     print('LOG: projection ok')
