@@ -492,7 +492,7 @@
 
      # plt.show()
 
-     plt.savefig('figures/aachen_city_graph.pdf')
+     plt.savefig('figures/aachen_city_graph.png')
      plt.close('all')
    #+END_SRC
 
