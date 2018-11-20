@@ -289,47 +289,130 @@
 
      closest_lines = pd.read_csv(closest_lines_path[0][0])
 
-     def process_edge(group):
-         edge = group.edge0.iloc[0], group.edge1.iloc[1]
+     # add new nodes, corresponding to buildings
+
+     current_number = 0
+     for _, group in closest_lines.groupby(['edge0', 'edge1']):
+         edge = group['edge0'].iloc[0], group['edge1'].iloc[0]
+
          line = wkt.loads(group.line.iloc[0])
 
          # collect new point information
          new_points = []
          for _, row in group.iterrows():
-             new_data.append({
-                 'osm_id': row.osm_id,
-                 'new_point': wkt.loads(row.new_point),
+             print("Addded building {}/{}".format(current_number, len(closest_lines)), end="\r")
+             current_number += 1
+
+             proj_new_point = wkt.loads(row.new_point)
+             new_point = Point(projection(proj_new_point.x,
+                                          proj_new_point.y,
+                                          inverse=True))
+             new_points.append({
+                 'n':          row.osm_id,
+                 'new_point':  new_point,
                  'population': row.population,
-                 'proj': line.project(new_point)
+                 'proj':       line.project(new_point)
              })
 
          # sort them via projection
          new_points.sort(key=lambda x: x['proj'])
 
          # add all new nodes to graph
-         for point in new_points:
-             G.add_node(n=point['osm_id'],
-                        lon=point['new_point'].x,
-                        lat=point['new_point'].y,
-                        population=point['population'])
+         for new_point in new_points:
+             G.add_node(node_for_adding=new_point['n'],
+                        lon=new_point['new_point'].x,
+                        lat=new_point['new_point'].y,
+                        population=new_point['population'])
 
          # remove old edge
          G.remove_edge(*edge)
 
          # add new ones
-         G.add_edge(edge[0], new_points[0])
+         G.add_edge(edge[0], new_points[0]['n'])
 
          # loop over couples of subsequent points
          for point1, point2 in zip(new_points[:-1], new_points[1:]):
              # distance will be added later (also for untouched edges)
              G.add_edge(point1['n'], point2['n'])
 
-         G.add_edge(new_points[-1], edge[1])
+         G.add_edge(new_points[-1]['n'], edge[1])
 
-     closest_lines.groupby('edge').apply(process_edge)
+     # polish the graph
 
-     with open(graph_path[0][0].replace('.json', '_with_buildings.json'), 'w') as output:
-         output.write(json.dumps(G))
+     # relevant information for nodes are
+     # - lat
+     # - lon
+     # - population (> 0 if building)
+     for node_id in G.nodes:
+         node = G.nodes[node_id]
+
+         lat = node['lat']
+         lon = node['lon']
+
+         if 'population' not in node:
+             population = 0
+         else:
+             population = node['population']
+
+         node.clear()
+         node['lat'] = lat
+         node['lon'] = lon
+         node['population'] = population
+
+     # prune unuseful nodes (no buildings, just two neighbours)
+     for node in G.nodes(data=True):
+         if G.degree(node[0]) == 2 and node[1]['population'] == 0:
+             neighbours_ids = [id_ for id_ in G[node[0]]]
+
+             # remove previous two edges
+             G.remove_edge(node[0], neighbours_ids[0])
+             G.remove_edge(node[0], neighbours_ids[1])
+
+             G.add_edge(neighbours_ids[0], neighbours_ids[1])
+
+     # relevant information for edges is only their length
+     def Haversine_distance(point0, point1):
+         lon1, lat1 = point0
+         lon2, lat2 = point1
+
+         # use precise measure for distance
+         radius = 6371  # km
+
+         # compute distance using Haversine formula
+         dlat = math.radians(lat2 - lat1)
+         dlon = math.radians(lon2 - lon1)
+         a = (math.sin(dlat / 2) * math.sin(dlat / 2) +
+              math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) *
+              math.sin(dlon / 2) * math.sin(dlon / 2))
+         c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+         d = radius * c
+
+         # use distance in meters
+         return d * 1000
+
+     for edge in G.edges:
+         # read (and compute distance) between begin and end point
+         node0 = G.nodes[edge[0]]
+         node1 = G.nodes[edge[1]]
+
+         edge_info = G.edges[edge]
+         edge_info.clear()
+
+         point0 = node0['lon'], node0['lat']
+         point1 = node1['lon'], node1['lat']
+
+         edge_info['distance'] = Haversine_distance(point0, point1)
+
+     # certains id seems to be of type numpy.int64 in edges definition!
+     # better fix them
+     for edge_data in G.edges(data=True):
+         if type(edge_data[0]) == np.int64 or \
+            type(edge_data[1]) == numpy.int64:
+             G.remove_edge(edge_data[0], edge_data[1])
+             G.add_edge(int(edge_data[0]), int(edge_data[1]), **edge_data[2])
+
+     with open(graph_path[0][0].replace('.json', '_complete.json'), 'w') as output:
+         output.write(json.dumps(json_graph.node_link_data(G)))
    #+END_SRC
 
 * COMMENT Local variables
