@@ -237,7 +237,7 @@
      def nearest_line(building, lines_):
          # get closest edge
          edge = lines_.geometry.distance(building.geometry).idxmin()
-         line = lines_.loc[[edge]].geometry
+         line = lines_.loc[[edge]].geometry.values[0]
 
          # gather population density of the building location
          district_density = 0 # building center is actually outside Aachen
@@ -246,13 +246,13 @@
                  district_density = district_row.density
 
          # print(building.geometry.to_wkt())
-         _, proj_point = nearest_points(building.geometry, line.values[0])
+         _, proj_point = nearest_points(building.geometry, line)
 
          return pd.Series({
              'osm_id': building.OSM_ID,
              'edge0': edge[0],
              'edge1': edge[1],
-             'line': line.values[0],
+             'line': line,
              # location of new node
              'new_point': proj_point,
              # weight of new node
