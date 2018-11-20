@@ -415,6 +415,87 @@
          output.write(json.dumps(json_graph.node_link_data(G)))
    #+END_SRC
 
+** Plot obtained graph on the map
+   Plot final graph on top of district map.
+
+   #+BEGIN_SRC python :noweb yes :var valid_types=utils.org:valid_types :var graph_path=graph_path :tangle scripts/citymap/9_plot_city_graph.py
+     <<imports_&_defaults>>
+     <<projection>>
+     <<districts>>
+
+     # read graph G
+     with open(graph_path[0][0]) as f:
+         js_graph = json.load(f)
+
+     G = json_graph.node_link_graph(js_graph)
+
+     ## "convert" graph to GeoDataFrame
+
+     # collect data into proper lists
+     nodes = G.nodes(data=True)
+
+     nodes_info = []
+     for id_, data in nodes:
+         point = Point(data['lon'], data['lat'])
+         nodes_info.append({'geometry': point, **data})
+
+     edges_info = []
+     for node_id1, node_id2, data in G.edges(data=True):
+         edge = LineString((
+             (nodes[node_id1]['lon'], nodes[node_id1]['lat']),
+             (nodes[node_id2]['lon'], nodes[node_id2]['lat'])
+         ))
+
+         edges_info.append({'geometry': edge, **data})
+
+     ## provide GeoDataFrames
+     nodes_df = gpd.GeoDataFrame(nodes_info)
+     nodes_df.crs = {'init' :'epsg:4326'} # long-lat projection
+     nodes_df = nodes_df.to_crs(projection.srs)
+
+     edges_df = gpd.GeoDataFrame(edges_info)
+     edges_df.crs = {'init' :'epsg:4326'} # long-lat projection
+     edges_df = edges_df.to_crs(projection.srs)
+
+     ## plot everything
+
+     fig = plt.figure(figsize=(6, 6), frameon=False)
+     ax = fig.gca()
+
+     ax.set_title("Detail of extracted city graph\n",
+                  fontsize=15,
+                  fontweight=font_spec['font.weight'])
+
+     # plot just city external border
+     aachen_border = cascaded_union(district_map.geometry)
+     gpd.GeoDataFrame({'geometry': [aachen_border]}).plot(color='white',
+                                                          edgecolor='black',
+                                                          linewidth=0.5,
+                                                          ax=ax)
+
+     nodes_df.plot(ax=ax,
+                   markersize=1,
+                   color='black',
+                   zorder=2)
+
+     edges_df.plot(ax=ax,
+                   color='grey',
+                   linewidth=0.5,
+                   zorder=1)
+
+     plt.axis('off')
+
+     # cut a window for better visualization
+     ax.set_xlim(292461, 298772)
+     ax.set_ylim(5625000, 5630000)
+     plt.tight_layout(rect=[-0.1, 0, 1, 1])
+
+     # plt.show()
+
+     plt.savefig('figures/aachen_city_graph.pdf')
+     plt.close('all')
+   #+END_SRC
+
 * COMMENT Local variables
   # Local Variables:
   # eval: (add-hook 'before-save-hook (lambda () (indent-region (point-min) (point-max) nil)) t t)
