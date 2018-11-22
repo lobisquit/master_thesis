@@ -25,10 +25,10 @@
     from shapely.geometry.polygon import Polygon
     from shapely.ops import cascaded_union, nearest_points
 
-    logger = logging.getLogger()
-    logger.setLevel(logging.DEBUG)
+    logger = logging.getLogger('citymap.org')
+    logger.setLevel(logging.INFO)
 
-    logger.debug('import ok')
+    logger.info('import ok')
   #+END_SRC
 
   Default settings for ~matplotlib~.
@@ -42,7 +42,7 @@
     }
     rcParams.update(font_spec)
 
-    logger.debug('matplotlib ok')
+    logger.info('matplotlib ok')
   #+END_SRC
 
   Useful function to flatten org tables in ~python~ lists of strings or single string.
@@ -56,7 +56,7 @@
         else:
             return flat_list
 
-    logger.debug('org flatten ok')
+    logger.info('org flatten ok')
   #+END_SRC
 
 
@@ -75,7 +75,7 @@
     district_map = gpd.read_file("data/citymap/aachen_district_map.shp")
     del district_map['FLäcHE'] # whole zero column
 
-    logger.debug('districts ok')
+    logger.info('districts ok')
   #+END_SRC
 
 
@@ -98,7 +98,7 @@
     prj_string = open(str(prj_string_file), 'r').read()
     projection = Proj(prj_string)
 
-    logger.debug('projection ok')
+    logger.info('projection ok')
   #+END_SRC
 
   Read population statistics for each district and join them to the district ~GeoDataFrame~.
@@ -118,7 +118,7 @@
     district_map['area'] = district_map['geometry'].area / 10**6
     district_map['density'] = district_map['population'] / district_map['area']
 
-    logger.debug('population ok')
+    logger.info('population ok')
   #+END_SRC
 
   Read all roads and buildings that are either of ~None~ type or member of this group.
@@ -153,7 +153,7 @@
     roads_map.crs = {'init': 'epsg:4326'}
     roads_map = roads_map.to_crs(projection.srs)
 
-    logger.debug('roads ok')
+    logger.info('roads ok')
   #+END_SRC
 
   #+NAME: buildings
@@ -171,7 +171,7 @@
     valid_types = list(np.array(valid_types).flatten()) # flatten Org table
     buildings_map = buildings_map[buildings_map['TYPE'].isin(valid_types + ['UNSET'])]
 
-    logger.debug('buildings ok')
+    logger.info('buildings ok')
   #+END_SRC
 
   #+NAME: all_datasets
