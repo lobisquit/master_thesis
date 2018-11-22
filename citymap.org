@@ -408,12 +408,11 @@
      # better fix them
      for edge_data in G.edges(data=True):
          if type(edge_data[0]) == np.int64 or \
-            type(edge_data[1]) == numpy.int64:
+            type(edge_data[1]) == np.int64:
              G.remove_edge(edge_data[0], edge_data[1])
              G.add_edge(int(edge_data[0]), int(edge_data[1]), **edge_data[2])
 
-     with open(org_flatten(graph_path).replace('.json', '_complete.json'), 'w') as output:
-         output.write(json.dumps(json_graph.node_link_data(G)))
+     nx.write_gml(G, org_flatten(graph_path).replace('.json', '_complete.gml'))
    #+END_SRC
 
 ** Plot obtained graph on the map
