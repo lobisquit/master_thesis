@@ -73,3 +73,128 @@
   - city has 200.000 people, spread across 160km2
   - each person has (estimated) 40Mb/s in download and 8Mb/s in upload
   - a single DSLAM can serve from 100 to 2000 people, with corresponding throughput required
+
+* Optimization problem requirements
+  $G=(V, \,E)$ is the undirected city graph.
+
+** Nodes
+   Each node is either a building or it is not.
+
+   $$\forall i \in V, \, b_i =
+   \begin{cases}
+   1 & \text{if building} \\
+   0 & \text{if road intersection} \\
+   \end{cases}$$
+
+   Population associated to node $i$.
+
+   $$\forall i \in V, \, pop_i ~
+   \begin{cases}
+   = 0 & b_i = 0 \\
+   \geq 0 & \text{otherwise}
+   \end{cases}$$
+
+   Distance matrix $D = \left[ d_{ij}\right]_{i \in V, j \in V}$ is precomputed, with the elements being the
+   distances from each node to the others.
+
+   Each node is assigned either to fiber or copper wire. TODO how?
+
+*** Main router
+    Only a subset of the nodes can be location for the main router (ex. industrial areas).
+
+    $M = \left\{i \in V: i \text{ is candidate to be the main router}\right\} \subseteq V$
+
+    $$\forall i \in V, \, M_i =
+    \begin{cases}
+    1 & \forall i \in M \\
+    0 & \text{otherwise}
+    \end{cases}$$
+
+    $$\forall i \in V, \, m_i =
+    \begin{cases}
+    1 & \text{if node is chosen as the main router location} \\
+    0 & \text{otherwise}
+    \end{cases}$$
+
+
+    Main router can only be located in candidate spots.
+
+    $$\forall i \in V, m_i \le M_i$$
+
+    There is a single main router.
+
+    $$\sum_{i \in V} m_i = 1$$
+
+*** Secondary routers
+    Only part of the routers can be location of the second level routers.
+    TODO Let's see if this can be hand tuned (otherwise set all non-building nodes)
+
+    $$R = \left\{i \in V: i \text{ is candidate to be one of the second level routers}\right\} \subseteq V$$
+
+    $$\forall i \in V, \, R_i =
+    \begin{cases}
+    1 & \forall i \in R \\
+    0 & \text{otherwise}
+    \end{cases}$$
+
+    $$\forall i \in V, \, r_i =
+    \begin{cases}
+    1 & \text{if node is chosen as one of the secondary routers location} \\
+    0 & \text{otherwise}
+    \end{cases}$$
+
+    Secondary routers can only be located in candidate spots.
+    $$\forall i \in V, r_i \le R_i$$
+
+    There is a possible range for the number of secondary routers, from $R_{min}$ to $R_{max}$.
+
+    $$R_{min} \le \sum_{i \in V} r_i \le R_{max}$$
+
+*** DSLAMs
+    All nodes are valid locations for the DLAMs (even buildings).
+
+    $$\forall i \in V, \, d_i =
+    \begin{cases}
+    1 & \text{if node is chosen as one of the DSLAMs locations} \\
+    0 & \text{otherwise}
+    \end{cases}$$
+
+    There is a range for the number of DSLAMs, from $D_{min}$ to $D_{max}$.
+
+    $$D_{min} \le \sum_{i \in V} d_i \le D_{max}$$
+
+** Edges
+   Each edge $e \in E$ is given a length $l_e$ and an associated cable placing cost $c_e$.
+   Cost will probably be a multiplicative factor of the length, but we could differentiate
+   based on the building connection technology.
+
+*** First level edges (building to DSLAM)
+    \begin{equation}
+      \forall e \in E, \, f_e =
+      \begin{cases}
+        1 & \text{if edge is chosen as first level edge} \\
+        0 & \text{otherwise}
+      \end{cases}
+    \end{equation}
+
+    Each building must be connected to a DSLAM by one path.
+
+
+
+    Each building is connected to exactly one of these edges
+    (for roads intersection there is no need for them).
+
+    \begin{equation}
+      \forall i \in V,
+      \sum_{\{i, j\} \in E} f_{ij} = b_i
+    \end{equation}
+
+    First level edges connect DSLAMs to buildings,
+
+    \begin{equation}
+      \forall i \in V: b_i = 1,
+      \forall \{i, j\} \in E,
+      f_{ij} \le d_j
+    \end{equation}
+
+    ciao
