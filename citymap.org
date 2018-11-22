@@ -12,6 +12,7 @@
 
   #+NAME: NRW_map_link
   http://download.geofabrik.de/europe/germany/nordrhein-westfalen-latest-free.shp.zip
+
   For the roads details, see [[https://simonb83.github.io/making-a-map-in-matplotlib.html][here]].
 
   #+BEGIN_SRC bash :var population_density=population_density_link district_map=district_map_link NRW_map=NRW_map_link :results none :tangle scripts/citymap/1_download.sh
@@ -201,7 +202,7 @@
          if edge in edge_osm_id_map:
              G[edge[0]][edge[1]]['OSM_ID'] = edge_osm_id_map[edge]
 
-     with open(graph_path[0][0], 'w') as output:
+     with open(org_flatten(graph_path), 'w') as output:
          output.write(json.dumps(G))
    #+END_SRC
 
@@ -216,7 +217,7 @@
      <<all_datasets>>
 
      # load graph
-     with open(graph_path[0][0]) as f:
+     with open(org_flatten(graph_path)) as f:
          js_graph = json.load(f)
 
      G = json_graph.node_link_graph(js_graph)
@@ -265,7 +266,7 @@
          axis=1
      )
 
-     closest_lines.to_csv(closest_lines_path[0][0],
+     closest_lines.to_csv(org_flatten(closest_lines_path),
                           quoting=csv.QUOTE_NONNUMERIC,
                           index=None)
    #+END_SRC
@@ -282,12 +283,12 @@
      <<all_datasets>>
 
      # read graph G
-     with open(graph_path[0][0]) as f:
+     with open(org_flatten(graph_path)) as f:
          js_graph = json.load(f)
 
      G = json_graph.node_link_graph(js_graph)
 
-     closest_lines = pd.read_csv(closest_lines_path[0][0])
+     closest_lines = pd.read_csv(org_flatten(closest_lines_path))
 
      # add new nodes, corresponding to buildings
 
@@ -411,7 +412,7 @@
              G.remove_edge(edge_data[0], edge_data[1])
              G.add_edge(int(edge_data[0]), int(edge_data[1]), **edge_data[2])
 
-     with open(graph_path[0][0].replace('.json', '_complete.json'), 'w') as output:
+     with open(org_flatten(graph_path).replace('.json', '_complete.json'), 'w') as output:
          output.write(json.dumps(json_graph.node_link_data(G)))
    #+END_SRC
 
@@ -424,7 +425,7 @@
      <<districts>>
 
      # read graph G
-     with open(graph_path[0][0]) as f:
+     with open(org_flatten(graph_path).replace('.json', '_complete.json')) as f:
          js_graph = json.load(f)
 
      G = json_graph.node_link_graph(js_graph)

@@ -5,6 +5,7 @@
   #+BEGIN_SRC python
     import csv
     import json
+    import logging
     import math
     from math import sqrt
     from pathlib import Path
@@ -24,7 +25,10 @@
     from shapely.geometry.polygon import Polygon
     from shapely.ops import cascaded_union, nearest_points
 
-    print('LOG: import ok')
+    logger = logging.getLogger()
+    logger.setLevel(logging.DEBUG)
+
+    logger.debug('import ok')
   #+END_SRC
 
   Default settings for ~matplotlib~.
@@ -38,13 +42,29 @@
     }
     rcParams.update(font_spec)
 
-    print('LOG: matplotlib ok')
+    logger.debug('matplotlib ok')
   #+END_SRC
+
+  Useful function to flatten org tables in ~python~ lists of strings or single string.
+  #+NAME: org_flatten
+  #+BEGIN_SRC python
+    def org_flatten(org_variable):
+        flat_list = list(np.array(org_variable).flatten())
+
+        if len(flat_list) == 1:
+            return flat_list[0]
+        else:
+            return flat_list
+
+    logger.debug('org flatten ok')
+  #+END_SRC
+
 
   #+NAME: imports_&_defaults
   #+BEGIN_SRC python :noweb yes
     <<imports>>
     <<matplotlib_defaults>>
+    <<org_flatten>>
   #+END_SRC
 
 * Datasets reading routines
@@ -55,7 +75,7 @@
     district_map = gpd.read_file("data/citymap/aachen_district_map.shp")
     del district_map['FLäcHE'] # whole zero column
 
-    print('LOG: districts ok')
+    logger.debug('districts ok')
   #+END_SRC
 
 
@@ -78,7 +98,7 @@
     prj_string = open(str(prj_string_file), 'r').read()
     projection = Proj(prj_string)
 
-    print('LOG: projection ok')
+    logger.debug('projection ok')
   #+END_SRC
 
   Read population statistics for each district and join them to the district ~GeoDataFrame~.
@@ -98,7 +118,7 @@
     district_map['area'] = district_map['geometry'].area / 10**6
     district_map['density'] = district_map['population'] / district_map['area']
 
-    print('LOG: population ok')
+    logger.debug('population ok')
   #+END_SRC
 
   Read all roads and buildings that are either of ~None~ type or member of this group.
@@ -133,7 +153,7 @@
     roads_map.crs = {'init': 'epsg:4326'}
     roads_map = roads_map.to_crs(projection.srs)
 
-    print('LOG: roads ok')
+    logger.debug('roads ok')
   #+END_SRC
 
   #+NAME: buildings
@@ -151,7 +171,7 @@
     valid_types = list(np.array(valid_types).flatten()) # flatten Org table
     buildings_map = buildings_map[buildings_map['TYPE'].isin(valid_types + ['UNSET'])]
 
-    print('LOG: buildings ok')
+    logger.debug('buildings ok')
   #+END_SRC
 
   #+NAME: all_datasets
