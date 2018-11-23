@@ -1,7 +1,7 @@
 #+STARTUP: latexpreview
+#+STARTUP: indent
 
 * ANALOGY Virtual Network Overlay as group of organizers of a fair
-
 - people coming in are packets to be forwarded
 
 - one all-knowing person cannot deal with all their specific needs, so
@@ -16,11 +16,11 @@
 * Traffic generation techniques, from "A Survey on the Common Network Traffic Sources Models"
 ** Bound (envelope) source traffic models
 *** Deterministic Bound Interval Independent
-    Traffic function $A$ is limited by $A*$: $$ A[t,\, t + \tau] \le A^*(\tau) $$: deterministic and time-invariant bound.
-    cite:ChengShangChang1994
+Traffic function $A$ is limited by $A*$: $$ A[t,\, t + \tau] \le A^*(\tau) $$: deterministic and time-invariant bound.
+cite:ChengShangChang1994
 
 *** Stochastic Bound Traffic Models
-    Bound is *not* deterministic, but in probability: traffic function is likely to be smaller than the bound.
+Bound is *not* deterministic, but in probability: traffic function is likely to be smaller than the bound.
 
 *** BIND Traffic Model
 
@@ -39,10 +39,10 @@
 *** Wavelet-based Models
 
 *** Traffic Models Using Chaotic Maps
-    ex. Piecewise Linear Maps
+ex. Piecewise Linear Maps
 
 *** N-Burst Traffic Model
-    Sum of N independent ON-OFF sources
+Sum of N independent ON-OFF sources
 
 * TODO thesis [0/3]
 - [-] study WIDE dataset [1/3]
@@ -70,131 +70,102 @@
   - MFSG, GFSD cite:Anderson2017 (best paper, super recent)
 
 * Aachen network estimation
-  - city has 200.000 people, spread across 160km2
-  - each person has (estimated) 40Mb/s in download and 8Mb/s in upload
-  - a single DSLAM can serve from 100 to 2000 people, with corresponding throughput required
+- city has 200.000 people, spread across 160km2
+- each person has (estimated) 40Mb/s in download and 8Mb/s in upload
+- a single DSLAM can serve from 100 to 2000 people, with corresponding throughput required
 
 * Optimization problem requirements
-  $G=(V, \,E)$ is the undirected city graph.
+$G=(V, \,E)$ is the undirected city graph.
+A direct graph $G^\prime = (V, A)$ is induced on top of if, where $ij \in E \Rightarrow ij, ji \in A$.
 
-** Nodes
-   Each node is either a building or it is not.
+Each node is either a building or it is not.
 
-   $$\forall i \in V, \, b_i =
-   \begin{cases}
-   1 & \text{if building} \\
-   0 & \text{if road intersection} \\
-   \end{cases}$$
+\begin{equation}
+  T = \left\{
+    t \in V: t \text{ is a building}
+  \right\}
+\end{equation}
 
-   Population associated to node $i$.
+Each node is assigned either to fiber or copper wire. TODO how?
 
-   $$\forall i \in V, \, pop_i ~
-   \begin{cases}
-   = 0 & b_i = 0 \\
-   \geq 0 & \text{otherwise}
-   \end{cases}$$
+Each building is connected to one of the lowest level trees.
+\begin{equation}
+  \forall t \in T,
+  \sum_{it \in A} \gamma_{it} = 1
+\end{equation}
 
-   Distance matrix $D = \left[ d_{ij}\right]_{i \in V, j \in V}$ is precomputed, with the elements being the
-   distances from each node to the others.
+Each node can only have one entering arc entering for each type.
 
-   Each node is assigned either to fiber or copper wire. TODO how?
+\begin{equation}
+  \forall j \in V, \sum_{e \in \delta^-(j)} \alpha_e \le 1
+\end{equation}
 
-*** Main router
-    Only a subset of the nodes can be location for the main router (ex. industrial areas).
+** Distance counter
+Set the distance counter to a positive value (actual distance) if node is reached,
+otherwise fix it to $-u_{MAX}$.
 
-    $M = \left\{i \in V: i \text{ is candidate to be the main router}\right\} \subseteq V$
+\begin{equation}
+  2 \, u_{MAX} \sum_{e \in \delta^-(j)} \alpha_e \ge u_j + u_{MAX}
+\end{equation}
 
-    $$\forall i \in V, \, M_i =
-    \begin{cases}
-    1 & \forall i \in M \\
-    0 & \text{otherwise}
-    \end{cases}$$
+\begin{equation}
+  \implies
+  \begin{dcases}
+    u_j \le - u_{MAX} & \sum_{e \in \delta^-(j)} \alpha_e = 0 \\
+    u_j \le u_{MAX} & \sum_{e \in \delta^-(j)} \alpha_e = 1
+  \end{dcases}
+\end{equation}
 
-    $$\forall i \in V, \, m_i =
-    \begin{cases}
-    1 & \text{if node is chosen as the main router location} \\
-    0 & \text{otherwise}
-    \end{cases}$$
+\begin{equation}
+  u_j \ge \left( \sum_{e \in \delta^-(j)} \alpha_e - 1 \right) u_{MAX}
+\end{equation}
 
+\begin{equation}
+  \implies
+  \begin{dcases}
+    u_j \ge - u_{MAX} & \sum_{e \in \delta^-(j)} \alpha_e = 0 \\
+    u_j \ge 0 & \sum_{e \in \delta^-(j)} \alpha_e = 1
+  \end{dcases}
+\end{equation}
 
-    Main router can only be located in candidate spots.
+If arc is active, make distance counter /effectively/ a counter.
 
-    $$\forall i \in V, m_i \le M_i$$
+\begin{equation}
+  u_j - u_i \le l_{ij} + u_{MAX} (1 - \alpha_{ij})
+\end{equation}
 
-    There is a single main router.
+\begin{equation}
+  \implies
+  \begin{dcases}
+    u_j - u_i \le l_{ij} + u_{MAX} & \alpha_{ij} = 0 \\
+    u_j - u_i \le l{ij} & \alpha_{ij} = 1
+  \end{dcases}
+\end{equation}
 
-    $$\sum_{i \in V} m_i = 1$$
+\begin{equation}
+  u_j - u_i \ge l_{ij} - \left( u_{MAX} + l_{ij} \right) (1 - \alpha_{ij})
+\end{equation}
 
-*** Secondary routers
-    Only part of the routers can be location of the second level routers.
-    TODO Let's see if this can be hand tuned (otherwise set all non-building nodes)
+\begin{equation}
+  \implies
+  \begin{dcases}
+    u_j - u_i \le - u_{MAX} & \alpha_{ij} = 0 \\
+    u_j - u_i \ge l_{ij} & \alpha_{ij} = 1
+  \end{dcases}
+\end{equation}
 
-    $$R = \left\{i \in V: i \text{ is candidate to be one of the second level routers}\right\} \subseteq V$$
+[ REPEAT previous equation for $u \rightarrow v, w$ and $\alpha \rightarrow \beta, \gamma$ ]
 
-    $$\forall i \in V, \, R_i =
-    \begin{cases}
-    1 & \forall i \in R \\
-    0 & \text{otherwise}
-    \end{cases}$$
+** Terminals reachability
 
-    $$\forall i \in V, \, r_i =
-    \begin{cases}
-    1 & \text{if node is chosen as one of the secondary routers location} \\
-    0 & \text{otherwise}
-    \end{cases}$$
+\begin{equation}
+  \forall t \in T, w_t > 0
+\end{equation}
 
-    Secondary routers can only be located in candidate spots.
-    $$\forall i \in V, r_i \le R_i$$
+which is equivalent to
 
-    There is a possible range for the number of secondary routers, from $R_{min}$ to $R_{max}$.
+\begin{equation}
+  \forall t \in T, \sum_{e \in \delta^-(j)} \gamma_{e} = 1
+\end{equation}
 
-    $$R_{min} \le \sum_{i \in V} r_i \le R_{max}$$
-
-*** DSLAMs
-    All nodes are valid locations for the DLAMs (even buildings).
-
-    $$\forall i \in V, \, d_i =
-    \begin{cases}
-    1 & \text{if node is chosen as one of the DSLAMs locations} \\
-    0 & \text{otherwise}
-    \end{cases}$$
-
-    There is a range for the number of DSLAMs, from $D_{min}$ to $D_{max}$.
-
-    $$D_{min} \le \sum_{i \in V} d_i \le D_{max}$$
-
-** Edges
-   Each edge $e \in E$ is given a length $l_e$ and an associated cable placing cost $c_e$.
-   Cost will probably be a multiplicative factor of the length, but we could differentiate
-   based on the building connection technology.
-
-*** First level edges (building to DSLAM)
-    \begin{equation}
-      \forall e \in E, \, f_e =
-      \begin{cases}
-        1 & \text{if edge is chosen as first level edge} \\
-        0 & \text{otherwise}
-      \end{cases}
-    \end{equation}
-
-    Each building must be connected to a DSLAM by one path.
-
-
-
-    Each building is connected to exactly one of these edges
-    (for roads intersection there is no need for them).
-
-    \begin{equation}
-      \forall i \in V,
-      \sum_{\{i, j\} \in E} f_{ij} = b_i
-    \end{equation}
-
-    First level edges connect DSLAMs to buildings,
-
-    \begin{equation}
-      \forall i \in V: b_i = 1,
-      \forall \{i, j\} \in E,
-      f_{ij} \le d_j
-    \end{equation}
-
-    ciao
+** Connections between trees
