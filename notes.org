@@ -178,7 +178,7 @@ Each building is connected to one of the trees.
   \sum_{e \in \delta^-(t)} x_e = 1
 \end{equation}
 
-which is stronger than
+which is equivalent to
 
 \begin{equation}
   \forall t \in T, \, d_t \ge 0
@@ -203,12 +203,15 @@ Let $\delta_M$ be the maximum degree of the nodes in $G$.
 \end{equation}
 
 Given this metric, $r_j$ is an indicator of the node $j$ being root or not.
-$r^\prime_j = 0 \wedge r_j = 1$ is "discouraged" by objective function.
+$r^\prime_j \le 0 \wedge r_j = 1$ is "discouraged" by objective function.
 
-TODO check if another constraint is needed here, to be sure
+# TODO check if another constraint is needed here with "<=", just to be sure
 
 \begin{equation}
-  r_j \ge r^\prime_j
+  \begin{dcases}
+    r_j \ge r^\prime_j \\
+    r_j \in \{0, 1\}
+  \end{dcases}
 \end{equation}
 
 \begin{equation}
@@ -222,17 +225,32 @@ TODO check if another constraint is needed here, to be sure
 ** Counting terminals per tree
 Let $n_j$ be the number of terminal nodes in the subtree below node $j$.
 
-In a subtree there can be up to $|T|$ terminals, so $n^\prime_{ij}$ is defined as
+In a subtree there can be up to $n_M$ terminals by design, so $n^\prime_{ij}$ is defined as
 
 \begin{equation}
   \begin{dcases}
-    n_j - |T| \, ( 1 - x_{ij}) \le n^\prime_{ij} \le |T| \, x_{ij} \\
+    n_j - n_M \, ( 1 - x_{ij}) \le n^\prime_{ij} \le n_M \, x_{ij} \\
     n^\prime_{ij} \le n_j \\
     n^\prime_{ij} \ge 0
   \end{dcases}
 \end{equation}
 
+\begin{equation}
+  \implies
+  \begin{aligned}
+    &\begin{dcases}
+      n_j - n_M \le n^\prime_{ij} \le 0 \\
+      n^\prime_{ij} \ge 0
+    \end{dcases} & x_{ij} = 0 \\
+    &\begin{dcases}
+      n_j \le n^\prime_{ij} \le n_M  \\
+      n^\prime_{ij} \le n_j
+    \end{dcases} & x_{ij} = 1
+  \end{aligned}
+\end{equation}
+
 Which means that
+
 \begin{equation}
   n^\prime_{ij} =
   \begin{dcases}
@@ -251,12 +269,11 @@ Then our variable can be computed linearly as
   \end{dcases}
 \end{equation}
 
-Given $n_M$, maximum number of terminal per tree, programming is constrained by
+and constrained by
 
 \begin{equation}
-  n_i \le n_M
+  0 \le n_i \le n_M
 \end{equation}
-
 
 * COMMENT Local variables
 # Local Variables:
