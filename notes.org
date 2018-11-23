@@ -104,31 +104,27 @@ Each node can have at most one entering arc (tree constraint).
 \end{equation}
 
 ** Distance counter
-Set the distance counter to a positive value (actual distance) below
-maximum value $u_M$ if node is reached, otherwise fix it to $-u_M$.
+Set the distance counter $d_j$ to be the distance from the root
+of the tree that node $j$ belongs to.
+
+If $j$ has no tree (or it is the root if its tree), set it to zero.
 
 \begin{equation}
-  2 \, d_M \sum_{e \in \delta^-(j)} x_e \ge d_j + d_M
+  d_j \le \left( \sum_{e \in \delta^-(j)} x_e \right) d_M
 \end{equation}
 
 \begin{equation}
   \implies
   \begin{dcases}
-    d_j \le - d_M & \sum_{e \in \delta^-(j)} x_e = 0 \\
+    d_j \le 0 & \sum_{e \in \delta^-(j)} x_e = 0 \\
     d_j \le d_M & \sum_{e \in \delta^-(j)} x_e = 1
   \end{dcases}
 \end{equation}
 
-\begin{equation}
-  d_j \ge \left( \sum_{e \in \delta^-(j)} x_e - 1 \right) d_M
-\end{equation}
+Which then combines with domain constraint on the distance.
 
 \begin{equation}
-  \implies
-  \begin{dcases}
-    d_j \ge - d_M & \sum_{e \in \delta^-(j)} x_e = 0 \\
-    d_j \ge 0 & \sum_{e \in \delta^-(j)} x_e = 1
-  \end{dcases}
+  0 \le d_j \le d_M
 \end{equation}
 
 If arc is active, make distance counter /effectively/ a counter.
@@ -136,39 +132,35 @@ If arc is active, make distance counter /effectively/ a counter.
 Given previous relationships, distance differences are valued in
 
 \begin{equation}
-  d_j - d_i \in [-2\,d_M, 2\,d_M]
+  d_j - d_i \in [- d_M, d_M]
 \end{equation}
 
 These equations fix the distance increment to $l_{ij}$, edge length,
 when there is a connection.
 
 \begin{equation}
-  d_j - d_i \le l_{ij} + (2 \, d_M - l_{ij}) (1 - x_{ij})
+  d_j - d_i \le l_{ij} + (d_M - l_{ij}) (1 - x_{ij})
 \end{equation}
 
 \begin{equation}
   \implies
   \begin{dcases}
-    d_j - d_i \le 2 \, d_M & x_{ij} = 0 \\
+    d_j - d_i \le d_M & x_{ij} = 0 \\
     d_j - d_i \le l_{ij} & x_{ij} = 1
   \end{dcases}
 \end{equation}
 
 \begin{equation}
-  d_j - d_i \ge l_{ij} - \left( 2\,d_M + l_{ij} \right) (1 - x_{ij})
+  d_j - d_i \ge l_{ij} - \left( d_M + l_{ij} \right) (1 - x_{ij})
 \end{equation}
 
 \begin{equation}
   \implies
   \begin{dcases}
-    d_j - d_i \ge - 2\,d_M & x_{ij} = 0 \\
+    d_j - d_i \ge - d_M & x_{ij} = 0 \\
     d_j - d_i \ge l_{ij} & x_{ij} = 1
   \end{dcases}
 \end{equation}
-
-Note that $d_i$ is *not* a distance for nodes not in a tree.
-This is not a problem in our case, as its value is useful only for
-terminal nodes, which are guaranteed to be reachable.
 
 ** Terminal reachability
 Each building is connected to one of the trees.
@@ -176,12 +168,6 @@ Each building is connected to one of the trees.
 \begin{equation}
   \forall t \in T,
   \sum_{e \in \delta^-(t)} x_e = 1
-\end{equation}
-
-which is equivalent to
-
-\begin{equation}
-  \forall t \in T, \, d_t \ge 0
 \end{equation}
 
 ** Counting root nodes
