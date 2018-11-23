@@ -1,6 +1,6 @@
 #+STARTUP: latexpreview
 #+STARTUP: indent
-
+#+LATEX_HEADER: \usepackage{mathtools}
 
 * ANALOGY Virtual Network Overlay as group of organizers of a fair
 - people coming in are packets to be forwarded
@@ -99,12 +99,12 @@ Each node can have at most one entering arc (tree constraint).
   \min
   \sum_{t \in T} d_t \, c_f
   + \sum_{e \in E} x_e \, c_e
-  + \sum_{j \in V} r_j \, c_{DSLAM}
+  + \sum_{j \in V} r_j \, c_D
 \end{equation}
 
 ** Distance counter
 Set the distance counter to a positive value (actual distance) below
-maximum value $d_M$ if node is reached, otherwise fix it to $-d_M$.
+maximum value $u_M$ if node is reached, otherwise fix it to $-u_M$.
 
 \begin{equation}
   2 \, d_M \sum_{e \in \delta^-(j)} x_e \ge d_j + d_M
@@ -156,6 +156,10 @@ If arc is active, make distance counter /effectively/ a counter.
   \end{dcases}
 \end{equation}
 
+Note that $d_i$ is *not* a distance for nodes not in a tree.
+This is not a problem in our case, as its value is useful only for
+terminal nodes, which are guaranteed to be reachable.
+
 ** Terminal reachability
 Each building is connected to one of the trees.
 
@@ -164,13 +168,13 @@ Each building is connected to one of the trees.
   \sum_{e \in \delta^-(t)} x_e = 1
 \end{equation}
 
-which is equivalent to
+which is stronger than
 
 \begin{equation}
   \forall t \in T, \, d_t \ge 0
 \end{equation}
 
-** Root nodes counting
+** Counting root nodes
 Let $\delta_M$ be the maximum degree of the nodes in $G$.
 
 \begin{equation}
@@ -204,6 +208,45 @@ TODO check if another constraint is needed here, to be sure
     0 & j \text{ otherwise} \\
   \end{dcases}
 \end{equation}
+
+** Counting terminals per tree
+Let $n_j$ be the number of terminal nodes in the subtree below node $j$.
+
+In a subtree there can be up to $|T|$ terminals, so $n^\prime_{ij}$ is defined as
+
+\begin{equation}
+  \begin{dcases}
+    n_j - |T| \, ( 1 - x_{ij}) \le n^\prime_{ij} \le |T| \, x_{ij} \\
+    n^\prime_{ij} \le n_j \\
+    n^\prime_{ij} \ge 0
+  \end{dcases}
+\end{equation}
+
+Which means that
+\begin{equation}
+  n^\prime_{ij} =
+  \begin{dcases}
+    n_j & x_{ij} = 1 \\
+    0 & x_{ij} = 0 \\
+  \end{dcases}
+\end{equation}
+
+Then our variable can be computed linearly as
+
+\begin{equation}
+  n_i
+  = \begin{dcases}
+      1 & i \in T \\
+      \sum_{e \in \delta^+(i)} n^\prime_{e} & i \notin T \\
+  \end{dcases}
+\end{equation}
+
+Given $n_M$, maximum number of terminal per tree, programming is constrained by
+
+\begin{equation}
+  n_i \le n_M
+\end{equation}
+
 
 * COMMENT Local variables
 # Local Variables:
