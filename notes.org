@@ -133,26 +133,35 @@ maximum value $u_M$ if node is reached, otherwise fix it to $-u_M$.
 
 If arc is active, make distance counter /effectively/ a counter.
 
+Given previous relationships, distance differences are valued in
+
 \begin{equation}
-  d_j - d_i \le l_{ij} + d_M (1 - x_{ij})
+  d_j - d_i \in [-2\,d_M, 2\,d_M]
+\end{equation}
+
+These equations fix the distance increment to $l_{ij}$, edge length,
+when there is a connection.
+
+\begin{equation}
+  d_j - d_i \le l_{ij} + (2 \, d_M - l_{ij}) (1 - x_{ij})
 \end{equation}
 
 \begin{equation}
   \implies
   \begin{dcases}
-    d_j - d_i \le l_{ij} + d_M & x_{ij} = 0 \\
+    d_j - d_i \le 2 \, d_M & x_{ij} = 0 \\
     d_j - d_i \le l_{ij} & x_{ij} = 1
   \end{dcases}
 \end{equation}
 
 \begin{equation}
-  d_j - d_i \ge l_{ij} - \left( d_M + l_{ij} \right) (1 - x_{ij})
+  d_j - d_i \ge l_{ij} - \left( 2\,d_M + l_{ij} \right) (1 - x_{ij})
 \end{equation}
 
 \begin{equation}
   \implies
   \begin{dcases}
-    d_j - d_i \le - d_M & x_{ij} = 0 \\
+    d_j - d_i \ge - 2\,d_M & x_{ij} = 0 \\
     d_j - d_i \ge l_{ij} & x_{ij} = 1
   \end{dcases}
 \end{equation}
