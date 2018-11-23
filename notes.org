@@ -1,6 +1,7 @@
 #+STARTUP: latexpreview
 #+STARTUP: indent
 #+LATEX_HEADER: \usepackage{mathtools}
+#+OPTIONS: toc:nil
 
 * ANALOGY Virtual Network Overlay as group of organizers of a fair
 - people coming in are packets to be forwarded
@@ -140,7 +141,7 @@ If arc is active, make distance counter /effectively/ a counter.
   \implies
   \begin{dcases}
     d_j - d_i \le l_{ij} + d_M & x_{ij} = 0 \\
-    d_j - d_i \le l{ij} & x_{ij} = 1
+    d_j - d_i \le l_{ij} & x_{ij} = 1
   \end{dcases}
 \end{equation}
 
