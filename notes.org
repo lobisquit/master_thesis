@@ -176,9 +176,11 @@ Let $\delta_M$ be the maximum degree of the nodes in $G$.
 \begin{equation}
   r^\prime_j =
   \frac{1}{\delta_M}
-  \left( \sum_{e \in \delta^+(j)} x_e \right) -
-  \sum_{e \in \delta^-(j)} x_e
+  \underbrace{ \left( \sum_{e \in \delta^+(j)} x_e \right) }_A -
+  \underbrace{ \sum_{e \in \delta^-(j)} x_e }_B
 \end{equation}
+
+Note that $A \in \{0, \, \cdots, \, \delta_M\}$, $B \in \{0, \, 1\}$, so
 
 \begin{equation}
   r^\prime_j ~ \begin{dcases}
