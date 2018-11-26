@@ -124,7 +124,7 @@ If $j$ has no tree (or it is the root if its tree), set it to zero.
 Which then combines with domain constraint on the distance.
 
 \begin{equation}
-  0 \le d_j \le d_M
+  d_j \ge 0
 \end{equation}
 
 If arc is active, make distance counter /effectively/ a counter.

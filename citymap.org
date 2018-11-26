@@ -301,7 +301,7 @@
          # collect new point information
          new_points = []
          for _, row in group.iterrows():
-             print("Addded building {}/{}".format(current_number, len(closest_lines)), end="\r")
+             print("Added building {}/{}".format(current_number, len(closest_lines)), end="\r")
              current_number += 1
 
              proj_new_point = wkt.loads(row.new_point)
