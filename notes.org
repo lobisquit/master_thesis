@@ -78,7 +78,10 @@ Sum of N independent ON-OFF sources
 
 * Optimization problem requirements
 $G=(V, \,E)$ is the undirected city graph.
-A direct graph $G^\prime = (V, A)$ is induced on top of if, where $ij \in E \Rightarrow ij, ji \in A$.
+A direct graph $G^\prime = (V, A)$ is induced on top of if, where $(i,\,j) \in E \Rightarrow (i,\,j), (j,\,i) \in A$.
+
+Add node $r$ to $G^\prime$ and an arc $(r,\,i) ~ \forall i \in V,\, i \neq r$.
+NOTE $r$ is the only node without in-going edges.
 
 Each node is either a building or it is not.
 
@@ -88,10 +91,22 @@ Each node is either a building or it is not.
   \right\}
 \end{equation}
 
-Each node can have at most one entering arc (tree constraint).
+Limit the number of edges entering a note (root, terminal, tree conditions).
 
 \begin{equation}
-  \forall j \in V, \sum_{e \in \delta^-(j)} x_e \le 1
+  \sum_{e \in \delta^-(j)} x_e ~
+  \begin{dcases}
+    = 0 & j = r \\
+    = 1 & j \in T \\
+    \le 1 & \text{otherwise}
+  \end{dcases}
+\end{equation}
+
+There are no limits for number of outgoing edges for real nodes,
+but our artificial node *must* be part of the tree.
+
+\begin{equation}
+  \sum_{e \in \delta^+(r)} x_e > 0
 \end{equation}
 
 ** Objective function
