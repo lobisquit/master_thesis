@@ -172,6 +172,7 @@ Each building is connected to one of the trees.
 
 ** Counting root nodes
 Let $\delta_M$ be the maximum degree of the nodes in $G$.
+NOTE that by construction out-degree is equal to the in-degree and the original (undirected) one
 
 \begin{equation}
   r^\prime_j =

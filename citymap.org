@@ -496,6 +496,90 @@
      plt.close('all')
    #+END_SRC
 
+* Solve associated ILP problem
+  #+BEGIN_SRC python :noweb yes :var graph_path=graph_path :tangle scripts/citymap/10_ILP.py
+    <<imports_&_defaults>>
+
+    import cplex
+    from docplex.mp.model import Model
+
+    G = nx.read_gml(org_flatten(graph_path).replace('.json', '_complete.gml')).to_directed()
+
+    ####################
+    # Model parameters #
+    ####################
+    d_M = 100 # meters
+    n_M = 50  # users per DSLAM
+    delta_M = max([G.out_degree(node_id) for node_id in G.nodes])
+    ####################
+
+    m = Model(name='dslam')
+
+    X = {}
+    for source, target in G.edges:
+        if source not in X:
+            X[source] = {}
+
+        ## active edge indicator
+        edge_name = "{}->{}".format(source, target)
+        X[source][target] = m.binary_var(name=edge_name)
+
+    R = {}
+    D = {}
+    for node_id, data in G.nodes(data=True):
+        ## set distance counter
+        d = m.continuous_var(name="d_{}".format(node_id))
+        D[node_id] = d
+
+        ## domain conditions for distance
+        m.add_constraint(d >= 0)
+        m.add_constraint(d <= d_M)
+
+        ## active ingoing edges for each node
+        in_count = 0
+        for source, target in G.in_edges(node_id):
+            assert target == node_id
+
+            in_count += X[source][node_id]
+
+        ## terminal reachability
+        if data['population'] > 0:
+            m.add_constraint(in_count = 1)
+        else:
+            m.add_constraint(in_count <= 1)
+
+        ## zero distance for inactive nodes
+        m.add_constraint(d_j <= d_M * in_count)
+
+        ## active outgoing edges for each node
+        out_count = 0
+        for source, target in G.outedges(node_id):
+            assert target == node_id
+
+            outcount += X[source][node_id]
+
+        ## root node indicator
+        r = m.binary_var(name="d_{}".format(node_id))
+        R[node_id] = r
+        m.add_constraint(
+
+    # distance has to increment properly
+    for source, target, data in G.edges(data=True):
+            edge_name = "{}->{}".format(source, target)
+
+        m.add_constraint(
+            d[target] - d[source] <= edge_length + (d_M - edge_length) * (1 - X[source][target])
+        )
+
+        m.add_constraint(
+            d[target] - d[source] >= edge_length - (d_M + edge_length) * (1 - X[source][target])
+        )
+
+
+
+    for index, (source, target, data) in enumerate( G.edges(data=True) ):
+        pass
+  #+END_SRC
 * COMMENT Local variables
   # Local Variables:
   # eval: (add-hook 'before-save-hook (lambda () (indent-region (point-min) (point-max) nil)) t t)
