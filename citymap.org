@@ -505,12 +505,22 @@
 
     G = nx.read_gml(org_flatten(graph_path).replace('.json', '_complete.gml')).to_directed()
 
+    # add fake root node to G, with a zero-length arc for all the nodes
+    G.add_node('r', population=0)
+
+    for node_id in G.nodes:
+        G.add_edge('r', node_id, distance=0)
+
     ####################
     # Model parameters #
     ####################
     d_M = 100 # meters
     n_M = 50  # users per DSLAM
-    delta_M = max([G.out_degree(node_id) for node_id in G.nodes])
+
+    n_DSLAM_max = 1500
+    n_DSLAM_min = 1000
+
+    n_T = sum([data['population'] > 0 for _, data in G.nodes(data=True)])
     ####################
 
     m = Model(name='dslam')
@@ -521,10 +531,9 @@
             X[source] = {}
 
         ## active edge indicator
-        edge_name = "{}->{}".format(source, target)
-        X[source][target] = m.binary_var(name=edge_name)
+        var_name = "x_{}->{}".format(source, target)
+        X[source][target] = m.binary_var(name=var_name)
 
-    R = {}
     D = {}
     for node_id, data in G.nodes(data=True):
         ## set distance counter
@@ -542,31 +551,30 @@
 
             in_count += X[source][node_id]
 
-        ## terminal reachability
-        if data['population'] > 0:
+        ## tree conditions
+        if node_id == 'r':
+            m.add_constraint(in_count = 0)
+        elif data['population'] > 0:
+            # terminal nodes reachability
             m.add_constraint(in_count = 1)
         else:
             m.add_constraint(in_count <= 1)
 
         ## zero distance for inactive nodes
-        m.add_constraint(d_j <= d_M * in_count)
+        m.add_constraint(d <= d_M * in_count)
 
-        ## active outgoing edges for each node
-        out_count = 0
-        for source, target in G.outedges(node_id):
-            assert target == node_id
+    ## limit number of DSLAMs using artificial root node r
+    out_root_count = 0
+    for source, target in G.outedges('r'):
+        assert target == 'r'
 
-            outcount += X[source][node_id]
+        out_root_count += X[source]['r']
 
-        ## root node indicator
-        r = m.binary_var(name="d_{}".format(node_id))
-        R[node_id] = r
-        m.add_constraint(
+    m.add_constraint(out_root_count <= n_DSLAM_max)
+    m.add_constraint(out_root_count >= n_DSLAM_min)
 
-    # distance has to increment properly
+    ## distance increment
     for source, target, data in G.edges(data=True):
-            edge_name = "{}->{}".format(source, target)
-
         m.add_constraint(
             d[target] - d[source] <= edge_length + (d_M - edge_length) * (1 - X[source][target])
         )
@@ -574,6 +582,62 @@
         m.add_constraint(
             d[target] - d[source] >= edge_length - (d_M + edge_length) * (1 - X[source][target])
         )
+
+    ## number of leaves in each subtree
+    N = {}
+    for node_id, data in G.nodes(data=True):
+        # ignore root, only subtrees matter
+        if node_id == 'r':
+            continue
+
+        n = m.integer_var(name="n_{}".format(node_id))
+        N[node_id] = n
+
+        m.add_constraint(n >= 0)
+        m.add_constraint(n <= n_M)
+
+    N_prime = {}
+    for source, target in G.edges:
+        # ignore root, only subtrees matter
+        if source == 'r':
+            continue
+
+        if source not in N_prime:
+            N_prime[source] = {}
+
+        var_name = "n_prime_{}->{}".format(source, target)
+        N_prime[source][target] = m.integer_var(name=var_name)
+
+        # domain
+        m.add_constraint(N_prime[source][target] >= 0)
+        m.add_constraint(N_prime[source][target] <= N[target])
+
+        # relationship with n_j
+        m.add_constraint(
+            N_prime[source][target] <= X[source][target] * n_T
+        )
+        m.add_constraint(
+            N_prime[source][target] >= N[target] - (1 - X[source][target]) * n_T
+        )
+
+    ## propagate information on n for all non-terminal nodes
+    for node_id, data in G.nodes(data=True):
+        # ignore root, only subtrees matter
+        if node_id == 'r':
+            continue
+
+        if data['population'] > 0:
+            # TODO n should be proportional to population itself
+            # for terminal nodes
+            m.add_constraint(N[node_id] == 1)
+        else:
+            out_count = 0
+            for source, target in G.outedges(node_id):
+                assert target == node_id
+
+                out_count += X[source][target]
+
+            m.add_constraint(N[node_id] == out_count)
 
 
 
