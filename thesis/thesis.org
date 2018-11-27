@@ -81,6 +81,7 @@ LaTeX support for svg files sucks.
 #+END_EXPORT
 
 * Introduction
+#+BEGIN_SRC org :exports none
 + background: what are we talking about?
   - SDN => self-optimizing networks
   - flow balancing (TBF)
@@ -97,26 +98,27 @@ LaTeX support for svg files sucks.
   - 99% if the networks are very simple, meant to be more flow aggregators and less clever routers
   - SDN are not inherently good: /probably/ traditional solutions are good in 99% of the networks
   - SDN are relevant when the complexity of the network grows
-
+#+END_SRC
 * State of the art
 
 * Methodology
 In order to optimize the network, we need a schematic of it => educated guess
 
 ** Geographical analysis
-OpenStreetMap ~> roads + buildings graph: only methodological consideration
+#+BEGIN_SRC org :exports none
+  OpenStreetMap ~> roads + buildings graph: only methodological consideration
 
-+ cutting NRW maps with Aachen border
-+ selecting roads & buildings type
-+ ~s2g~ to obtain the graph ~> cite stuff using this approach
-  - road polygons to edges
-  - intersections as nodes
-+ adding building to the graph
-  - splitting roads
-  - population estimated based on district population, building area
-
+  + cutting NRW maps with Aachen border
+  + selecting roads & buildings type
+  + ~s2g~ to obtain the graph ~> cite stuff using this approach
+    - road polygons to edges
+    - intersections as nodes
+  + adding building to the graph
+    - splitting roads
+    - population estimated based on district population, building area
+#+END_SRC
 ** Network design
-#+BEGIN_SRC org :export none
+#+BEGIN_SRC org :exports none
   Using ILP to build the network
 
   - network requirements
