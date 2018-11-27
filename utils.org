@@ -168,7 +168,7 @@
     buildings_map.loc[buildings_map['TYPE'].isnull(), 'TYPE'] = "UNSET"
 
     # remove unwanted types, but keep UNSET ones
-    valid_types = list(np.array(valid_types).flatten()) # flatten Org table
+    valid_types = org_flatten(valid_types)
     buildings_map = buildings_map[buildings_map['TYPE'].isin(valid_types + ['UNSET'])]
 
     logger.info('buildings ok')
