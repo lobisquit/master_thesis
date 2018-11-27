@@ -1,6 +1,10 @@
 #+STARTUP: latexpreview
 #+STARTUP: indent
 #+LATEX_HEADER: \usepackage{mathtools}
+#+LATEX_HEADER: \usepackage{glossaries}
+#+latex_header_extra: \newacronym{pop}{PoP}{Point of Presence}
+#+latex_header_extra: \newacronym{dslam}{DSLAM}{Digital Subscriber Line Access Multiplexer}
+
 #+OPTIONS: toc:nil
 
 * ANALOGY Virtual Network Overlay as group of organizers of a fair
@@ -77,19 +81,75 @@ Sum of N independent ON-OFF sources
 - a single DSLAM can serve from 100 to 2000 people, with corresponding throughput required
 
 * Optimization problem requirements
-$G=(V, \,E)$ is the undirected city graph.
-A direct graph $G^\prime = (V, A)$ is induced on top of if, where $(i,\,j) \in E \Rightarrow (i,\,j), (j,\,i) \in A$.
+Previous pre-processing on Aachen city map allowed us to summarize all relevant information in an undirected graph $G=(V, \,E)$.
+In our case the streets, described with edges in $E$, connect buildings or street intersections, associated with vertices in $V$.
 
-Add node $r$ to $G^\prime$ and an arc $(r,\,i) ~ \forall i \in V,\, i \neq r$.
-NOTE $r$ is the only node without in-going edges.
+TODO buildings -> families relationship
 
-Each node is either a building or it is not.
+** General problem
+As can be found in literature and field best practices we perform an educated guess on city access network structure and properties.
+
+The network is shaped as a tree, with a single and unique path connecting the customers to the provider [[ac:pop][PoP]] along the internet backbone: each path passes through two kinds of intermediate nodes, first the [[acp:dslam][DSLAM]] and then a second level router whose main task is to aggregate all the traffic further and further.
+
+The access network is considered to be relatively modern, since the infrastructure has been renewed on the past years in conjuction with works on main city roads.
+That is the reason why we suppose all main links are fiber optic ones and can serve the customer with the state-of-the-art VDSL/VDSL2, while a fraction of last-mile legacy lines are still copper.
+The minor fraction of ADSL users can be correctly described though, in terms of available bandwidth, as VDSL connections at the same distance.
+
+TODO cite something about this numbers (apart from "best practices")
+Given these assumptions, each users is expected not to be farther than 1.5Km from the [[ac:dslam][DSLAM]], if VDSL is employed, and 2.5Km in the ADSL case, with the average distance being 250m, 700m respectively.
+
+TODO check most popular DSLAM models
+Each [[ac:dslam][DSLAM]] can handle from 12 to 48 VDSL2 ports, one per customer, whose traffic is forwarded to the second level router via two 1Gbps connections.
+These [[acp:pop][PoP]] have a much bigger number of ports, namely from 192 to 400, and are connected directly to the main frame, which is made of two or three backbone routers.
+
+** Layered proposed solution
+All previously mentioned [[acp:pop][PoP]] are arranged to form a layered tree structure, as in figure TODO.
+
+TODO drawing of multi-layered tree
+
+A first idea would be to find the optimal configuration for this structure, but we moved away from this approach for two main reasons.
+
+First, the resulting mathematical problem is very complex, resulting in long computation times.
+
+Second, the result would be unrealistic, far from the actual design practises.
+Apart from the [[acp:dslam][DSLAM]], each network component has to be placed in a suitable location, because of its size and energy consumption.
+Moreover the main links are preferred to be put on the main streets, since roadworks are more frequent in this case and manteinance and upgrades of the network are cheaper.
+
+These consideration lead us to envision a layered approach: first all [[acp:dslam][DSLAM]] location is optimally computed across the city and then the major network components are placed guiding the automatic procedure via some heuristics, such as the ones described earlier.
+
+** Placing DSLAMs
+In order to ease the mathematical description of the optimization problem, a direct graph $G^\prime = (V^\prime, A)$ is induced on top of if, as follows.
 
 \begin{equation}
-  T = \left\{
-    t \in V: t \text{ is a building}
-  \right\}
+  \begin{dcases}
+    V^\prime = V \cup \{r\} \\
+    A = \left\{ (i,\,j), (j,\,i) ~ \forall \{i, j\} \in E \right\} \cup
+        \left\{ (r,\,j) ~ \forall j \in V \right\}
+  \end{dcases}
 \end{equation}
+
+First each undirected edge in $E$ is doubled with the two corresponding directed arcs.
+Then an artificial node $r$ is added and connected to each of the nodes in the original vertex set $V$. This node will be forced to be the root of our network tree, resulting in a convenient constraint formulation.
+
+
+
+
+** Model parameters
+
+Each vertex $j \in V$ is assigned a required bandwidth $b_j$ the access network has to provide it: this allows the solver to discriminate the nodes between buildings and street intersections.
+
+Each arc $(i,\,j) \in A$ is assigned a length, in meters, given by the geographical distance between its endpoints.
+Artificial arcs $(r,\,j)$ do not correspond to physical connections and are given length 0.
+
+Our access network has to satisfy two main requirements.
+
+First the bandwidth that can be served by the DSLAMs is limited by $B_M$.
+This is an upper limit to the nunber of users each subtree can manage and has to be taken care writing the problem constrants.
+
+On the other hand, in order to guarantee a proper service to the user, DSLAMs have to be close enough to the customers, meaning the distance has to be at most $d_M$.
+
+
+
 
 Limit the number of edges entering a note (root, terminal, tree conditions).
 
