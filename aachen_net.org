@@ -176,7 +176,7 @@
    When creating the graph, remember ~OSM_ID~, in order to assign each building a proper edge.
 
    #+NAME: graph_path
-   - data/aachen_net/connected_roads.json
+   - data/aachen_net/aachen_graph.json
 
    #+BEGIN_SRC python :noweb yes :var valid_types=utils.org:valid_types :var graph_path=graph_path :tangle scripts/aachen_net/06_get_roads_graph.py
      <<imports_&_defaults>>
@@ -210,10 +210,10 @@
    Find the closest road on the map for each house, in order to set the house as a node on the road graph.
    This has to consider only roads in the major component of the city, not the unconnected ones.
 
-   #+NAME: closest_lines_path
-   - data/aachen_net/closest_lines.csv
+   #+NAME: closest_edges_path
+   - data/aachen_net/closest_edges.csv
 
-   #+BEGIN_SRC python :noweb yes :tangle scripts/aachen_net/07_get_closest_roads.py :var valid_types=utils.org:valid_types :var closest_lines_path=closest_lines_path :var graph_path=graph_path
+   #+BEGIN_SRC python :noweb yes :tangle scripts/aachen_net/07_get_closest_roads.py :var valid_types=utils.org:valid_types :var closest_edges_path=closest_edges_path :var graph_path=graph_path
      <<all_datasets>>
 
      # load graph
@@ -293,7 +293,7 @@
      closest_lines                  \
          .groupby('district_index') \
          .apply(split_population)   \
-         .to_csv(org_flatten(closest_lines_path),
+         .to_csv(org_flatten(closest_edges_path),
                  quoting=csv.QUOTE_NONNUMERIC,
                  index=None)
    #+END_SRC
@@ -306,7 +306,7 @@
    line is supposed to be payed by the customer from the road to the home,
    so there is no cost for the operator.
 
-   #+BEGIN_SRC python :noweb yes :var valid_types=utils.org:valid_types :var graph_path=graph_path :tangle scripts/aachen_net/08_add_buildings_to_graph.py :var closest_lines_path=closest_lines_path
+   #+BEGIN_SRC python :noweb yes :var valid_types=utils.org:valid_types :var graph_path=graph_path :tangle scripts/aachen_net/08_add_buildings_to_graph.py :var closest_edges_path=closest_edges_path
      <<all_datasets>>
 
      # read graph G
@@ -315,7 +315,7 @@
 
      G = json_graph.node_link_graph(js_graph)
 
-     closest_lines = pd.read_csv(org_flatten(closest_lines_path))
+     closest_lines = pd.read_csv(org_flatten(closest_edges_path))
 
      # add new nodes, corresponding to buildings
 
