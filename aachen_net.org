@@ -176,7 +176,7 @@
    When creating the graph, remember ~OSM_ID~, in order to assign each building a proper edge.
 
    #+NAME: graph_path
-   - data/aachen_net/aachen_graph.json
+   - data/aachen_net/aachen_graph_raw.json
 
    #+BEGIN_SRC python :noweb yes :var valid_types=utils.org:valid_types :var graph_path=graph_path :tangle scripts/aachen_net/06_get_roads_graph.py
      <<imports_&_defaults>>
@@ -439,7 +439,7 @@
              G.remove_edge(edge_data[0], edge_data[1])
              G.add_edge(int(edge_data[0]), int(edge_data[1]), **edge_data[2])
 
-     with open(org_flatten(graph_path).replace('.json', '_complete.json'), 'w') as output:
+     with open(org_flatten(graph_path).replace('_raw.json', '_complete.json'), 'w') as output:
          output.write(json.dumps(G))
    #+END_SRC
 
@@ -452,7 +452,7 @@
      <<districts>>
 
      # read graph G
-     with open(org_flatten(graph_path).replace('.json', '_complete.json')) as f:
+     with open(org_flatten(graph_path).replace('_raw.json', '_complete.json')) as f:
          js_graph = json.load(f)
 
      G = json_graph.node_link_graph(js_graph)
@@ -531,7 +531,7 @@
     import cplex
     from docplex.mp.model import Model
 
-    G = nx.read_gml(org_flatten(graph_path).replace('.json', '_complete.gml')).to_directed()
+    G = nx.read_gml(org_flatten(graph_path).replace('_raw.json', '_complete.gml')).to_directed()
 
     # add fake root node to G, with a zero-length arc for all the nodes
     G.add_node('r', population=0)
