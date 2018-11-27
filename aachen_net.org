@@ -439,7 +439,8 @@
              G.remove_edge(edge_data[0], edge_data[1])
              G.add_edge(int(edge_data[0]), int(edge_data[1]), **edge_data[2])
 
-     nx.write_gml(G, org_flatten(graph_path).replace('.json', '_complete.gml'))
+     with open(org_flatten(graph_path).replace('.json', '_complete.json'), 'w') as output:
+         output.write(json.dumps(G))
    #+END_SRC
 
 ** Plot obtained graph on the map
