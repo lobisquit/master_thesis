@@ -240,11 +240,14 @@
          edge = lines_.geometry.distance(building.geometry).idxmin()
          line = lines_.loc[[edge]].geometry.values[0]
 
-         # gather population density of the building location
-         district_density = 0 # building center is actually outside Aachen
-         for _, district_row in district_map.iterrows():
+         district_index = -1
+         for index, district_row in district_map.iterrows():
              if building.geometry.centroid.within(district_row.geometry):
-                 district_density = district_row.density
+                 district_index = index
+
+         # avoid adding buildings which center is outside the city
+         if district_index == -1:
+             return
 
          # print(building.geometry.to_wkt())
          _, proj_point = nearest_points(building.geometry, line)
@@ -257,7 +260,8 @@
              # location of new node
              'new_point': proj_point,
              # weight of new node
-             'population': building.geometry.area * district_density
+             'area': building.geometry.area,
+             'district_index': district_index
          })
 
      # filter them
@@ -266,9 +270,32 @@
          axis=1
      )
 
-     closest_lines.to_csv(org_flatten(closest_lines_path),
-                          quoting=csv.QUOTE_NONNUMERIC,
-                          index=None)
+     # split evenly the population across all district buildings
+     def split_population(group):
+         total_area = group.area.sum()
+
+         # collect number of people per building
+         pops = []
+         for _, row in group.iterrows():
+             district_id = row.district_index
+             district_pop = district_map.loc[district_id].population
+
+             # make proportion
+             pops.append(row.area / total_area * district_pop)
+
+         group['population'] = pops
+         del group['area']
+         del group['district_index']
+
+         return group
+
+     # assigned each building an estimation of its number of inhabitants
+     closest_lines                  \
+         .groupby('district_index') \
+         .apply(split_population)   \
+         .to_csv(org_flatten(closest_lines_path),
+                 quoting=csv.QUOTE_NONNUMERIC,
+                 index=None)
    #+END_SRC
 
 ** Project each building on its road
