@@ -1,22 +1,24 @@
+#+STARTUP: latexpreview
 #+STARTUP: indent
 #+OPTIONS: toc:nil title:nil
 
 #+LaTeX_CLASS: book
 #+LATEX_HEADER: \setlength{\parindent}{0pt}
 #+LATEX_HEADER: \usepackage{charter}
-#+LATEX_HEADER: \usepackage{svg}
 #+LATEX_HEADER: \usepackage{subcaption}
-#+LATEX_HEADER: \usepackage[showframe]{geometry}
+#+LATEX_HEADER: \usepackage{geometry}
 #+LATEX_HEADER: \usepackage{etoolbox}
 #+LATEX_HEADER: \usepackage{multirow}
 #+LATEX_HEADER: \usepackage{graphicx}
 #+LATEX_HEADER: \graphicspath{{../figures/}}
+#+LATEX_HEADER: \usepackage{mathtools}
 
 #+LATEX_HEADER: \providetoggle{images_titlepage}
 #+LATEX_HEADER: \settoggle{images_titlepage}{true}
 
 #+BEGIN_COMMENT
-Download all needed files for titlepage.
+Download all needed files for titlepage and convert them.
+LaTeX support for svg files sucks.
 #+END_COMMENT
 
 #+BEGIN_SRC bash :exports none :results none
@@ -79,33 +81,89 @@ Download all needed files for titlepage.
 #+END_EXPORT
 
 * Introduction
-  #+BEGIN_COMMENT
-  + background: what are we talking about?
++ background: what are we talking about?
   - SDN => self-optimizing networks
   - flow balancing (TBF)
   - routing adaptation
-  #+END_COMMENT
 
-  #+BEGIN_COMMENT
-  + what they do now?
++ what they do now?
   - summary of state of the art, /basically/
-  #+END_COMMENT
 
-  #+BEGIN_COMMENT
-  + shortcomings in current knowledge / solutions
++ shortcomings in current knowledge / solutions
   - limits of SDN over traditional networks: lack of negative results
   - use of abstract topologies ~> this one is obtained through optimization process
-  #+END_COMMENT
 
-  #+BEGIN_COMMENT
-  + what are we gonna prove?
++ what are we gonna prove?
   - 99% if the networks are very simple, meant to be more flow aggregators and less clever routers
   - SDN are not inherently good: /probably/ traditional solutions are good in 99% of the networks
   - SDN are relevant when the complexity of the network grows
-  #+END_COMMENT
 
 * State of the art
 
 * Methodology
+In order to optimize the network, we need a schematic of it => educated guess
+
+** Geographical analysis
+OpenStreetMap ~> roads + buildings graph: only methodological consideration
+
++ cutting NRW maps with Aachen border
++ selecting roads & buildings type
++ ~s2g~ to obtain the graph ~> cite stuff using this approach
+  - road polygons to edges
+  - intersections as nodes
++ adding building to the graph
+  - splitting roads
+  - population estimated based on district population, building area
+
+** Network design
+#+BEGIN_SRC org :export none
+  Using ILP to build the network
+
+  - network requirements
+    + ISP recommendations
+    + best practices (CISCO, ...)
+  - actual solution we are trying to find
+    + optimal DSLAM positioning
+    + optimal + heuristic check for routers and mainframe positions (restrict root nodes?)
+
+  - why ILP? how does it work? (brief)
+  - problem definition
+    + idea for the model: Steiner tree + other constraints (cite requirements)
+    + actual equations
+  - problem complexity: number of variables, constraints (in theory)
+#+END_SRC
+
+Previous pre-processing on Aachen city map allowed us to summarize in an undirected graph $G=(V, \,E)$ all relevant information about the streets topology, buildings and estimated number of users.
+
+As specified earlier, each node $i$ is assigned a number of users $u_i$ to serve, which is zero if the node is just a street intersection.
+Given that they represent a physical line, edges are given a length value $l_e$, that will be used later to evaluate the access network building cost.
+
+In this chapter we will exploit this information to assess the size of the
+** Flow balancing optimization
+TODO using machine learning to control TBFs
 
 * Results
+** Geographical analysis
++ maps details (whatever): maps only here?
++ graph details
+  - number of nodes (building & others)
+  - number of edges
+  - degree distribution
+  - average node distance, population
+  - ... anything basically ...
+
+** Network design
+ILP results
+
+- CPLEX performance on the problem
+  + computational time
+  + number of branches
+  + (ask Massimo in case)
+- show found solution for network
+  + analyze performance of found solution (bandwidth, ...)
+  + consideration on actual used heuristics
+
+* COMMENT Local variables
+# Local Variables:
+# eval: (add-hook 'after-save-hook 'org-render-latex-fragments t t)
+# End:
