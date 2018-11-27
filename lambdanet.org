@@ -11,19 +11,19 @@
    http://biogeo.ucdavis.edu/data/diva/adm/DEU_adm.zip
 
    #+BEGIN_SRC bash :var lambdanet=lambdanet :var germany_states=germany_states :results none
-     mkdir -p data/topology/
+     mkdir -p data/lambdanet/
 
      # download
-     wget $lambdanet -O data/topology/lambdanet.graphml
-     wget $germany_states -O data/topology/germany_states.zip
+     wget $lambdanet -O data/lambdanet/lambdanet.graphml
+     wget $germany_states -O data/lambdanet/germany_states.zip
 
-     unzip -o data/topology/germany_states.zip -d data/topology/
+     unzip -o data/lambdanet/germany_states.zip -d data/lambdanet/
 
      # adm1 corresponds to the states
-     mv data/topology/DEU_adm1.shp data/topology/germany_states.shp
-     mv data/topology/DEU_adm1.shx data/topology/germany_states.shx
-     mv data/topology/DEU_adm1.dbf data/topology/germany_states.dbf
-     mv data/topology/DEU_adm1.prj data/topology/germany_states.prj
+     mv data/lambdanet/DEU_adm1.shp data/lambdanet/germany_states.shp
+     mv data/lambdanet/DEU_adm1.shx data/lambdanet/germany_states.shx
+     mv data/lambdanet/DEU_adm1.dbf data/lambdanet/germany_states.dbf
+     mv data/lambdanet/DEU_adm1.prj data/lambdanet/germany_states.prj
    #+END_SRC
 
 ** Generate plot
@@ -65,7 +65,7 @@
      <<init>>
      <<matplotlib_defaults>>
 
-     path = "data/topology/lambdanet.graphml"
+     path = "data/lambdanet/lambdanet.graphml"
 
      G = read_graphml(path)
 
@@ -151,7 +151,7 @@
      edges_df = edges_df.to_crs(projection.srs)
 
      # use geographical map of germany, as reference
-     states = gpd.read_file('data/topology/germany_states.shp')
+     states = gpd.read_file('data/lambdanet/germany_states.shp')
      states.crs = {'init' :'epsg:4326'} # long-lat projection
      states = states.to_crs(projection.srs)
 

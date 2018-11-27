@@ -1,0 +1,4 @@
+NRW_buildings.*
+NRW_roads.*
+*.zip
+postgres/

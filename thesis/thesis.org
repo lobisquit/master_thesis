@@ -1,3 +1,6 @@
+#+STARTUP: indent
+#+OPTIONS: toc:nil title:nil
+
 #+LaTeX_CLASS: book
 #+LATEX_HEADER: \setlength{\parindent}{0pt}
 #+LATEX_HEADER: \usepackage{charter}
@@ -6,11 +9,11 @@
 #+LATEX_HEADER: \usepackage[showframe]{geometry}
 #+LATEX_HEADER: \usepackage{etoolbox}
 #+LATEX_HEADER: \usepackage{multirow}
+#+LATEX_HEADER: \usepackage{graphicx}
+#+LATEX_HEADER: \graphicspath{{../figures/}}
 
 #+LATEX_HEADER: \providetoggle{images_titlepage}
 #+LATEX_HEADER: \settoggle{images_titlepage}{true}
-
-#+OPTIONS: toc:nil title:nil
 
 #+BEGIN_COMMENT
 Download all needed files for titlepage.
@@ -18,10 +21,14 @@ Download all needed files for titlepage.
 
 #+BEGIN_SRC bash :exports none :results none
   wget https://upload.wikimedia.org/wikipedia/it/5/53/Logo_Universit%C3%A0_Padova.svg \
-       -O figures/logo_unipd.svg
+       -O ../figures/logo_unipd.svg
+
+  inkscape ../figures/logo_unipd.svg --export-pdf=../figures/logo_unipd.pdf
 
   wget https://upload.wikimedia.org/wikipedia/commons/1/11/RWTH_Logo.svg \
-       -O figures/logo_rwth.svg
+       -O ../figures/logo_rwth.svg
+
+  inkscape ../figures/logo_rwth.svg --export-pdf=../figures/logo_rwth.pdf
 #+END_SRC
 
 #+BEGIN_EXPORT latex
@@ -37,16 +44,16 @@ Download all needed files for titlepage.
     \vspace{1cm}
     {\Large \textsl{Master degree in Telecommunication Engineering}} \\
     \vspace{1cm}
-    {\scshape\huge TODO: Title} \\
+    {\scshape\huge TODO: Title}
 
     \iftoggle{images_titlepage}{
-      \vspace{1cm} \\
+      \vspace{1cm}
       \begin{figure}[h]
         \centering
-        \includesvg[height=4cm]{figures/logo_unipd.svg}
+        \includegraphics[height=5cm]{logo_unipd.pdf}
         \vspace{1cm} \\
-        \includesvg[height=1.5cm]{figures/logo_rwth.svg}
-        \vspace{1cm} \\
+        \includegraphics[height=2cm]{logo_rwth.pdf}
+        \vspace{1cm}
       \end{figure}
     }
 
@@ -61,7 +68,7 @@ Download all needed files for titlepage.
     \large \textsl{External supervisors} & \hspace{5mm} \large Prof. Petri Mähönen  \\
                                          & \hspace{5mm} \large Dr. Ljiljana Simić   \\
   \end{tabular}
-  \vspace{1.5cm}
+  \vspace{1cm}
 
   \hfill{\large February 6, 2019} \vspace{3mm}
 

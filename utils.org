@@ -25,7 +25,7 @@
     from shapely.geometry.polygon import Polygon
     from shapely.ops import cascaded_union, nearest_points
 
-    logger = logging.getLogger('citymap.org')
+    logger = logging.getLogger('aachen_net.org')
     logger.setLevel(logging.INFO)
 
     logger.info('import ok')
@@ -72,7 +72,7 @@
 
   #+NAME: districts
   #+BEGIN_SRC python
-    district_map = gpd.read_file("data/citymap/aachen_district_map.shp")
+    district_map = gpd.read_file("data/aachen_net/aachen_district_map.shp")
     del district_map['FLäcHE'] # whole zero column
 
     logger.info('districts ok')
@@ -84,11 +84,11 @@
 
   #+NAME: projection
   #+BEGIN_SRC python
-    prj_string_file = Path("data/citymap/aachen_district_map_prj.txt")
+    prj_string_file = Path("data/aachen_net/aachen_district_map_prj.txt")
     if not prj_string_file.is_file():
         import osr # troublesome to install in cluster
 
-        prj_content = open('data/citymap/aachen_district_map.prj', 'r').read()
+        prj_content = open('data/aachen_net/aachen_district_map.prj', 'r').read()
         srs = osr.SpatialReference()
         srs.ImportFromWkt(prj_content)
 
@@ -105,7 +105,7 @@
 
   #+NAME: population
   #+BEGIN_SRC python
-    district_population = pd.read_csv("data/citymap/20170630_population_density.csv")
+    district_population = pd.read_csv("data/aachen_net/20170630_population_density.csv")
     district_population.columns = ['STATBEZ', 'PERS']
 
     # join using index
@@ -147,7 +147,7 @@
 
   #+NAME: roads
   #+BEGIN_SRC python
-    roads_path = "data/citymap/aachen_roads.shp"
+    roads_path = "data/aachen_net/aachen_roads.shp"
     roads_map = gpd.read_file(roads_path)
     roads_map.OSM_ID = pd.to_numeric(roads_map.OSM_ID)
     roads_map.crs = {'init': 'epsg:4326'}
@@ -158,7 +158,7 @@
 
   #+NAME: buildings
   #+BEGIN_SRC python
-    buildings_path = "data/citymap/aachen_buildings.shp"
+    buildings_path = "data/aachen_net/aachen_buildings.shp"
     buildings_map = gpd.read_file(buildings_path)
     buildings_map.OSM_ID = pd.to_numeric(buildings_map.OSM_ID)
     buildings_map.crs = {'init': 'epsg:4326'}
@@ -188,7 +188,7 @@
   Here comes an handy job file for cluster execution.
   Just replace the script with the one you want to run.
 
-  #+BEGIN_SRC bash :tangle scripts/citymap.job
+  #+BEGIN_SRC bash :tangle scripts/aachen_net.job
     #!/bin/bash
 
     # create ouput files in job directory
@@ -198,7 +198,7 @@
     cd /home/lovisott/master_thesis/
 
     source venv/bin/activate
-    GDAL_DATA=/home/lovisott/gdal python scripts/citymap/7_get_closest_roads.py
+    GDAL_DATA=/home/lovisott/gdal python scripts/aachen_net/07_get_closest_roads.py
   #+END_SRC
 
 * COMMENT Local variables

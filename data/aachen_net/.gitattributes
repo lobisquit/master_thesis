@@ -1,0 +1,4 @@
+aachen_buildings.* filter=lfs diff=lfs merge=lfs -text linguist-vendored
+aachen_roads.* filter=lfs diff=lfs merge=lfs -text linguist-vendored
+aachen_district_map.* filter=lfs diff=lfs merge=lfs -text linguist-vendored
+20170630_population_density.csv filter=lfs diff=lfs merge=lfs -text linguist-vendored
