@@ -131,7 +131,7 @@
 ** Plot the map
    Create final plot, with roads as well as population density.
 
-   #+BEGIN_SRC python :results none :noweb yes :tangle scripts/aachen_net/05_plot_map.py :var valid_types=utils.org:valid_types
+   #+BEGIN_SRC python :results none :noweb yes :tangle scripts/aachen_net/05_plot_map.py :var valid_types=flatten(utils.org:valid_types)
      <<all_datasets>>
 
      fig = plt.figure(figsize=(6, 6), frameon=False)
@@ -178,7 +178,7 @@
    #+NAME: graph_path
    - data/aachen_net/aachen_graph_raw.json
 
-   #+BEGIN_SRC python :noweb yes :var valid_types=utils.org:valid_types :var graph_path=graph_path :tangle scripts/aachen_net/06_get_roads_graph.py
+   #+BEGIN_SRC python :noweb yes :var valid_types=flatten(utils.org:valid_types) :var graph_path=flatten(graph_path) :tangle scripts/aachen_net/06_get_roads_graph.py
      <<imports_&_defaults>>
      <<projection>>
      <<roads>>
@@ -202,7 +202,7 @@
          if edge in edge_osm_id_map:
              G[edge[0]][edge[1]]['OSM_ID'] = edge_osm_id_map[edge]
 
-     with open(org_flatten(graph_path), 'w') as output:
+     with open(graph_path, 'w') as output:
          output.write(json.dumps(G))
    #+END_SRC
 
@@ -213,11 +213,11 @@
    #+NAME: closest_edges_path
    - data/aachen_net/closest_edges.csv
 
-   #+BEGIN_SRC python :noweb yes :tangle scripts/aachen_net/07_get_closest_roads.py :var valid_types=utils.org:valid_types :var closest_edges_path=closest_edges_path :var graph_path=graph_path
+   #+BEGIN_SRC python :noweb yes :tangle scripts/aachen_net/07_get_closest_roads.py :var valid_types=flatten(utils.org:valid_types) :var closest_edges_path=flatten(closest_edges_path) :var graph_path=flatten(graph_path)
      <<all_datasets>>
 
      # load graph
-     with open(org_flatten(graph_path)) as f:
+     with open(graph_path) as f:
          js_graph = json.load(f)
 
      G = json_graph.node_link_graph(js_graph)
@@ -293,7 +293,7 @@
      closest_lines                  \
          .groupby('district_index') \
          .apply(split_population)   \
-         .to_csv(org_flatten(closest_edges_path),
+         .to_csv(closest_edges_path,
                  quoting=csv.QUOTE_NONNUMERIC,
                  index=None)
 
@@ -308,16 +308,16 @@
    line is supposed to be payed by the customer from the road to the home,
    so there is no cost for the operator.
 
-   #+BEGIN_SRC python :noweb yes :var valid_types=utils.org:valid_types :var graph_path=graph_path :tangle scripts/aachen_net/08_add_buildings_to_graph.py :var closest_edges_path=closest_edges_path
+   #+BEGIN_SRC python :noweb yes :var valid_types=flatten(utils.org:valid_types) :var graph_path=flatten(graph_path) :tangle scripts/aachen_net/08_add_buildings_to_graph.py :var closest_edges_path=flatten(closest_edges_path)
      <<all_datasets>>
 
      # read graph G
-     with open(org_flatten(graph_path)) as f:
+     with open(graph_path) as f:
          js_graph = json.load(f)
 
      G = json_graph.node_link_graph(js_graph)
 
-     closest_lines = pd.read_csv(org_flatten(closest_edges_path))
+     closest_lines = pd.read_csv(closest_edges_path)
 
      # add new nodes, corresponding to buildings
 
@@ -444,20 +444,20 @@
              G.remove_edge(edge_data[0], edge_data[1])
              G.add_edge(int(edge_data[0]), int(edge_data[1]), **edge_data[2])
 
-     with open(org_flatten(graph_path).replace('_raw.json', '_complete.json'), 'w') as output:
+     with open(graph_path.replace('_raw.json', '_complete.json'), 'w') as output:
          output.write(json.dumps(G))
    #+END_SRC
 
 ** Plot obtained graph on the map
    Plot final graph on top of district map.
 
-   #+BEGIN_SRC python :noweb yes :var valid_types=utils.org:valid_types :var graph_path=graph_path :tangle scripts/aachen_net/09_plot_city_graph.py
+   #+BEGIN_SRC python :noweb yes :var valid_types=flatten(utils.org:valid_types) :var graph_path=flatten(graph_path) :tangle scripts/aachen_net/09_plot_city_graph.py
      <<imports_&_defaults>>
      <<projection>>
      <<districts>>
 
      # read graph G
-     with open(org_flatten(graph_path).replace('_raw.json', '_complete.json')) as f:
+     with open(graph_path.replace('_raw.json', '_complete.json')) as f:
          js_graph = json.load(f)
 
      G = json_graph.node_link_graph(js_graph)
@@ -530,13 +530,13 @@
    #+END_SRC
 
 * Solve associated ILP problem
-  #+BEGIN_SRC python :noweb yes :var graph_path=graph_path :tangle scripts/aachen_net/10_ILP.py
+  #+BEGIN_SRC python :noweb yes :var graph_path=flatten(graph_path) :tangle scripts/aachen_net/10_ILP.py
     <<imports_&_defaults>>
 
     import cplex
     from docplex.mp.model import Model
 
-    G = nx.read_gml(org_flatten(graph_path).replace('_raw.json', '_complete.gml')).to_directed()
+    G = nx.read_gml(graph_path.replace('_raw.json', '_complete.gml')).to_directed()
 
     # add fake root node to G, with a zero-length arc for all the nodes
     G.add_node('r', population=0)
@@ -677,8 +677,10 @@
     for index, (source, target, data) in enumerate( G.edges(data=True) ):
         pass
   #+END_SRC
+
 * COMMENT Local variables
   # Local Variables:
+  # org-confirm-babel-evaluate: nil
   # eval: (add-hook 'before-save-hook (lambda () (indent-region (point-min) (point-max) nil)) t t)
   # eval: (add-hook 'org-babel-pre-tangle-hook (lambda () (org-babel-lob-ingest "utils.org")) t t)
   # End:

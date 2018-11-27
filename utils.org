@@ -45,26 +45,19 @@
     logger.info('matplotlib ok')
   #+END_SRC
 
-  Useful function to flatten org tables in ~python~ lists of strings or single string.
-  #+NAME: org_flatten
-  #+BEGIN_SRC python
-    def org_flatten(org_variable):
-        flat_list = list(np.array(org_variable).flatten())
-
-        if len(flat_list) == 1:
-            return flat_list[0]
-        else:
-            return flat_list
-
-    logger.info('org flatten ok')
-  #+END_SRC
-
-
   #+NAME: imports_&_defaults
   #+BEGIN_SRC python :noweb yes
     <<imports>>
     <<matplotlib_defaults>>
-    <<org_flatten>>
+  #+END_SRC
+
+  Flatten ~org~ tables in lists of strings or single string.
+  #+NAME: flatten
+  #+BEGIN_SRC elisp :var listlike='()
+    (let ((flattened-list (-flatten listlike)))
+      (if (= 1 (length flattened-list))
+          (car flattened-list)
+        flattened-list))
   #+END_SRC
 
 * Datasets reading routines
@@ -168,14 +161,13 @@
     buildings_map.loc[buildings_map['TYPE'].isnull(), 'TYPE'] = "UNSET"
 
     # remove unwanted types, but keep UNSET ones
-    valid_types = org_flatten(valid_types)
     buildings_map = buildings_map[buildings_map['TYPE'].isin(valid_types + ['UNSET'])]
 
     logger.info('buildings ok')
   #+END_SRC
 
   #+NAME: all_datasets
-  #+BEGIN_SRC python :noweb yes :var valid_types=valid_types
+  #+BEGIN_SRC python :noweb yes :var valid_types=flatten(valid_types)
     <<imports_&_defaults>>
     <<projection>>
     <<districts>>
