@@ -264,26 +264,26 @@
              'district_index': district_index
          })
 
+     logger.info("Begin nearest road application")
+
      # filter them
      closest_lines = buildings_map.apply(
          lambda row: nearest_line(row, lines),
          axis=1
      )
 
+     logger.info("End nearest road application")
+     logger.info("Begin population assignment")
+
      # split evenly the population across all district buildings
      def split_population(group):
-         total_area = group.area.sum()
+         # retrieve current district total population (same for all the group)
+         district_id = group.district_index.iloc[0]
+         district_population = district_map.loc[district_id].population
 
-         # collect number of people per building
-         pops = []
-         for _, row in group.iterrows():
-             district_id = row.district_index
-             district_pop = district_map.loc[district_id].population
+         # make proportion
+         group['population'] = group.area / group.area.sum() * district_population
 
-             # make proportion
-             pops.append(row.area / total_area * district_pop)
-
-         group['population'] = pops
          del group['area']
          del group['district_index']
 
@@ -296,6 +296,8 @@
          .to_csv(org_flatten(closest_edges_path),
                  quoting=csv.QUOTE_NONNUMERIC,
                  index=None)
+
+     logger.info("End population assignment")
    #+END_SRC
 
 ** Project each building on its road
@@ -328,7 +330,10 @@
          # collect new point information
          new_points = []
          for _, row in group.iterrows():
-             print("Added building {}/{}".format(current_number, len(closest_lines)), end="\r")
+             print("Added building {}/{}".format(current_number,
+                                                 len(closest_lines)),
+                   end="\r")
+
              current_number += 1
 
              proj_new_point = wkt.loads(row.new_point)
