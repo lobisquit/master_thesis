@@ -1,6 +1,6 @@
 #+STARTUP: latexpreview
-#+STARTUP: indent
 #+LATEX_HEADER: \usepackage{mathtools}
+#+STARTUP: indent
 #+LATEX_HEADER: \usepackage{glossaries}
 #+latex_header_extra: \newacronym{pop}{PoP}{Point of Presence}
 #+latex_header_extra: \newacronym{dslam}{DSLAM}{Digital Subscriber Line Access Multiplexer}
@@ -83,8 +83,6 @@ Sum of N independent ON-OFF sources
 * Optimization problem requirements
 Previous pre-processing on Aachen city map allowed us to summarize all relevant information in an undirected graph $G=(V, \,E)$.
 In our case the streets, described with edges in $E$, connect buildings or street intersections, associated with vertices in $V$.
-
-TODO buildings -> families relationship
 
 ** General problem
 As can be found in literature and field best practices we perform an educated guess on city access network structure and properties.
@@ -245,68 +243,20 @@ Each building is connected to one of the trees.
   \sum_{e \in \delta^-(t)} x_e = 1
 \end{equation}
 
-** Counting root nodes
-Let $\delta_M$ be the maximum degree of the nodes in $G$.
-NOTE that by construction out-degree is equal to the in-degree and the original (undirected) one
-
-\begin{equation}
-  r^\prime_j =
-  \frac{1}{\delta_M}
-  \underbrace{ \left( \sum_{e \in \delta^+(j)} x_e \right) }_A -
-  \underbrace{ \sum_{e \in \delta^-(j)} x_e }_B
-\end{equation}
-
-Note that $A \in \{0, \, \cdots, \, \delta_M\}$, $B \in \{0, \, 1\}$, so
-
-\begin{equation}
-  r^\prime_j ~ \begin{dcases}
-    \in (0, 1] & j \text{ is root of its tree} \\
-    = 0 & j \text{ is not part of any tree} \\
-    < 0 & j \text{ is not the root of its tree} \\
-  \end{dcases} \\
-\end{equation}
-
-Given this metric, $r_j$ is an indicator of the node $j$ being root or not.
-$r^\prime_j \le 0 \wedge r_j = 1$ is "discouraged" by objective function.
-
-# TODO check if another constraint is needed here with "<=", just to be sure
-
-\begin{equation}
-  \begin{dcases}
-    r_j \ge r^\prime_j \\
-    r_j \in \{0, 1\}
-  \end{dcases}
-\end{equation}
-
-\begin{equation}
-  r_j =
-  \begin{dcases}
-    1 & j \text{ is root of its tree} \\
-    0 & j \text{ otherwise} \\
-  \end{dcases}
-\end{equation}
-
 ** Counting terminals per tree
-Let $n_e$ the number of users (terminals) served by edge $e$ and $n_M$ the possible
-number of user served by each DSLAM.
-$p_i$ is the number of users at terminal $i$.
-
-\begin{equation}
-  \forall t \in T, \sum_{e \in \delta^-(t)} n_e = p_i
-\end{equation}
-
-$n_e$ is different from 0 only if arc is active.
-Artificial arcs from root $r$ to first-level nodes are virtual, thus unlimited.
+Let $n_e$ the number of users (terminals) served by edge $e$ and $n_M$ the
+maximum possible number of user served by each DSLAM.
 
 \begin{equation}
   \forall e \notin \delta^+(r),\, 0 \le n_e \le x_e \, n_M
 \end{equation}
 
 $n_e$ value must propagate from terminals to the first level nodes.
-NOTE that root is artificial and can handle unlimited number of users
+
+$p_i$ is the number of users at terminal $i$: flux is unbalanced only for terminal nodes (and artificial root $r$).
 
 \begin{equation}
-  \forall j \neq r, \sum_{e \in \delta^-(j)} n_e = \sum_{e \in \delta^+(j)} n_e
+  \forall j \neq r, \sum_{e \in \delta^+(j)} n_e = p_i + \sum_{e \in \delta^-(j)} n_e
 \end{equation}
 
 
