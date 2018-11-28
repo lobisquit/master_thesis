@@ -518,9 +518,9 @@
      plt.axis('off')
 
      # cut a window for better visualization
-     ax.set_xlim(292461, 298772)
-     ax.set_ylim(5625000, 5630000)
-     plt.tight_layout(rect=[-0.1, 0, 1, 1])
+     ax.set_xlim(294133, 294804)
+     ax.set_ylim(5628460, 5628980)
+     plt.tight_layout(rect=[-0.05, 0, 1.02, 1])
 
      # plt.show()
 
