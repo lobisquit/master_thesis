@@ -615,8 +615,8 @@ Given this setup our optimization problem can be written as
 
 The problem is set to minimize an objective function, autoref:eq:obj_function, that
 sums up the cost of copper and optical fiber lines, the roadworks cost for
-installing them and the total price of the root nodes unit, either [[acp:dslam][DSLAM]] or
-routers.
+installing them and the total price of the root nodes unit, [[acp:dslam][DSLAM]] or
+routers in our case.
 
 The resulting network, given by $x_e$ variables, is set to be a tree touching
 all the terminals in autoref:eq:tree_conditions and autoref:eq:terminal_reachability.
@@ -625,7 +625,21 @@ the tree, but can only be its root because it has no in-going arcs, by
 construction.
 
 The next equations deal with the variables $d_j$, distance from the tree root.
+In autoref:eq:distance_upper_limit, distance is limited by $d_M$ if the node is
+part of a tree, otherwise it is forced to zero.
+Conditions autoref:eq:distance_progression_1 and
+[[autoref:eq:distance_progression_2]] guarantee the consistency of distance measure
+between two connected nodes, forcing target node distance to be the source one
+plus the link length.
 
+The last needed metric for limiting the possible solutions is the number of
+users at the terminal each root node can handle, $n_M$.
+First, this upper limit for $n_e$ is set in autoref:eq:n_terminals_upper_limit
+such that this has to hold only for active edges.
+The count of the users from leaves to each sub-root is ensured by
+autoref:eq:n_terminals_progression, which is basically a flow-conservation clause.
+
+Finally, variables domains is specified in autoref:eq:var_domain_1 and autoref:eq:var_domain_2.
 
 ** Flow balancing optimization
 TODO using machine learning to control TBFs
