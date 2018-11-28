@@ -15,6 +15,9 @@
 #+LATEX_HEADER: \usepackage{graphicx}
 #+LATEX_HEADER: \graphicspath{{../figures/}}
 #+LATEX_HEADER: \usepackage{mathtools}
+#+LaTeX_HEADER: \usepackage{booktabs}
+#+LaTeX_HEADER: \usepackage{amsmath}
+#+LaTeX_HEADER: \def\equationautorefname#1#2\null{(#2\null)}
 
 #+LATEX_HEADER: \providetoggle{images_titlepage}
 #+LATEX_HEADER: \settoggle{images_titlepage}{true}
@@ -22,6 +25,11 @@
 #+LATEX_HEADER: \usepackage{glossaries}
 #+LATEX_HEADER_EXTRA: \newacronym{pop}{PoP}{Point of Presence}
 #+LATEX_HEADER_EXTRA: \newacronym{dslam}{DSLAM}{Digital Subscriber Line Access Multiplexer}
+#+latex_header_extra: \newacronym{qos}{QoS}{Quality of Service}
+
+#+BEGIN_COMMENT
+PlantUML skin, reusable for all diagrams
+#+END_COMMENT
 
 #+NAME: plantuml_skin
 #+BEGIN_SRC plantuml :exports none
@@ -77,6 +85,12 @@
   }
 
   skinparam Queue {
+  BackgroundColor white
+  BorderColor     black
+  FontColor       black
+  }
+
+  skinparam Usecase {
   BackgroundColor white
   BorderColor     black
   FontColor       black
@@ -194,7 +208,6 @@ In order to optimize the network, we need a schematic of it => educated guess
   - actual solution we are trying to find
     + optimal DSLAM positioning
     + optimal + heuristic check for routers and mainframe positions (restrict root nodes?)
-
   - why ILP? how does it work? (brief)
   - problem definition
     + idea for the model: Steiner tree + other constraints (cite requirements)
@@ -210,10 +223,9 @@ Given that they represent a physical line, edges are given instead a length valu
 In this chapter we will exploit this information to find the optimal network configuration, given some assumptions and requirements derived from best practices in access network design.
 
 TODO cite CISCO
+*** Topology considerations
 
-The network is shaped as a tree, with a single and path from the customers to the provider [[ac:pop][PoP]], which is directly connected to the internet backbone.
-
-#+BEGIN_SRC plantuml :file ../figures/layers_diagram.eps :noweb yes
+#+BEGIN_SRC plantuml :file ../figures/network_tree.eps :noweb yes
   <<plantuml_skin>>
   skinparam nodesep 10
 
@@ -314,22 +326,306 @@ The network is shaped as a tree, with a single and path from the customers to th
 #+END_SRC
 
 #+LABEL: fig:stack_diagram
-#+CAPTION: A tree access network connects users (circles) to the Internet backbone
+#+CAPTION: A layered tree access network connects users (circles) to the Internet backbone
 #+ATTR_LATEX: :height 3.5in
-#+RESULTS[273dc4462f9de8b168511e461fcac2bc4b7dc898]:
-[[file:../figures/layers_diagram.eps]]
+#+RESULTS[d2aed76d599a21954d5c3ff79a5030fd90a959fd]:
+[[file:../figures/network_tree.eps]]
 
-Each path passes through two kinds of intermediate nodes, first the [[acp:dslam][DSLAM]] and then a second level router whose main task is to aggregate all the traffic further and further.
+First, we suppose the network to be layer-2 type
 
-The access network is considered to be relatively modern, since the infrastructure has been renewed on the past years in conjuction with works on main city roads.
-That is the reason why we suppose all main links are fiber optic ones and can serve the customer with the state-of-the-art VDSL/VDSL2, while a fraction of last-mile legacy lines are still copper.
-The minor fraction of ADSL users can be correctly described though, in terms of available bandwidth, as VDSL connections at the same distance.
+As depicted in ref:fig:stack_diagram our network is logically shaped as a
+layered tree, where the path from users to the provider mainframe crosses two
+kinds of intermediate nodes, a [[acp:dslam][DSLAM]] and a router, whose main task is to
+aggregate all the traffic further and further. It is apparent that in such a
+network no routing is possible, as we suppose a layer-2 type of switches. This
+hypothesis is confirmed by the common practice, since additional redundancy is
+payed by additional customers, such as business,
 
-Given these assumptions, each users is expected not to be farther than 1.5Km from the [[ac:dslam][DSLAM]], if VDSL is employed, and 2.5Km in the ADSL case, with the average distance being 250m, 700m respectively.
+This topology is of course very weak with respect to outages, but it is
+effective in describing a layer-2 access network.
 
-TODO check most popular DSLAM models
-Each [[ac:dslam][DSLAM]] can handle from 12 to 48 VDSL2 ports, one per customer, whose traffic is forwarded to the second level router via two 1Gbps connections.
-These [[acp:pop][PoP]] have a much bigger number of ports, namely from 192 to 400, and are connected directly to the mainframe, which is made of two or three backbone routers.
+The access network is considered to be relatively modern, since the
+infrastructure has been renewed on the past years in conjuction with works on
+main city roads. That is the reason why we suppose all main links are fiber
+optic ones and can serve the customer with the state-of-the-art VDSL/VDSL2,
+while a fraction of last-mile legacy lines are still copper. The minor fraction
+of ADSL users can be correctly described though, in terms of available
+bandwidth, as VDSL connections at the same distance.
+
+Given these assumptions, each users is expected not to be farther than 1.5Km
+from the [[ac:dslam][DSLAM]], if VDSL is employed, and 2.5Km in the ADSL case, with the
+average distance being 250m, 700m respectively.
+
+TODO check most popular DSLAM models Each [[ac:dslam][DSLAM]] can handle from 12 to 48 VDSL2
+ports, one per customer, whose traffic is forwarded to the second level router
+via two 1Gbps connections. These [[acp:pop][PoP]] have a much bigger number of ports, namely
+from 192 to 400, and are connected directly to the mainframe, which is made of
+two or three backbone routers.
+
+*** Solution approach
+*** Mathematical formulation
+Many constraints and requirements have to be kept into consideration in order to
+design the access network correctly, both from the point of view of the costs
+and the technological limits.
+
+The relevant parameters, collected in autoref:quantities_constraints, will then
+become relevant in the problem formulation.
+
+#+NAME: quantities_constraints
+#+CAPTION: All relevant problem parameters are reported here.
+#+ATTR_LATEX: :align cl
+| Variable        | Description                                      |
+|-----------------+--------------------------------------------------|
+| $R \subseteq V$ | Set of nodes candidate to be subtree roots       |
+| $T$             | Set of terminal nodes                            |
+| $T_c$           | Set of terminal nodes served by copper line      |
+| $T_f$           | Set of terminal nodes served by optical fiber line |
+| $d_M$           | Maximum distance from a terminal and its root    |
+| $n_M$           | Maximum number of terminals per tree             |
+| $l_e$           | Length of edge $e$                               |
+| $n_i$           | Number of users at node $i$                      |
+| $r_M$, $r_m$    | Maximum and minimum number of subtree root nodes |
+| $c_r$           | Unit cost of a subtree root node                 |
+| $c_f$     | Cost of a fiber optic cable per meter            |
+| $c_c$    | Cost of copper cable per meter                   |
+| $c_{e}$         | Cost of roadwork excavation per meter            |
+
+In order to express the optimization problem in a convenient way, we arrange our
+data as follows.
+
+A direct graph $G^\prime = (V^\prime, A)$ is induced on top of $G$: first each
+undirected edge in $E$ is doubled with the two corresponding directed arcs and
+then an artificial node $r$ is added and connected to each of the nodes in the
+original vertex set $V$, as it is described in autoref:induction_G.
+[[autoref:fig:stack_diagram]].
+
+#+NAME: induction_G
+\begin{equation}
+  \begin{dcases}
+    V^\prime = V \cup \{r\} \\
+    A = \left\{ (i,\,j), (j,\,i) ~ \forall \{i, j\} \in E \right\} \cup
+        \left\{ (r,\,j) ~ \forall j \in V \right\}
+  \end{dcases}
+\end{equation}
+
+Each house, placed at node $i$, has been previously assigned a number of people,
+called $u_i$, corresponding to the number residents.
+In order to uniform the representation, this parameter is given also to road
+crossing, but it is set to 0.
+
+Each arc $(i,\,j) \in A$ is assigned a length, in meters, given by the
+geographical distance between its endpoints. Artificial arcs $(r,\,j)$ do not
+correspond to physical connections and so $l_{rj} = 0 ~~ \forall j \in V$.
+
+This way the optimal network access configuration at this layer will simply
+become a direct tree, or /arborescence/, with root in $r$.
+
+#+BEGIN_SRC plantuml :file ../figures/ilp_graph_reduced.eps :noweb yes
+  <<plantuml_skin>>
+  skinparam nodesep 10
+
+  skinparam ArrowFontSize 25
+  skinparam UsecaseFontSize 25
+  hide empty description
+
+  usecase "r" as r #ff9b9b
+
+  usecase " " as d1 #f6ff9b
+  usecase " " as d2 #f6ff9b
+  usecase " " as d3 #f6ff9b
+  usecase " " as d4 #f6ff9b
+  usecase " " as d5 #f6ff9b
+  usecase "i" as d6 #f6ff9b
+
+  usecase " " as c1
+  usecase " " as c2
+  usecase " " as c3
+  usecase " " as c4
+  usecase " " as c5
+  usecase " " as c6
+  usecase " " as c7
+  usecase " " as c8
+  usecase " " as c9
+  usecase " " as c10
+  usecase " " as c11
+  usecase " " as c12
+  usecase " " as c13
+  usecase " " as c14
+  usecase " " as c15
+  usecase " " as c16
+  usecase " " as c17
+  usecase " " as c18
+
+  usecase " " as n1
+  usecase " " as n2
+  usecase " " as n3
+  usecase " " as n4
+  usecase " " as n5
+  usecase " " as n6
+  usecase " " as n7
+  usecase " " as n8
+  usecase " " as n9
+  usecase " " as n10
+  usecase " " as n11
+  usecase " " as n12
+  usecase " " as n13
+  usecase " " as n14
+  usecase " " as n15
+  usecase " " as n16
+  usecase " " as n17
+  usecase " " as n18
+  usecase " " as n19
+  usecase " " as n20
+  usecase " " as n21
+  usecase " " as n22
+  usecase " " as n23
+  usecase " " as n24
+
+  r -[#ff5050]->> d1
+  r -[#ff5050]->> d2
+  r -[#ff5050]->> d3
+  r -[#ff5050]->> d4
+  r -[#ff5050]->> d5
+  r -[#ff5050]->> d6 : "(r, i)"
+
+  d1 -->> c1
+  d1 -->> c2
+  d1 -->> c3
+  d2 -->> c4
+  d2 -->> c5
+  d2 -->> c6
+  d3 -->> c7
+  d3 -->> c8
+  d3 -->> c9
+  d4 -->> c10
+  d4 -->> c11
+  d4 -->> c12
+  d5 -->> c13
+  d5 -->> c14
+  d5 -->> c15
+  d6 -->> c16
+  d6 -->> c17
+  d6 -->> c18
+
+  c1  -->> n1
+  c1  -->> n2
+  c2  -->> n3
+  c3  -->> n4
+  c4  -->> n5
+  c5  -->> n6
+  c5  -->> n7
+  c6  -->> n8
+  c7  -->> n9
+  c8 -->> n10
+  c8 -->> n11
+  c8 -->> n12
+  c9 -->> n13
+  c9 -->> n14
+  c10 -->> n15
+  c11 -->> n16
+  c11 -->> n17
+  c12 -->> n18
+  c14 -->> n19
+  c15 -->> n20
+  c15 -->> n21
+  c16 -->> n22
+  c18 -->> n23
+  c18 -->> n24
+
+  d1 -[hidden] d2
+  d2 -[hidden] d3
+  d3 -[hidden] d4
+  d4 -[hidden] d5
+  d5 -[hidden] d6
+
+  c1 -[hidden] c2
+  c2 -[hidden] c3
+  c3 -[hidden] c4
+  c4 -[hidden] c5
+  c5 -[hidden] c6
+  c6 -[hidden] c7
+  c7 -[hidden] c8
+  c8 -[hidden] c9
+  c9 -[hidden] c10
+  c10 -[hidden] c11
+  c11 -[hidden] c12
+  c12 -[hidden] c13
+  c13 -[hidden] c14
+  c14 -[hidden] c15
+  c15 -[hidden] c16
+  c16 -[hidden] c17
+  c17 -[hidden] c18
+#+END_SRC
+
+#+LABEL: fig:tree_network
+#+CAPTION: In the final solution, additional arcs $(r,\, i)$ connect artifical node $r$ to all the yellow roots, making the whole structure a tree, instead of a forest.
+#+ATTR_LATEX: :width \linewidth
+#+RESULTS[fe1eb5e3a44dd6ff6e0ccc2d64f3d36dd92b1d62]:
+[[file:../figures/ilp_graph_reduced.eps]]
+
+We now introduce the functions $\delta^+, \, \delta^-: V \rightarrow
+\mathbb{P}(A)$ which associate each node with the outgoing and ingoing edges
+respectively.
+
+\begin{equation}
+  \begin{split}
+    \delta^+(j) &= \left\{ (j,\,k) \in A \right\} \\
+    \delta^-(j) &= \left\{ (i,\,j) \in A \right\} \\
+  \end{split}
+\end{equation}
+
+\bigbreak
+Given this setup our optimization problem can be written as
+
+\begin{align}
+  \text{minimize ~~}
+  & \left( \sum_{t \in T_c} d_t  \right) \, c_c
+    + \left( \sum_{t \in T_f} d_t  \right) \, c_f
+    + \left( \sum_{e \in E} x_e \, l_e \right) \, c_e
+    + \left( \sum_{j \in V} r_j \right) \, c_D
+    \label{eq:obj_function} \\[0.8em]
+  \text{subject to ~~}
+  & \sum_{e \in \delta^-(j)} x_e ~
+    \begin{dcases}
+      = 0 & j = r \\
+      = 1 & j \in T \\
+      \le 1 & j \in V \setminus (T \cup \{r\})
+    \end{dcases}
+            \label{eq:tree_conditions} \\[0.5em]
+  & \forall t \in T,
+    \sum_{e \in \delta^-(t)} x_e = 1
+    \label{eq:terminal_reachability} \\
+  & \sum_{e \in \delta^+(r)} x_e > 0
+    \label{eq:root_condition} \\
+  & \forall j \in T, ~ d_j \le \left( \sum_{e \in \delta^-(j)} x_e \right) d_M
+    \label{eq:distance_upper_limit} \\
+  & \forall (i,\,j) \in A, ~ d_j - d_i \le l_{ij} + (d_M - l_{ij}) (1 - x_{ij})
+    \label{eq:distance_progression_1} \\[0.5em]
+  & \forall (i,\,j) \in A, ~ d_j - d_i \ge l_{ij} - \left( d_M + l_{ij} \right) (1 - x_{ij})
+    \label{eq:distance_progression_2} \\[1.5em]
+  & \forall e \notin \delta^+(r),\, n_e \le x_e \, n_M
+    \label{eq:n_terminals_upper_limit} \\[0.5em]
+  & \forall j \neq r, \sum_{e \in \delta^+(j)} n_e = p_i + \sum_{e \in \delta^-(j)} n_e
+    \label{eq:n_terminals_progression} \\[0.8em]
+  & \forall e \in A, \, x_e \in \{0, \, 1\}, \, n_e \in \mathbb{N} \cup \{0\}
+    \label{eq:var_domain_1} \\[0.5em]
+  & \forall j \in V^\prime, \, d_j \ge 0
+    \label{eq:var_domain_2}
+\end{align}
+
+The problem is set to minimize an objective function, autoref:eq:obj_function, that
+sums up the cost of copper and optical fiber lines, the roadworks cost for
+installing them and the total price of the root nodes unit, either [[acp:dslam][DSLAM]] or
+routers.
+
+The resulting network, given by $x_e$ variables, is set to be a tree touching
+all the terminals in autoref:eq:tree_conditions and autoref:eq:terminal_reachability.
+Our articial node $r$ will be the part of the tree by autoref:eq:root_condition of
+the tree, but can only be its root because it has no in-going arcs, by
+construction.
+
+The next equations deal with the variables $d_j$, distance from the tree root.
+
 
 ** Flow balancing optimization
 TODO using machine learning to control TBFs
@@ -357,5 +653,6 @@ ILP results
 
 * COMMENT Local variables
 # Local Variables:
+# org-latex-tables-booktabs: t
 # eval: (add-hook 'after-save-hook 'org-render-latex-fragments t t)
 # End:
