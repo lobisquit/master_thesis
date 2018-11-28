@@ -27,6 +27,15 @@
 
     logger = logging.getLogger('aachen_net.org')
     logger.setLevel(logging.INFO)
+    logger.propagate = False
+
+    formatter = logging.Formatter("%(asctime)s::%(levelname)s::%(module)s::%(message)s",
+                                  "%Y-%m-%d %H:%M:%S")
+
+    ch = logging.StreamHandler()
+    ch.setLevel(logging.INFO)
+    ch.setFormatter(formatter)
+    logger.addHandler(ch)
 
     logger.info('import ok')
   #+END_SRC
