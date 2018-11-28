@@ -16,6 +16,10 @@
 #+LATEX_HEADER: \providetoggle{images_titlepage}
 #+LATEX_HEADER: \settoggle{images_titlepage}{true}
 
+#+LATEX_HEADER: \usepackage{glossaries}
+#+LATEX_HEADER_EXTRA: \newacronym{pop}{PoP}{Point of Presence}
+#+LATEX_HEADER_EXTRA: \newacronym{dslam}{DSLAM}{Digital Subscriber Line Access Multiplexer}
+
 #+NAME: plantuml_skin
 #+BEGIN_SRC plantuml :exports none
   skinparam shadowing false
@@ -25,12 +29,6 @@
   skinparam defaultTextAlignment center
 
   skinparam SequenceDelayFontSize 15
-
-  skinparam Rectangle {
-  BackgroundColor white
-  BorderColor     black
-  FontColor       black
-  }
 
   skinparam Note {
   BackgroundColor white
@@ -64,9 +62,21 @@
   FontColor       black
   }
 
+  skinparam Interface {
+  BackgroundColor white
+  BorderColor     black
+  FontColor       black
+  }
+
   skinparam SequenceLifeLine {
   BorderColor black
   BackgroundColor black
+  }
+
+  skinparam Queue {
+  BackgroundColor white
+  BorderColor     black
+  FontColor       black
   }
 #+END_SRC
 
@@ -202,12 +212,13 @@ The network is shaped as a tree, with a single and path from the customers to th
 
 #+BEGIN_SRC plantuml :file ../figures/layers_diagram.png :noweb yes
   <<plantuml_skin>>
-  skinparam ranksep 10
   skinparam nodesep 10
 
   left to right direction
 
-  rectangle PoP as m #ff9b9b
+  queue Backbone as b
+
+  rectangle Mainframe as m #ff9b9b
 
   rectangle Router as r1 #ffda9b
   rectangle Router as r2 #ffda9b
@@ -220,24 +231,26 @@ The network is shaped as a tree, with a single and path from the customers to th
   rectangle DSLAM as d5 #f6ff9b
   rectangle DSLAM as d6 #f6ff9b
 
-  rectangle " " as c1
-  rectangle " " as c2
-  rectangle " " as c3
-  rectangle " " as c4
-  rectangle " " as c5
-  rectangle " " as c6
-  rectangle " " as c7
-  rectangle " " as c8
-  rectangle " " as c9
-  rectangle " " as c10
-  rectangle " " as c11
-  rectangle " " as c12
-  rectangle " " as c13
-  rectangle " " as c14
-  rectangle " " as c15
-  rectangle " " as c16
-  rectangle " " as c17
-  rectangle " " as c18
+  interface " " as c1
+  interface " " as c2
+  interface " " as c3
+  interface " " as c4
+  interface " " as c5
+  interface " " as c6
+  interface " " as c7
+  interface " " as c8
+  interface " " as c9
+  interface " " as c10
+  interface " " as c11
+  interface " " as c12
+  interface " " as c13
+  interface " " as c14
+  interface " " as c15
+  interface " " as c16
+  interface " " as c17
+  interface " " as c18
+
+  b -- m
 
   m -- r1
   m -- r2
@@ -297,9 +310,11 @@ The network is shaped as a tree, with a single and path from the customers to th
   c17 -[hidden] c18
 #+END_SRC
 
+#+LABEL: fig:stack_diagram
+#+CAPTION: A tree access networks connect users to the mainframe, placed along the internet backbone.
+#+ATTR_LATEX: :height 4in
 #+RESULTS:
 [[file:../figures/layers_diagram.png]]
-
 
 Each path passes through two kinds of intermediate nodes, first the [[acp:dslam][DSLAM]] and then a second level router whose main task is to aggregate all the traffic further and further.
 
