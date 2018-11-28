@@ -1,5 +1,8 @@
 #+STARTUP: latexpreview
 #+STARTUP: indent
+
+#+PROPERTY: header-args :cache yes
+
 #+OPTIONS: toc:nil title:nil
 
 #+LaTeX_CLASS: book
@@ -210,7 +213,7 @@ TODO cite CISCO
 
 The network is shaped as a tree, with a single and path from the customers to the provider [[ac:pop][PoP]], which is directly connected to the internet backbone.
 
-#+BEGIN_SRC plantuml :file ../figures/layers_diagram.png :noweb yes
+#+BEGIN_SRC plantuml :file ../figures/layers_diagram.eps :noweb yes
   <<plantuml_skin>>
   skinparam nodesep 10
 
@@ -311,10 +314,10 @@ The network is shaped as a tree, with a single and path from the customers to th
 #+END_SRC
 
 #+LABEL: fig:stack_diagram
-#+CAPTION: A tree access networks connect users to the mainframe, placed along the internet backbone.
-#+ATTR_LATEX: :height 4in
-#+RESULTS:
-[[file:../figures/layers_diagram.png]]
+#+CAPTION: A tree access network connects users (circles) to the Internet backbone
+#+ATTR_LATEX: :height 3.5in
+#+RESULTS[273dc4462f9de8b168511e461fcac2bc4b7dc898]:
+[[file:../figures/layers_diagram.eps]]
 
 Each path passes through two kinds of intermediate nodes, first the [[acp:dslam][DSLAM]] and then a second level router whose main task is to aggregate all the traffic further and further.
 
@@ -326,7 +329,7 @@ Given these assumptions, each users is expected not to be farther than 1.5Km fro
 
 TODO check most popular DSLAM models
 Each [[ac:dslam][DSLAM]] can handle from 12 to 48 VDSL2 ports, one per customer, whose traffic is forwarded to the second level router via two 1Gbps connections.
-These [[acp:pop][PoP]] have a much bigger number of ports, namely from 192 to 400, and are connected directly to the main frame, which is made of two or three backbone routers.
+These [[acp:pop][PoP]] have a much bigger number of ports, namely from 192 to 400, and are connected directly to the mainframe, which is made of two or three backbone routers.
 
 ** Flow balancing optimization
 TODO using machine learning to control TBFs
