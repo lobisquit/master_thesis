@@ -445,7 +445,7 @@
              G.add_edge(int(edge_data[0]), int(edge_data[1]), **edge_data[2])
 
      with open(graph_path.replace('_raw.json', '_complete.json'), 'w') as output:
-         output.write(json.dumps(G))
+         output.write(json.dumps(json_graph.node_link_data(G)))
    #+END_SRC
 
 ** Plot obtained graph on the map
@@ -491,7 +491,6 @@
      edges_df = edges_df.to_crs(projection.srs)
 
      ## plot everything
-
      fig = plt.figure(figsize=(6, 6), frameon=False)
      ax = fig.gca()
 
