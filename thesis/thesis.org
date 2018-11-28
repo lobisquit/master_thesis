@@ -16,6 +16,60 @@
 #+LATEX_HEADER: \providetoggle{images_titlepage}
 #+LATEX_HEADER: \settoggle{images_titlepage}{true}
 
+#+NAME: plantuml_skin
+#+BEGIN_SRC plantuml :exports none
+  skinparam shadowing false
+  skinparam padding 1
+  skinparam BoxPadding 1
+  skinparam DefaultFontName Fira Sans
+  skinparam defaultTextAlignment center
+
+  skinparam SequenceDelayFontSize 15
+
+  skinparam Rectangle {
+  BackgroundColor white
+  BorderColor     black
+  FontColor       black
+  }
+
+  skinparam Note {
+  BackgroundColor white
+  BorderColor     black
+  FontColor       black
+  }
+
+  skinparam Activity {
+  BackgroundColor white
+  BorderColor     black
+  FontColor       black
+  }
+
+  skinparam activityDiamond {
+  BackgroundColor white
+  BorderColor black
+  FontColor       black
+  }
+
+  skinparam ArrowColor black
+
+  skinparam State {
+  BackgroundColor white
+  BorderColor     black
+  FontColor       black
+  }
+
+  skinparam SequenceParticipant {
+  BackgroundColor white
+  BorderColor     black
+  FontColor       black
+  }
+
+  skinparam SequenceLifeLine {
+  BorderColor black
+  BackgroundColor black
+  }
+#+END_SRC
+
 #+BEGIN_COMMENT
 Download all needed files for titlepage and convert them.
 LaTeX support for svg files sucks.
@@ -138,9 +192,127 @@ In order to optimize the network, we need a schematic of it => educated guess
 Previous pre-processing on Aachen city map allowed us to summarize in an undirected graph $G=(V, \,E)$ all relevant information about the streets topology, buildings and estimated number of users.
 
 As specified earlier, each node $i$ is assigned a number of users $u_i$ to serve, which is zero if the node is just a street intersection.
-Given that they represent a physical line, edges are given a length value $l_e$, that will be used later to evaluate the access network building cost.
+Given that they represent a physical line, edges are given instead a length value $l_e$, that will be used later to evaluate the access network building cost.
 
-In this chapter we will exploit this information to assess the size of the
+In this chapter we will exploit this information to find the optimal network configuration, given some assumptions and requirements derived from best practices in access network design.
+
+TODO cite CISCO
+
+The network is shaped as a tree, with a single and path from the customers to the provider [[ac:pop][PoP]], which is directly connected to the internet backbone.
+
+#+BEGIN_SRC plantuml :file ../figures/layers_diagram.png :noweb yes
+  <<plantuml_skin>>
+  skinparam ranksep 10
+  skinparam nodesep 10
+
+  left to right direction
+
+  rectangle PoP as m #ff9b9b
+
+  rectangle Router as r1 #ffda9b
+  rectangle Router as r2 #ffda9b
+  rectangle Router as r3 #ffda9b
+
+  rectangle DSLAM as d1 #f6ff9b
+  rectangle DSLAM as d2 #f6ff9b
+  rectangle DSLAM as d3 #f6ff9b
+  rectangle DSLAM as d4 #f6ff9b
+  rectangle DSLAM as d5 #f6ff9b
+  rectangle DSLAM as d6 #f6ff9b
+
+  rectangle " " as c1
+  rectangle " " as c2
+  rectangle " " as c3
+  rectangle " " as c4
+  rectangle " " as c5
+  rectangle " " as c6
+  rectangle " " as c7
+  rectangle " " as c8
+  rectangle " " as c9
+  rectangle " " as c10
+  rectangle " " as c11
+  rectangle " " as c12
+  rectangle " " as c13
+  rectangle " " as c14
+  rectangle " " as c15
+  rectangle " " as c16
+  rectangle " " as c17
+  rectangle " " as c18
+
+  m -- r1
+  m -- r2
+  m -- r3
+
+  r1 -- d1
+  r1 -- d2
+  r2 -- d3
+  r2 -- d4
+  r3 -- d5
+  r3 -- d6
+
+  d1 -- c1
+  d1 -- c2
+  d1 -- c3
+  d2 -- c4
+  d2 -- c5
+  d2 -- c6
+  d3 -- c7
+  d3 -- c8
+  d3 -- c9
+  d4 -- c10
+  d4 -- c11
+  d4 -- c12
+  d5 -- c13
+  d5 -- c14
+  d5 -- c15
+  d6 -- c16
+  d6 -- c17
+  d6 -- c18
+
+  r1 -[hidden] r2
+  r2 -[hidden] r3
+
+  d1 -[hidden] d2
+  d2 -[hidden] d3
+  d3 -[hidden] d4
+  d4 -[hidden] d5
+  d5 -[hidden] d6
+
+  c1 -[hidden] c2
+  c2 -[hidden] c3
+  c3 -[hidden] c4
+  c4 -[hidden] c5
+  c5 -[hidden] c6
+  c6 -[hidden] c7
+  c7 -[hidden] c8
+  c8 -[hidden] c9
+  c9 -[hidden] c10
+  c10 -[hidden] c11
+  c11 -[hidden] c12
+  c12 -[hidden] c13
+  c13 -[hidden] c14
+  c14 -[hidden] c15
+  c15 -[hidden] c16
+  c16 -[hidden] c17
+  c17 -[hidden] c18
+#+END_SRC
+
+#+RESULTS:
+[[file:../figures/layers_diagram.png]]
+
+
+Each path passes through two kinds of intermediate nodes, first the [[acp:dslam][DSLAM]] and then a second level router whose main task is to aggregate all the traffic further and further.
+
+The access network is considered to be relatively modern, since the infrastructure has been renewed on the past years in conjuction with works on main city roads.
+That is the reason why we suppose all main links are fiber optic ones and can serve the customer with the state-of-the-art VDSL/VDSL2, while a fraction of last-mile legacy lines are still copper.
+The minor fraction of ADSL users can be correctly described though, in terms of available bandwidth, as VDSL connections at the same distance.
+
+Given these assumptions, each users is expected not to be farther than 1.5Km from the [[ac:dslam][DSLAM]], if VDSL is employed, and 2.5Km in the ADSL case, with the average distance being 250m, 700m respectively.
+
+TODO check most popular DSLAM models
+Each [[ac:dslam][DSLAM]] can handle from 12 to 48 VDSL2 ports, one per customer, whose traffic is forwarded to the second level router via two 1Gbps connections.
+These [[acp:pop][PoP]] have a much bigger number of ports, namely from 192 to 400, and are connected directly to the main frame, which is made of two or three backbone routers.
+
 ** Flow balancing optimization
 TODO using machine learning to control TBFs
 
