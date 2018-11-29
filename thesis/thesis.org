@@ -603,9 +603,9 @@ Given this setup our optimization problem can be written as
     \label{eq:distance_progression_1} \\[0.5em]
   & \forall (i,\,j) \in A, ~ d_j - d_i \ge l_{ij} - \left( d_M + l_{ij} \right) (1 - x_{ij})
     \label{eq:distance_progression_2} \\[1.5em]
-  & \forall e \notin \delta^+(r),\, n_e \le x_e \, n_M
+  & \forall e \in A,\, n_e \le x_e \, n_M
     \label{eq:n_terminals_upper_limit} \\[0.5em]
-  & \forall j \neq r, \sum_{e \in \delta^+(j)} n_e = p_i + \sum_{e \in \delta^-(j)} n_e
+  & \forall j \in V \setminus \{r\}, \sum_{e \in \delta^-(j)} n_e = p_i + \sum_{e \in \delta^+(j)} n_e
     \label{eq:n_terminals_progression} \\[0.8em]
   & \forall e \in A, \, x_e \in \{0, \, 1\}, \, n_e \in \mathbb{N} \cup \{0\}
     \label{eq:var_domain_1} \\[0.5em]
