@@ -6,7 +6,6 @@
 #+OPTIONS: toc:nil title:nil
 
 #+LaTeX_CLASS: book
-#+LATEX_HEADER: \setlength{\parindent}{0pt}
 #+LATEX_HEADER: \usepackage{charter}
 #+LATEX_HEADER: \usepackage{subcaption}
 #+LATEX_HEADER: \usepackage{geometry}
@@ -393,20 +392,18 @@ become relevant in the problem formulation.
 In order to express the optimization problem in a convenient way, we arrange our
 data as follows.
 
-A direct graph $G^\prime = (V^\prime, A)$ is induced on top of $G$: first each
-undirected edge in $E$ is doubled with the two corresponding directed arcs and
-then an artificial node $r$ is added and connected to each of the nodes in the
-original vertex set $V$, as it is described in autoref:induction_G.
-[[autoref:fig:stack_diagram]].
+A direct graph $G^\prime = (V \cup \{r\}, A)$ is induced on top of $G$: where
+$A$ is defined in autoref:induction_G.
 
 #+NAME: induction_G
 \begin{equation}
-  \begin{dcases}
-    V^\prime = V \cup \{r\} \\
-    A = \left\{ (i,\,j), (j,\,i) ~ \forall \{i, j\} \in E \right\} \cup
-        \left\{ (r,\,j) ~ \forall j \in V \right\}
-  \end{dcases}
+  A = \left\{ (i,\,j), (j,\,i) ~ \forall \{i, j\} \in E \right\} \cup
+    \left\{ (r,\,j) ~ \forall j \in V \right\}
 \end{equation}
+
+First each undirected edge in $E$ is doubled with the two corresponding directed
+arcs; then an artificial node $r$ is added to $V$ and connected to each of the
+nodes in the original vertices.
 
 Each house, placed at node $i$, has been previously assigned a number of people,
 called $u_i$, corresponding to the number residents.
@@ -561,11 +558,9 @@ become a direct tree, or /arborescence/, with root in $r$.
 #+CAPTION: In the final solution, additional arcs $(r,\, i)$ connect artifical node $r$ to all the yellow roots, making the whole structure a tree, instead of a forest.
 #+ATTR_LATEX: :width \linewidth
 #+RESULTS[fe1eb5e3a44dd6ff6e0ccc2d64f3d36dd92b1d62]:
-[[file:../figures/ilp_graph_reduced.eps]]
-
-We now introduce the functions $\delta^+, \, \delta^-: V \rightarrow
-\mathbb{P}(A)$ which associate each node with the outgoing and ingoing edges
-respectively.
+[[file:../figures/ilp_graph_reduced.eps]] We now introduce the functions $\delta^+,
+\, \delta^-: V \rightarrow \mathbb{P}(A)$ which associate each node with the
+outgoing and ingoing edges respectively.
 
 \begin{equation}
   \begin{split}
@@ -573,6 +568,8 @@ respectively.
     \delta^-(j) &= \left\{ (i,\,j) \in A \right\} \\
   \end{split}
 \end{equation}
+
+We also define a
 
 \bigbreak
 Given this setup our optimization problem can be written as
@@ -582,34 +579,41 @@ Given this setup our optimization problem can be written as
   & \left( \sum_{t \in T_c} d_t  \right) \, c_c
     + \left( \sum_{t \in T_f} d_t  \right) \, c_f
     + \left( \sum_{e \in E} x_e \, l_e \right) \, c_e
-    + \left( \sum_{j \in V} r_j \right) \, c_D
+    + \left( \sum_{e \in \delta^+(r)} x_e \right) \, c_r
     \label{eq:obj_function} \\[0.8em]
   \text{subject to ~~}
   & \sum_{e \in \delta^-(j)} x_e ~
     \begin{dcases}
       = 0 & j = r \\
       = 1 & j \in T \\
-      \le 1 & j \in V \setminus (T \cup \{r\})
-    \end{dcases}
-            \label{eq:tree_conditions} \\[0.5em]
-  & \forall t \in T,
-    \sum_{e \in \delta^-(t)} x_e = 1
-    \label{eq:terminal_reachability} \\
+      \le 1 & j \in V \setminus T
+    \end{dcases} \label{eq:single_arc_in} \\[0.5em]%
+  % & \forall j \in V, \sum_{e \in \delta^+(j)} x_e
+  %   \le \left( \sum_{e \in \delta^-(j)} x_e \right)
+  %   \, \max_{v \in V} \left| \delta^+(v) \right|
+  %   \label{eq:nodes_reachability} \\[0.5em]
   & \sum_{e \in \delta^+(r)} x_e > 0
-    \label{eq:root_condition} \\
-  & \forall j \in T, ~ d_j \le \left( \sum_{e \in \delta^-(j)} x_e \right) d_M
-    \label{eq:distance_upper_limit} \\
-  & \forall (i,\,j) \in A, ~ d_j - d_i \le l_{ij} + (d_M - l_{ij}) (1 - x_{ij})
-    \label{eq:distance_progression_1} \\[0.5em]
-  & \forall (i,\,j) \in A, ~ d_j - d_i \ge l_{ij} - \left( d_M + l_{ij} \right) (1 - x_{ij})
-    \label{eq:distance_progression_2} \\[1.5em]
+    \label{eq:r_active} \\[0.5em]
+  & \forall j \in V \cup \{r\}, ~ d_j \le \left( \sum_{e \in \delta^-(j)} x_e \right) d_M
+    \label{eq:distance_upper_limit} \\[0.2em]
+  & \forall (i,\,j) \in A ~
+    \begin{dcases}
+      ~ d_j - d_i \ge l_{ij} ~ x_{ij} - d_M \, (1 - x_{ij}) \\[0.2em]
+      ~ d_j - d_i \le l_{ij} ~ x_{ij} + d_M \, (1 - x_{ij})
+    \end{dcases}
+    \label{eq:distance_progression} \\[1.5em]
   & \forall e \in A,\, n_e \le x_e \, n_M
-    \label{eq:n_terminals_upper_limit} \\[0.5em]
-  & \forall j \in V \setminus \{r\}, \sum_{e \in \delta^-(j)} n_e = p_i + \sum_{e \in \delta^+(j)} n_e
-    \label{eq:n_terminals_progression} \\[0.8em]
+    \label{eq:n_terminals_upper_limit} \\
+  & \sum_{e \in \delta^-(j)} n_e - \sum_{e \in \delta^+(j)} n_e =
+    \begin{dcases}
+      ~ p_i & i \in T \\[0.2em]
+      ~ 0 & i \in V \setminus T
+    \end{dcases} \label{eq:n_flow_balance} \\[0.5em]
+  & \sum_{e \in \delta^+(r)} n_e = \sum_{i \in T} p_i
+    \label{eq:root_sink} \\[0.8em]
   & \forall e \in A, \, x_e \in \{0, \, 1\}, \, n_e \in \mathbb{N} \cup \{0\}
     \label{eq:var_domain_1} \\[0.5em]
-  & \forall j \in V^\prime, \, d_j \ge 0
+  & \forall j \in V \cup \{r\}, \, d_j \ge 0
     \label{eq:var_domain_2}
 \end{align}
 
@@ -618,11 +622,10 @@ sums up the cost of copper and optical fiber lines, the roadworks cost for
 installing them and the total price of the root nodes unit, [[acp:dslam][DSLAM]] or
 routers in our case.
 
-The resulting network, given by $x_e$ variables, is set to be a tree touching
-all the terminals in autoref:eq:tree_conditions and autoref:eq:terminal_reachability.
-Our articial node $r$ will be the part of the tree by autoref:eq:root_condition of
-the tree, but can only be its root because it has no in-going arcs, by
-construction.
+The resulting network, given by $x_e$ variables, is set to be a tree reaching
+all the terminals in autoref:eq:tree_conditions. Our articial node $r$ will be
+part of the tree by autoref:eq:root_condition, and it can only be the root
+because by construction it has no in-going arcs.
 
 The next equations deal with the variables $d_j$, distance from the tree root.
 In autoref:eq:distance_upper_limit, distance is limited by $d_M$ if the node is
