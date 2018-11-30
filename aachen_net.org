@@ -528,12 +528,19 @@
     import cplex
     from docplex.mp.model import Model
 
+    m = Model()
+
+    ##############################
+    # Load and pre-process graph #
+    ##############################
+
     G = nx.read_gml(graph_path.replace('_raw.json', '_complete.gml')).to_directed()
 
-    # add fake root node to G, with a zero-length arc for all the nodes
+    # add artificial root node to G, with a zero-length arc for all the nodes
     G.add_node('r', population=0)
 
     for node_id in G.nodes:
+        # TODO check if node is in R (candidate sub-roots)
         G.add_edge('r', node_id, distance=0)
 
     ####################
@@ -545,129 +552,107 @@
     n_DSLAM_max = 1500
     n_DSLAM_min = 1000
 
-    n_T = sum([data['population'] > 0 for _, data in G.nodes(data=True)])
-    ####################
+    c_r = 1 # sub-root node cost
+    c_f = 1 # unit cost of fiber cable
+    c_c = 1 # unit cost of copper line
+    c_e = 1 # unit cost of road excavation
 
-    m = Model(name='dslam')
+    ###################
+    # Setup variables #
+    ###################
+
+    def name(source, target=None, var='x'):
+        if target:
+            return "{}_{}->{}".format(var, source, target)
+        else:
+            return "{}_{}".format(var, source)
 
     X = {}
+    N = {}
     for source, target in G.edges:
         if source not in X:
             X[source] = {}
 
         ## active edge indicator
-        var_name = "x_{}->{}".format(source, target)
-        X[source][target] = m.binary_var(name=var_name)
+        X[source][target] = m.binary_var(name(source, target, var='x'))
+        N[source][target] = m.integer_var(name(source, target, var='n'))
 
     D = {}
     for node_id, data in G.nodes(data=True):
         ## set distance counter
-        d = m.continuous_var(name="d_{}".format(node_id))
-        D[node_id] = d
+        D[node_id] = m.continuous_var(name="d_{}".format(node_id))
 
-        ## domain conditions for distance
-        m.add_constraint(d >= 0)
-        m.add_constraint(d <= d_M)
+        m.add_constraint(D[node_id] >= 0)
 
-        ## active ingoing edges for each node
-        in_count = 0
-        for source, target in G.in_edges(node_id):
-            assert target == node_id
+    ######################
+    # Objective function #
+    ######################
 
-            in_count += X[source][node_id]
+    obj_func = 0
 
-        ## tree conditions
-        if node_id == 'r':
-            m.add_constraint(in_count = 0)
-        elif data['population'] > 0:
-            # terminal nodes reachability
-            m.add_constraint(in_count = 1)
-        else:
-            m.add_constraint(in_count <= 1)
+    # A), B) ~> suppose full-fiber for now
+    for node_id in G.nodes():
+        obj_func += D[node_id] * c_f
 
-        ## zero distance for inactive nodes
-        m.add_constraint(d <= d_M * in_count)
-
-    ## limit number of DSLAMs using artificial root node r
-    out_root_count = 0
-    for source, target in G.outedges('r'):
-        assert target == 'r'
-
-        out_root_count += X[source]['r']
-
-    m.add_constraint(out_root_count <= n_DSLAM_max)
-    m.add_constraint(out_root_count >= n_DSLAM_min)
-
-    ## distance increment
+    # C)
     for source, target, data in G.edges(data=True):
-        m.add_constraint(
-            d[target] - d[source] <= edge_length + (d_M - edge_length) * (1 - X[source][target])
-        )
+        obj_func += X[source][target] * data['distance'] * c_e
 
-        m.add_constraint(
-            d[target] - d[source] >= edge_length - (d_M + edge_length) * (1 - X[source][target])
-        )
+    # D)
+    for _, target in G.outedges('r'):
+        obj_func += X['r'][target] * c_r
 
-    ## number of leaves in each subtree
-    N = {}
+    m.set_objective('min', obj_func)
+
+    ###############
+    # Constraints #
+    ###############
+
     for node_id, data in G.nodes(data=True):
-        # ignore root, only subtrees matter
+        in_count_X  = sum( [X[source][node_id] for source, _ in G.in_edges(node_id)] )
+        out_count_X = sum( [X[source][node_id] for source, _ in G.out_edges(node_id)] )
+
+        in_count_N  = sum( [N[source][node_id] for source, _ in G.in_edges(node_id)] )
+        out_count_N = sum( [N[source][node_id] for source, _ in G.out_edges(node_id)] )
+
+        # 2)
         if node_id == 'r':
-            continue
-
-        n = m.integer_var(name="n_{}".format(node_id))
-        N[node_id] = n
-
-        m.add_constraint(n >= 0)
-        m.add_constraint(n <= n_M)
-
-    N_prime = {}
-    for source, target in G.edges:
-        # ignore root, only subtrees matter
-        if source == 'r':
-            continue
-
-        if source not in N_prime:
-            N_prime[source] = {}
-
-        var_name = "n_prime_{}->{}".format(source, target)
-        N_prime[source][target] = m.integer_var(name=var_name)
-
-        # domain
-        m.add_constraint(N_prime[source][target] >= 0)
-        m.add_constraint(N_prime[source][target] <= N[target])
-
-        # relationship with n_j
-        m.add_constraint(
-            N_prime[source][target] <= X[source][target] * n_T
-        )
-        m.add_constraint(
-            N_prime[source][target] >= N[target] - (1 - X[source][target]) * n_T
-        )
-
-    ## propagate information on n for all non-terminal nodes
-    for node_id, data in G.nodes(data=True):
-        # ignore root, only subtrees matter
-        if node_id == 'r':
-            continue
-
-        if data['population'] > 0:
-            # TODO n should be proportional to population itself
-            # for terminal nodes
-            m.add_constraint(N[node_id] == 1)
+            m.add_constraint(in_count_X == 0)
+        elif data['population'] > 0: # terminal
+            m.add_constraint(in_count_X == 1)
         else:
-            out_count = 0
-            for source, target in G.outedges(node_id):
-                assert target == node_id
+            m.add_constraint(in_count_X <= 1)
 
-                out_count += X[source][target]
+        # 3)
+        if node_id == 'r':
+            m.add_constraint(out_count_X > 0)
 
-            m.add_constraint(N[node_id] == out_count)
+        # 4)
+        m.add_constraint(D[source][node_id] <= in_count_X * d_M)
+
+        # 7), 8)
+        if node_id != 'r':
+            m.add_constraint(in_count_N - out_count_N == data['population'])
+        else:
+            total_population = sum([_data['population'] for _, _data in G.nodes(data=True)])
+            m.add_constraint(out_count_N = total_population)
+
+    for source, target, data in G.edges(data=True):
+        edge_length = data['distance']
+
+        # 5)
+        m.add_constraint(
+            D[target] - D[source] >= edge_length * X[source][target] - d_M * (1 - X[source][target])
+        )
+
+        m.add_constraint(
+            D[target] - D[source] <= edge_length * X[source][target] + d_M * (1 - X[source][target])
+        )
+
+        # 6)
+        m.add_constraint(N[source][target] <= X[source][target] * n_M)
 
 
-
-    for index, (source, target, data) in enumerate( G.edges(data=True) ):
-        pass
   #+END_SRC
 
 * COMMENT Local variables
