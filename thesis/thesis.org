@@ -17,9 +17,11 @@
 #+LaTeX_HEADER: \usepackage{booktabs}
 #+LaTeX_HEADER: \usepackage{amsmath}
 #+LaTeX_HEADER: \def\equationautorefname#1#2\null{(#2\null)}
-
 #+LATEX_HEADER: \providetoggle{images_titlepage}
 #+LATEX_HEADER: \settoggle{images_titlepage}{true}
+
+#+LaTeX_HEADER: \setlength{\parindent}{0cm}
+#+LATEX_HEADER: \setlength{\parskip}{0.2em}
 
 #+LATEX_HEADER: \usepackage{glossaries}
 #+LATEX_HEADER_EXTRA: \newacronym{pop}{PoP}{Point of Presence}
@@ -365,8 +367,8 @@ two or three backbone routers.
 *** Mathematical formulation
 Many constraints and requirements have to be kept into consideration in order to
 design the access network correctly, both from the point of view of costs and
-technological limits.
-All relevant parameters for our problem are listed in autoref:quantities_constraints.
+technological limits: all their relevant parameters are listed in
+autoref:quantities_constraints.
 
 #+NAME: quantities_constraints
 #+CAPTION: Problem parameters, divided in topology specific ones, technological limits and costs.
@@ -405,12 +407,9 @@ First each undirected edge in $E$ is doubled with the two corresponding directed
 arcs; then an artificial node $r$ is added to the vertices set and connected to
 each of the candidate sub-tree roots in $R$.
 
-As ach arc $(i,\,j) \in A$ is assigned a length, in meters, given by the
+Each arc $(i,\,j) \in A$ is assigned a length, in meters, given by the
 geographical distance between its endpoints. Artificial arcs $(r,\,j)$ do not
 correspond to physical connections and so $l_{rj} = 0 ~~ \forall j \in R$.
-
-This way the optimal network access configuration at this layer will simply
-become a direct tree, or /arborescence/, with root in $r$.
 
 #+BEGIN_SRC plantuml :file ../figures/ilp_graph_reduced.eps :noweb yes
   <<plantuml_skin>>
@@ -555,62 +554,73 @@ become a direct tree, or /arborescence/, with root in $r$.
 #+RESULTS[fe1eb5e3a44dd6ff6e0ccc2d64f3d36dd92b1d62]:
 [[file:../figures/ilp_graph_reduced.eps]]
 
-To make notation clearer, we shall introduce the functions $\delta^+, \,
-\delta^-: V \rightarrow \mathbb{P}(A)$ associating each node with the outgoing
-and ingoing edges respectively.
+This way our network access configuration will simply be a direct tree, or
+/arborescence/, with root in $r$, as depicted in autoref:fig:tree_network.
 
-\begin{equation}
-  \begin{split}
-    \delta^+(j) &= \left\{ (j,\,k) \in A \right\} \\
-    \delta^-(j) &= \left\{ (i,\,j) \in A \right\} \\
-  \end{split}
-\end{equation}
+As customary in this type of optimization problems, the optimal solution will
+eventually be returned by the solver as the sequence of indicator variables
+$\{ x_e \}_{e \in A}$ where $x_e$ is equal to 1 only if the arc $e$ has been selected.
+
+Because of the system requirements we also have to keep track of the distance
+$d_i$ of each node $i \in V \cup \{r\}$ from its root and the number of users $n_e$ served
+by each link in $A$, ensuring they don't exceed their limits.
+
+# To make notation clearer, we define the functions $\delta^+, \, \delta^-: V
+# \rightarrow \mathbb{P}(A)$ associating each node with the out-going and in-going
+# edges respectively.
+
+# \begin{equation}
+#   \begin{split}
+#     \delta^+(j) &= \left\{ (j,\,k) \in A \right\} \\
+#     \delta^-(j) &= \left\{ (i,\,j) \in A \right\} \\
+#   \end{split}
+# \end{equation}
 
 \bigbreak
 Given this setup, our optimization problem can be written as
 
-\begin{align}
-  \text{minimize ~~}
-  & \left( \sum_{t \in T_c} d_t  \right) \, c_c
-    + \left( \sum_{t \in T_f} d_t  \right) \, c_f
-    + \left( \sum_{e \in E} x_e \, l_e \right) \, c_e
-    + \left( \sum_{e \in \delta^+(r)} x_e \right) \, c_r
-    \label{eq:obj_function} \\[0.8em]
-  \text{subject to ~~}
-  & \sum_{e \in \delta^-(j)} x_e ~
-    \begin{dcases}
-      = 0 & j = r \\
-      = 1 & j \in T \\
-      \le 1 & j \in V \setminus T
-    \end{dcases} \label{eq:single_arc_in} \\[0.5em]%
-  % & \forall j \in V, \sum_{e \in \delta^+(j)} x_e
-  %   \le \left( \sum_{e \in \delta^-(j)} x_e \right)
-  %   \, \max_{v \in V} \left| \delta^+(v) \right|
-  %   \label{eq:nodes_reachability} \\[0.5em]
-  & \sum_{e \in \delta^+(r)} x_e > 0
-    \label{eq:r_active} \\[0.5em]
-  & \forall j \in V \cup \{r\}, ~ d_j \le \left( \sum_{e \in \delta^-(j)} x_e \right) d_M
-    \label{eq:distance_upper_limit} \\[0.2em]
-  & \forall (i,\,j) \in A ~
-    \begin{dcases}
-      ~ d_j - d_i \ge l_{ij} ~ x_{ij} - d_M \, (1 - x_{ij}) \\[0.2em]
-      ~ d_j - d_i \le l_{ij} ~ x_{ij} + d_M \, (1 - x_{ij})
-    \end{dcases}
-    \label{eq:distance_progression} \\[1.5em]
-  & \forall e \in A,\, n_e \le x_e \, n_M
-    \label{eq:n_terminals_upper_limit} \\
-  & \sum_{e \in \delta^-(j)} n_e - \sum_{e \in \delta^+(j)} n_e =
-    \begin{dcases}
-      ~ p_i & i \in T \\[0.2em]
-      ~ 0 & i \in V \setminus T
-    \end{dcases} \label{eq:n_flow_balance} \\[0.5em]
-  & \sum_{e \in \delta^+(r)} n_e = \sum_{i \in T} p_i
-    \label{eq:root_sink} \\[0.8em]
-  & \forall e \in A, \, x_e \in \{0, \, 1\}, \, n_e \in \mathbb{N} \cup \{0\}
-    \label{eq:var_domain_1} \\[0.5em]
-  & \forall j \in V \cup \{r\}, \, d_j \ge 0
-    \label{eq:var_domain_2}
-\end{align}
+  \begin{align}
+   \text{minimize ~~}
+   & \left( \sum_{t \in T_c} d_t  \right) \, c_c
+     + \left( \sum_{t \in T_f} d_t  \right) \, c_f
+     + \left( \sum_{e \in E} x_e \, l_e \right) \, c_e
+     + \left( \sum_{e \in \delta^+(r)} x_e \right) \, c_r
+     \label{eq:obj_function} \\[0.8em]
+   \text{subject to ~~}
+   & \sum_{e \in \delta^-(j)} x_e ~
+     \begin{dcases}
+       = 0 & j = r \\
+       = 1 & j \in T \\
+       \le 1 & j \in V \setminus T
+     \end{dcases} \label{eq:single_arc_in} \\[0.5em]%
+   % & \forall j \in V, \sum_{e \in \delta^+(j)} x_e
+   %   \le \left( \sum_{e \in \delta^-(j)} x_e \right)
+   %   \, \max_{v \in V} \left| \delta^+(v) \right|
+   %   \label{eq:nodes_reachability} \\[0.5em]
+   & \sum_{e \in \delta^+(r)} x_e > 0
+     \label{eq:r_active} \\[0.5em]
+   & \forall j \in V \cup \{r\}, ~ d_j \le \left( \sum_{e \in \delta^-(j)} x_e \right) d_M
+     \label{eq:distance_upper_limit} \\[0.2em]
+   & \forall (i,\,j) \in A ~
+     \begin{dcases}
+       ~ d_j - d_i \ge l_{ij} ~ x_{ij} - d_M \, (1 - x_{ij}) \\[0.2em]
+       ~ d_j - d_i \le l_{ij} ~ x_{ij} + d_M \, (1 - x_{ij})
+     \end{dcases}
+     \label{eq:distance_progression} \\[1.5em]
+   & \forall e \in A,\, n_e \le x_e \, n_M
+     \label{eq:n_terminals_upper_limit} \\
+   & \sum_{e \in \delta^-(j)} n_e - \sum_{e \in \delta^+(j)} n_e =
+     \begin{dcases}
+       ~ p_j & j \in T \\[0.2em]
+       ~ 0 & j \in V \setminus T
+     \end{dcases} \label{eq:n_flow_balance} \\[0.5em]
+   & \sum_{e \in \delta^+(r)} n_e = \sum_{i \in T} p_i
+     \label{eq:root_sink} \\[0.8em]
+   & \forall e \in A, \, x_e \in \{0, \, 1\}, \, n_e \in \mathbb{N} \cup \{0\}
+     \label{eq:var_domain_1} \\[0.5em]
+   & \forall j \in V \cup \{r\}, \, d_j \ge 0
+     \label{eq:var_domain_2}
+ \end{align}
 
 The problem is set to minimize the objective function autoref:eq:obj_function
 that sums up the cost of copper and optical fiber lines, the roadworks cost for
