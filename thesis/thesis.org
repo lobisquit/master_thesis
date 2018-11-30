@@ -364,55 +364,50 @@ two or three backbone routers.
 *** Solution approach
 *** Mathematical formulation
 Many constraints and requirements have to be kept into consideration in order to
-design the access network correctly, both from the point of view of the costs
-and the technological limits.
-
-The relevant parameters, collected in autoref:quantities_constraints, will then
-become relevant in the problem formulation.
+design the access network correctly, both from the point of view of costs and
+technological limits.
+All relevant parameters for our problem are listed in autoref:quantities_constraints.
 
 #+NAME: quantities_constraints
-#+CAPTION: All relevant problem parameters are reported here.
+#+CAPTION: Problem parameters, divided in topology specific ones, technological limits and costs.
 #+ATTR_LATEX: :align cl
-| Variable        | Description                                      |
-|-----------------+--------------------------------------------------|
-| $R \subseteq V$ | Set of nodes candidate to be subtree roots       |
-| $T$             | Set of terminal nodes                            |
-| $T_c$           | Set of terminal nodes served by copper line      |
+| Variable        | Description                                        |
+|-----------------+----------------------------------------------------|
+| $R \subseteq V$ | Set of nodes candidate to be subtree roots         |
+| $T$             | Set of terminal nodes                              |
+| $T_c$           | Set of terminal nodes served by copper line        |
 | $T_f$           | Set of terminal nodes served by optical fiber line |
-| $d_M$           | Maximum distance from a terminal and its root    |
-| $n_M$           | Maximum number of terminals per tree             |
-| $l_e$           | Length of edge $e$                               |
-| $n_i$           | Number of users at node $i$                      |
-| $r_M$, $r_m$    | Maximum and minimum number of subtree root nodes |
-| $c_r$           | Unit cost of a subtree root node                 |
-| $c_f$     | Cost of a fiber optic cable per meter            |
-| $c_c$    | Cost of copper cable per meter                   |
-| $c_{e}$         | Cost of roadwork excavation per meter            |
+| $l_e$           | Length of edge $e \in A$                           |
+| $p_i$           | Number of users at terminal $i \in T$              |
+|-----------------+----------------------------------------------------|
+| $d_M$           | Maximum distance from a terminal and its root      |
+| $n_M$           | Maximum number of terminals per tree               |
+| $r_M$, $r_m$    | Maximum and minimum number of subtree root nodes   |
+|-----------------+----------------------------------------------------|
+| $c_r$           | Cost of a single subtree root node           |
+| $c_f$           | Cost of a fiber optic cable per meter              |
+| $c_c$           | Cost of copper cable per meter                     |
+| $c_{e}$         | Cost of roadwork excavation per meter              |
 
 In order to express the optimization problem in a convenient way, we arrange our
 data as follows.
 
-A direct graph $G^\prime = (V \cup \{r\}, A)$ is induced on top of $G$: where
-$A$ is defined in autoref:induction_G.
+A direct graph $G^\prime = (V \cup \{r\},\, A)$ is induced on top of $G$, where
+the set of arcs $A$ is defined as follows.
 
 #+NAME: induction_G
 \begin{equation}
-  A = \left\{ (i,\,j), (j,\,i) ~ \forall \{i, j\} \in E \right\} \cup
+  A = \left\{ (i,\,j),\, (j,\,i) ~ \forall \{i, j\} \in E \right\} \cup
     \left\{ (r,\,j) ~ \forall j \in V \right\}
 \end{equation}
 
 First each undirected edge in $E$ is doubled with the two corresponding directed
-arcs; then an artificial node $r$ is added to $V$ and connected to each of the
-nodes in the original vertices.
+arcs; then an artificial node $r$ is added to the vertices set and connected to
+each of the candidate sub-tree roots in $R$.
 
-Each house, placed at node $i$, has been previously assigned a number of people,
-called $u_i$, corresponding to the number residents.
-In order to uniform the representation, this parameter is given also to road
-crossing, but it is set to 0.
-
-Each arc $(i,\,j) \in A$ is assigned a length, in meters, given by the
+As ach arc $(i,\,j) \in A$ is assigned a length, in meters, given by the
 geographical distance between its endpoints. Artificial arcs $(r,\,j)$ do not
-correspond to physical connections and so $l_{rj} = 0 ~~ \forall j \in V$.
+correspond to physical connections and so $l_{rj} = 0 ~~ \forall j \in R$.
 
 This way the optimal network access configuration at this layer will simply
 become a direct tree, or /arborescence/, with root in $r$.
@@ -555,12 +550,14 @@ become a direct tree, or /arborescence/, with root in $r$.
 #+END_SRC
 
 #+LABEL: fig:tree_network
-#+CAPTION: In the final solution, additional arcs $(r,\, i)$ connect artifical node $r$ to all the yellow roots, making the whole structure a tree, instead of a forest.
+#+CAPTION: In the final solution, additional arcs $(r,\, i)$ connect artifical node $r$ to all the roots, making the whole structure an arborescence, instead of a forest.
 #+ATTR_LATEX: :width \linewidth
 #+RESULTS[fe1eb5e3a44dd6ff6e0ccc2d64f3d36dd92b1d62]:
-[[file:../figures/ilp_graph_reduced.eps]] We now introduce the functions $\delta^+,
-\, \delta^-: V \rightarrow \mathbb{P}(A)$ which associate each node with the
-outgoing and ingoing edges respectively.
+[[file:../figures/ilp_graph_reduced.eps]]
+
+To make notation clearer, we shall introduce the functions $\delta^+, \,
+\delta^-: V \rightarrow \mathbb{P}(A)$ associating each node with the outgoing
+and ingoing edges respectively.
 
 \begin{equation}
   \begin{split}
@@ -569,10 +566,8 @@ outgoing and ingoing edges respectively.
   \end{split}
 \end{equation}
 
-We also define a
-
 \bigbreak
-Given this setup our optimization problem can be written as
+Given this setup, our optimization problem can be written as
 
 \begin{align}
   \text{minimize ~~}
@@ -617,32 +612,39 @@ Given this setup our optimization problem can be written as
     \label{eq:var_domain_2}
 \end{align}
 
-The problem is set to minimize an objective function, autoref:eq:obj_function, that
-sums up the cost of copper and optical fiber lines, the roadworks cost for
-installing them and the total price of the root nodes unit, [[acp:dslam][DSLAM]] or
-routers in our case.
+The problem is set to minimize the objective function autoref:eq:obj_function
+that sums up the cost of copper and optical fiber lines, the roadworks cost for
+installing them and the total price of the root nodes unit.
 
-The resulting network, given by $x_e$ variables, is set to be a tree reaching
-all the terminals in autoref:eq:tree_conditions. Our articial node $r$ will be
-part of the tree by autoref:eq:root_condition, and it can only be the root
-because by construction it has no in-going arcs.
+The first constraint autoref:eq:single_arc_in forces the terminals to be reached
+by our network and sets the number of in-going arcs to be at most one, which is a
+necessary condition for the network to be a directed tree.
+
+The leaves are set to be part of the network, and by autoref:eq:r_active $r$ has
+to be as well. Specifically it will be its root node, as by construction of
+$G^\prime$ it has no in-going arcs.
 
 The next equations deal with the variables $d_j$, distance from the tree root.
-In autoref:eq:distance_upper_limit, distance is limited by $d_M$ if the node is
-part of a tree, otherwise it is forced to zero.
-Conditions autoref:eq:distance_progression_1 and
-[[autoref:eq:distance_progression_2]] guarantee the consistency of distance measure
-between two connected nodes, forcing target node distance to be the source one
-plus the link length.
+First, in autoref:eq:distance_upper_limit this quantity is limited by $d_M$ if
+the node is reached by the network, otherwise it is set to zero. \\
+On the other hand autoref:eq:distance_progression guarantees the consistency of
+this metric between two connected nodes, forcing target node distance to be the
+source one plus the link length. \\
+Implicitly the latter prevents the resulting network to have loops, necessary
+for our solution to be a proper arborescence.
 
 The last needed metric for limiting the possible solutions is the number of
-users at the terminal each root node can handle, $n_M$.
-First, this upper limit for $n_e$ is set in autoref:eq:n_terminals_upper_limit
-such that this has to hold only for active edges.
-The count of the users from leaves to each sub-root is ensured by
-autoref:eq:n_terminals_progression, which is basically a flow-conservation clause.
+users each link can handle, $n_M$. \\
+First, this upper limit for $n_e$ is set in
+autoref:eq:n_terminals_upper_limit such that it has to hold only for active
+edges, and then the count of the users from leaves to each sub-root is performed
+in autoref:eq:n_flow_balance, which has the same form as a flow-conservation
+clause. \\
+All such flows must converge towards the root $r$ for autoref:eq:root_sink: this
+forces the network to be connected, finally giving it the wanted shape.
 
-Finally, variables domains is specified in autoref:eq:var_domain_1 and autoref:eq:var_domain_2.
+Variable domains are eventually specified in autoref:eq:var_domain_1 and
+autoref:eq:var_domain_2.
 
 ** Flow balancing optimization
 TODO using machine learning to control TBFs
