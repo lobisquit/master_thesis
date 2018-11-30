@@ -528,13 +528,14 @@
     import cplex
     from docplex.mp.model import Model
 
-    m = Model()
-
     ##############################
     # Load and pre-process graph #
     ##############################
 
-    G = nx.read_gml(graph_path.replace('_raw.json', '_complete.gml')).to_directed()
+    with open(graph_path.replace('_raw.json', '_complete.json')) as f:
+        js_graph = json.load(f)
+
+    G = json_graph.node_link_graph(js_graph).to_directed()
 
     # add artificial root node to G, with a zero-length arc for all the nodes
     G.add_node('r', population=0)
@@ -561,6 +562,8 @@
     # Setup variables #
     ###################
 
+    m = Model()
+
     def name(source, target=None, var='x'):
         if target:
             return "{}_{}->{}".format(var, source, target)
@@ -569,20 +572,31 @@
 
     X = {}
     N = {}
-    for source, target in G.edges:
+    for i, (source, target) in enumerate(G.edges):
+        if i % 10000 == 0:
+            print("Initializing edge {}/{}".format(i, len(G.edges)), end='\r')
+
         if source not in X:
             X[source] = {}
 
+        if source not in N:
+            N[source] = {}
+
         ## active edge indicator
-        X[source][target] = m.binary_var(name(source, target, var='x'))
-        N[source][target] = m.integer_var(name(source, target, var='n'))
+        X[source][target] = m.binary_var(name=name(source, target, var='x'))
+        N[source][target] = m.integer_var(name=name(source, target, var='n'))
 
     D = {}
-    for node_id, data in G.nodes(data=True):
+    for i, (node_id, data) in enumerate(G.nodes(data=True)):
+        if i % 10000 == 0:
+            print("Initializing node {}/{}".format(i, len(G.nodes)), end='\r')
+
         ## set distance counter
-        D[node_id] = m.continuous_var(name="d_{}".format(node_id))
+        D[node_id] = m.continuous_var(name=name(node_id, var='d'))
 
         m.add_constraint(D[node_id] >= 0)
+
+    logger.info('Initialized variables')
 
     ######################
     # Objective function #
@@ -599,21 +613,26 @@
         obj_func += X[source][target] * data['distance'] * c_e
 
     # D)
-    for _, target in G.outedges('r'):
+    for _, target in G.out_edges('r'):
         obj_func += X['r'][target] * c_r
 
     m.set_objective('min', obj_func)
+
+    logger.info('Initialized objective function')
 
     ###############
     # Constraints #
     ###############
 
-    for node_id, data in G.nodes(data=True):
+    for i, (node_id, data) in enumerate(G.nodes(data=True)):
+        if i % 10000 == 0:
+            print("Constraints on node {}/{}".format(i, len(G.nodes)), end='\r')
+
         in_count_X  = sum( [X[source][node_id] for source, _ in G.in_edges(node_id)] )
-        out_count_X = sum( [X[source][node_id] for source, _ in G.out_edges(node_id)] )
+        out_count_X = sum( [X[node_id][target] for _, target in G.out_edges(node_id)] )
 
         in_count_N  = sum( [N[source][node_id] for source, _ in G.in_edges(node_id)] )
-        out_count_N = sum( [N[source][node_id] for source, _ in G.out_edges(node_id)] )
+        out_count_N = sum( [N[node_id][target] for _, target in G.out_edges(node_id)] )
 
         # 2)
         if node_id == 'r':
@@ -628,7 +647,7 @@
             m.add_constraint(out_count_X > 0)
 
         # 4)
-        m.add_constraint(D[source][node_id] <= in_count_X * d_M)
+        m.add_constraint(D[node_id] <= in_count_X * d_M)
 
         # 7), 8)
         if node_id != 'r':
@@ -637,7 +656,12 @@
             total_population = sum([_data['population'] for _, _data in G.nodes(data=True)])
             m.add_constraint(out_count_N = total_population)
 
-    for source, target, data in G.edges(data=True):
+    logger.info('Set constraints 2, 3, 4, 7, 8')
+
+    for i, (source, target, data) in enumerate(G.edges(data=True)):
+        if i % 10000 == 0:
+            print("Constraints on edge {}/{}".format(i, len(G.edges)), end='\r')
+
         edge_length = data['distance']
 
         # 5)
@@ -652,6 +676,7 @@
         # 6)
         m.add_constraint(N[source][target] <= X[source][target] * n_M)
 
+    logger.info('Set constraints 5, 6')
 
   #+END_SRC
 
