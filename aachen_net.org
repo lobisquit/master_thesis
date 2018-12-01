@@ -649,7 +649,7 @@
 
         # 3)
         if node_id == 'r':
-            m.add_constraint(out_count_X > 0)
+            m.add_constraint(out_count_X >= 1)
 
         # 4)
         m.add_constraint(D[node_id] <= in_count_X * d_M)
@@ -659,7 +659,7 @@
             m.add_constraint(in_count_N - out_count_N == data['population'])
         else:
             total_population = sum([_data['population'] for _, _data in G.nodes(data=True)])
-            m.add_constraint(out_count_N = total_population)
+            m.add_constraint(out_count_N == total_population)
 
     logger.info('Set constraints 2, 3, 4, 7, 8')
 
