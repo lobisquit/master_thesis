@@ -1,5 +1,5 @@
 #+PROPERTY: header-args :mkdirp yes
-#+PROPERTY: header-args:python :shebang "#!/usr/bin/python \n# -*- coding: utf-8 -*-"
+#+PROPERTY: header-args:python :shebang "#!/usr/bin/python \n# -*- coding: utf-8 -*-\nfrom __future__ import print_function"
 
 * Retrieve datasets
   Download all needed files from Aachen city repository.
@@ -525,7 +525,6 @@
   #+BEGIN_SRC python :noweb yes :var graph_path=flatten(graph_path) :tangle scripts/aachen_net/10_ILP.py
     <<imports_&_defaults>>
 
-    import cplex
     from docplex.mp.model import Model
 
     ##############################
@@ -630,15 +629,15 @@
 
         in_count_X = 0
         in_count_N = 0
-        for source, _ in G.in_edges(node_id):
-            in_count_X += X[source][node_id]
-            in_count_N += N[source][node_id]
+        for source, target in G.in_edges(node_id):
+            in_count_X += X[source][target]
+            in_count_N += N[source][target]
 
         out_count_X = 0
         out_count_N = 0
-        for source, _ in G.out_edges(node_id):
-            out_count_X += X[source][node_id]
-            out_count_N += N[source][node_id]
+        for source, target in G.out_edges(node_id):
+            out_count_X += X[source][target]
+            out_count_N += N[source][target]
 
         # 2)
         if node_id == 'r':
@@ -683,7 +682,6 @@
         m.add_constraint(N[source][target] <= X[source][target] * n_M)
 
     logger.info('Set constraints 5, 6')
-
   #+END_SRC
 
 * COMMENT Local variables

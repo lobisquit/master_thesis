@@ -579,48 +579,48 @@ by each link in $A$, ensuring they don't exceed their limits.
 \bigbreak
 Given this setup, our optimization problem can be written as
 
-  \begin{align}
-   \text{minimize ~~}
-   & \left( \sum_{t \in T_c} d_t  \right) \, c_c
-     + \left( \sum_{t \in T_f} d_t  \right) \, c_f
-     + \left( \sum_{e \in E} x_e \, l_e \right) \, c_e
-     + \left( \sum_{e \in \delta^+(r)} x_e \right) \, c_r
-     \label{eq:obj_function} \\[0.8em]
-   \text{subject to ~~}
-   & \sum_{e \in \delta^-(j)} x_e ~
-     \begin{dcases}
-       = 0 & j = r \\
-       = 1 & j \in T \\
-       \le 1 & j \in V \setminus T
-     \end{dcases} \label{eq:single_arc_in} \\[0.5em]%
-   % & \forall j \in V, \sum_{e \in \delta^+(j)} x_e
-   %   \le \left( \sum_{e \in \delta^-(j)} x_e \right)
-   %   \, \max_{v \in V} \left| \delta^+(v) \right|
-   %   \label{eq:nodes_reachability} \\[0.5em]
-   & \sum_{e \in \delta^+(r)} x_e > 0
-     \label{eq:r_active} \\[0.5em]
-   & \forall j \in V \cup \{r\}, ~ d_j \le \left( \sum_{e \in \delta^-(j)} x_e \right) d_M
-     \label{eq:distance_upper_limit} \\[0.2em]
-   & \forall (i,\,j) \in A ~
-     \begin{dcases}
-       ~ d_j - d_i \ge l_{ij} ~ x_{ij} - d_M \, (1 - x_{ij}) \\[0.2em]
-       ~ d_j - d_i \le l_{ij} ~ x_{ij} + d_M \, (1 - x_{ij})
-     \end{dcases}
-     \label{eq:distance_progression} \\[1.5em]
-   & \forall e \in A,\, n_e \le x_e \, n_M
-     \label{eq:n_terminals_upper_limit} \\
-   & \sum_{e \in \delta^-(j)} n_e - \sum_{e \in \delta^+(j)} n_e =
-     \begin{dcases}
-       ~ p_j & j \in T \\[0.2em]
-       ~ 0 & j \in V \setminus T
-     \end{dcases} \label{eq:n_flow_balance} \\[0.5em]
-   & \sum_{e \in \delta^+(r)} n_e = \sum_{i \in T} p_i
-     \label{eq:root_sink} \\[0.8em]
-   & \forall e \in A, \, x_e \in \{0, \, 1\}, \, n_e \in \mathbb{N} \cup \{0\}
-     \label{eq:var_domain_1} \\[0.5em]
-   & \forall j \in V \cup \{r\}, \, d_j \ge 0
-     \label{eq:var_domain_2}
- \end{align}
+   \begin{align}
+    \text{minimize ~~}
+    & \left( \sum_{t \in T_c} d_t  \right) \, c_c
+      + \left( \sum_{t \in T_f} d_t  \right) \, c_f
+      + \left( \sum_{e \in E} x_e \, l_e \right) \, c_e
+      + \left( \sum_{e \in \delta^+(r)} x_e \right) \, c_r
+      \label{eq:obj_function} \\[0.8em]
+    \text{subject to ~~}
+    & \sum_{e \in \delta^-(j)} x_e ~
+      \begin{dcases}
+        = 0 & j = r \\
+        = 1 & j \in T \\
+        \le 1 & j \in V \setminus T
+      \end{dcases} \label{eq:single_arc_in} \\[0.5em]%
+    % & \forall j \in V, \sum_{e \in \delta^+(j)} x_e
+    %   \le \left( \sum_{e \in \delta^-(j)} x_e \right)
+    %   \, \max_{v \in V} \left| \delta^+(v) \right|
+    %   \label{eq:nodes_reachability} \\[0.5em]
+    & \sum_{e \in \delta^+(r)} x_e \ge 1
+      \label{eq:r_active} \\[0.5em]
+    & \forall j \in V \cup \{r\}, ~ d_j \le \left( \sum_{e \in \delta^-(j)} x_e \right) d_M
+      \label{eq:distance_upper_limit} \\[0.2em]
+    & \forall (i,\,j) \in A ~
+      \begin{dcases}
+        ~ d_j - d_i \ge l_{ij} ~ x_{ij} - d_M \, (1 - x_{ij}) \\[0.2em]
+        ~ d_j - d_i \le l_{ij} ~ x_{ij} + d_M \, (1 - x_{ij})
+      \end{dcases}
+      \label{eq:distance_progression} \\[1.5em]
+    & \forall e \in A,\, n_e \le x_e \, n_M
+      \label{eq:n_terminals_upper_limit} \\
+    & \sum_{e \in \delta^-(j)} n_e - \sum_{e \in \delta^+(j)} n_e =
+      \begin{dcases}
+        ~ p_j & j \in T \\[0.2em]
+        ~ 0 & j \in V \setminus T
+      \end{dcases} \label{eq:n_flow_balance} \\[0.5em]
+    & \sum_{e \in \delta^+(r)} n_e = \sum_{i \in T} p_i
+      \label{eq:root_sink} \\[0.8em]
+    & \forall e \in A, \, x_e \in \{0, \, 1\}, \, n_e \in \mathbb{N} \cup \{0\}
+      \label{eq:var_domain_1} \\[0.5em]
+    & \forall j \in V \cup \{r\}, \, d_j \ge 0
+      \label{eq:var_domain_2}
+  \end{align}
 
 The problem is set to minimize the objective function autoref:eq:obj_function
 that sums up the cost of copper and optical fiber lines, the roadworks cost for
