@@ -682,11 +682,85 @@
         # m.add_constraint(N[source][target] <= X[source][target] * n_M)
 
     logger.info('Set constraints 5, 6')
+
+    print()
+
+    if m.solve() is None:
+        print("Unable to solve")
+        exit(1)
+    else:
+        m.print_solution()
+
+    for source, target in G.edges:
+        G[source][target]['x'] = X[source][target].solution_value
+        G[source][target]['n'] = N[source][target].solution_value
+
+        if G[source][target]['n'] > n_M:
+            print(source, target)
+
+    for node_id in G.nodes:
+        G.node[node_id]['d'] = D[node_id].solution_value
+        ##
+
+    nodes = G.nodes(data=True)
+
+    nodes_info = []
+    for id_, data in nodes:
+        point = Point(data['lon'], data['lat'])
+
+        data_ = data.copy()
+        data_['geometry'] = point
+        data_['id'] = id_
+
+        nodes_info.append(data_)
+
+    edges_info = []
+    for node_id1, node_id2, data in G.edges(data=True):
+        edge = LineString((
+            (nodes[node_id1]['lon'], nodes[node_id1]['lat']),
+            (nodes[node_id2]['lon'], nodes[node_id2]['lat'])
+        ))
+
+        data_ = data.copy()
+        data_['geometry'] = edge
+        data_['source'] = node_id1
+        data_['target'] = node_id2
+
+        edges_info.append(data_)
+
+    ## provide GeoDataFrames
+    nodes_df = gpd.GeoDataFrame(nodes_info)
+    nodes_df.crs = {'init' :'epsg:4326'} # long-lat projection
+    nodes_df = nodes_df.to_crs(projection.srs)
+
+    edges_df = gpd.GeoDataFrame(edges_info)
+    edges_df.crs = {'init' :'epsg:4326'} # long-lat projection
+    edges_df = edges_df.to_crs(projection.srs)
+
+    ##
+    fig = plt.figure(figsize=(6, 6), frameon=False)
+    ax = fig.gca()
+
+    nodes_df[nodes_df["id"] != 'r'].plot(ax=ax,
+                                         markersize=1,
+                                         color='black',
+                                         zorder=2)
+
+    edges_df[(edges_df['x'] == 1) & (edges_df['source'] != 'r')].plot(ax=ax,
+                                                                      column='n',
+                                                                      # column='weight',
+                                                                    linewidth=0.5,
+                                                                      zorder=1)
+
+    plt.axis('off')
+    plt.tight_layout(rect=[-0.1, -0.05, 1.1, 1])
+    plt.show()
   #+END_SRC
 
 * COMMENT Local variables
   # Local Variables:
   # org-confirm-babel-evaluate: nil
   # eval: (add-hook 'before-save-hook (lambda () (indent-region (point-min) (point-max) nil)) t t)
+  # eval: (add-hook 'after-save-hook 'org-babel-tangle-this-file t t)
   # eval: (add-hook 'org-babel-pre-tangle-hook (lambda () (org-babel-lob-ingest "utils.org")) t t)
   # End:
