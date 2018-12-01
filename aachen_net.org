@@ -524,6 +524,7 @@
 * Solve associated ILP problem
   #+BEGIN_SRC python :noweb yes :var graph_path=flatten(graph_path) :tangle scripts/aachen_net/10_ILP.py
     <<imports_&_defaults>>
+    <<projection>>
 
     from docplex.mp.model import Model
 
@@ -534,10 +535,14 @@
     with open(graph_path.replace('_raw.json', '_complete.json')) as f:
         js_graph = json.load(f)
 
-    G = json_graph.node_link_graph(js_graph).to_directed()
+    G = json_graph.node_link_graph(js_graph)
+
+    main_component_nodes = max(nx.connected_components(G), key=len)
+    G = nx.subgraph(G, main_component_nodes)
+    G = G.to_directed()
 
     # add artificial root node to G, with a zero-length arc for all the nodes
-    G.add_node('r', population=0)
+    G.add_node('r', population=0, lat=0, lon=0)
 
     for node_id in G.nodes:
         # TODO check if node is in R (candidate sub-roots)
@@ -565,7 +570,7 @@
 
     def name(source, target=None, var='x'):
         if target:
-            return "{}_{}->{}".format(var, source, target)
+            return "{}_{}~{}".format(var, source, target)
         else:
             return "{}_{}".format(var, source)
 
@@ -583,7 +588,8 @@
 
         ## active edge indicator
         X[source][target] = m.binary_var(name=name(source, target, var='x'))
-        N[source][target] = m.integer_var(name=name(source, target, var='n'))
+        N[source][target] = m.continuous_var(name=name(source, target, var='n'))
+        m.add_constraint(N[source][target] >= 0)
 
     D = {}
     for i, (node_id, data) in enumerate(G.nodes(data=True)):
@@ -592,7 +598,6 @@
 
         ## set distance counter
         D[node_id] = m.continuous_var(name=name(node_id, var='d'))
-
         m.add_constraint(D[node_id] >= 0)
 
     logger.info('Initialized variables')
@@ -670,16 +675,11 @@
         edge_length = data['distance']
 
         # 5)
-        m.add_constraint(
-            D[target] - D[source] >= edge_length * X[source][target] - d_M * (1 - X[source][target])
-        )
-
-        m.add_constraint(
-            D[target] - D[source] <= edge_length * X[source][target] + d_M * (1 - X[source][target])
-        )
+        # m.add_constraint(D[target] - D[source] >= edge_length * X[source][target] - d_M * (1 - X[source][target]))
+        # m.add_constraint(D[target] - D[source] <= edge_length * X[source][target] + d_M * (1 - X[source][target]))
 
         # 6)
-        m.add_constraint(N[source][target] <= X[source][target] * n_M)
+        # m.add_constraint(N[source][target] <= X[source][target] * n_M)
 
     logger.info('Set constraints 5, 6')
   #+END_SRC
