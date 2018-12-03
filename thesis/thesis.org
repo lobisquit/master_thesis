@@ -164,22 +164,22 @@ LaTeX support for svg files sucks.
 
 * Introduction
 #+BEGIN_SRC org :exports none
-+ background: what are we talking about?
-  - SDN => self-optimizing networks
-  - flow balancing (TBF)
-  - routing adaptation
+  + background: what are we talking about?
+    - SDN => self-optimizing networks
+    - flow balancing (TBF)
+    - routing adaptation
 
-+ what they do now?
-  - summary of state of the art, /basically/
+  + what they do now?
+    - summary of state of the art, /basically/
 
-+ shortcomings in current knowledge / solutions
-  - limits of SDN over traditional networks: lack of negative results
-  - use of abstract topologies ~> this one is obtained through optimization process
+  + shortcomings in current knowledge / solutions
+    - limits of SDN over traditional networks: lack of negative results
+    - use of abstract topologies ~> this one is obtained through optimization process
 
-+ what are we gonna prove?
-  - 99% if the networks are very simple, meant to be more flow aggregators and less clever routers
-  - SDN are not inherently good: /probably/ traditional solutions are good in 99% of the networks
-  - SDN are relevant when the complexity of the network grows
+  + what are we gonna prove?
+    - 99% if the networks are very simple, meant to be more flow aggregators and less clever routers
+    - SDN are not inherently good: /probably/ traditional solutions are good in 99% of the networks
+    - SDN are relevant when the complexity of the network grows
 #+END_SRC
 * State of the art
 
@@ -199,6 +199,44 @@ In order to optimize the network, we need a schematic of it => educated guess
     - splitting roads
     - population estimated based on district population, building area
 #+END_SRC
+
+Unfortunately, schematics for Aachen access network are not publicly avaiable,
+so we have to perform what it is called an /educated guess/, meaning a good
+estimation based on avaiable information.
+
+This evaluation will be performed using OpenStreetMap cite:OpenStreetMap in
+conjuction with the /Open Data Portal/ of the city of Aachen [fn:1]: the former
+provides buildings and roads positions, while the latter describes how
+population is distributed across the city district.
+
+[fn:1: Please refer to http://daten.aachen.de for further information and licensing.]
+
+A visual representation of them is provided in the map in [[ref:fig:aachen_citymap]].
+
+#+LABEL: fig:aachen_citymap
+#+CAPTION: Summary of all Aachen district information we will employ: building, roads and population distribution.
+#+RESULTS[ea0d941863a2f88dda8d4c477b78e3c1fdef18bc]: fig:stack_diagram
+[[file:../figures/aachen_citymap.png]]
+
+Due to the level of detail of these datasets, two assumptions are needed in
+order to extract a reasonable diagram for the access city network.
+
+First, we suppose the cables (either fiber or copper ones) to be put along
+streets and not to cross (even public) terrains. This is common practice in
+contexts like ours, since the frequent roadworks the city is under are eploited
+to perform manteinance and build new parts of the network.
+
+Second, we consider the population of a given area to be distributed across a
+fraction of its buildings, so-called /residential/ ones, uniformly picked across
+all the constructions. \\
+We have to take this strong hypothesis because of the level of details the
+OpenStreetMap dataset provides: information about the building use and its
+height is lacking in most entries.
+
+I consider these two suppositions acceptable in our case, since we want to
+analyze how the access network of a city like Aachen behaves, not to replicate
+it precisely.
+
 ** Network design
 #+BEGIN_SRC org :exports none
   Using ILP to build the network

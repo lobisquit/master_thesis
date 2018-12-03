@@ -4,6 +4,7 @@
 * Retrieve datasets
   Download all needed files from Aachen city repository.
 
+  These are under a special license: "Data license Germany - Attribution - Version 2.0".
   #+NAME: population_density_link
   http://offenedaten.aachen.de/dataset/81650028-ef21-4f1b-a991-9e3a3f01c729/resource/460bfe18-7df4-49fb-b5d0-6dfc1d0cffd5/download/20170630opendataaachen-daten-statistische-bezirkealle.csv
 
@@ -137,10 +138,6 @@
      fig = plt.figure(figsize=(6, 6), frameon=False)
      ax = fig.gca()
 
-     ax.set_title("Population density in Aachen\n",
-                  fontsize=15,
-                  fontweight=font_spec['font.weight'])
-
      district_map.plot(column='density',
                        cmap='viridis',
                        legend=True,
@@ -160,14 +157,17 @@
 
      # set title of colorbar (dirty trick)
      fig.get_axes()[1].set_title('    people/km²',
-                                 fontweight=font_spec['font.weight'])
+                                 fontweight=font_spec['font.weight'],
+                                 fontsize=12)
+
+     fig.get_axes()[1].tick_params(labelsize=10)
 
      plt.axis('off')
      plt.tight_layout(rect=[-1.25, -0.04, 1.2, 1])
 
      # plt.show()
 
-     plt.savefig('figures/aachen_citymap.pdf')
+     plt.savefig('figures/aachen_citymap.png', dpi=200)
      plt.close('all')
    #+END_SRC
 
