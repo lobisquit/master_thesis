@@ -186,10 +186,11 @@
   #+END_SRC
 
 * Cluster utilities
-  Here comes an handy job file for cluster execution.
+  Here comes handy job files for cluster execution, both for UniPD DEI and RWTH
+  systems.
   Just replace the script with the one you want to run.
 
-  #+BEGIN_SRC bash :tangle scripts/aachen_net.job
+  #+BEGIN_SRC bash :tangle scripts/aachen_net_UniPD.job
     #!/bin/bash
 
     # create ouput files in job directory
@@ -200,6 +201,31 @@
 
     source venv/bin/activate
     GDAL_DATA=/home/lovisott/gdal python scripts/aachen_net/07_get_closest_roads.py
+  #+END_SRC
+
+  #+BEGIN_SRC bash :tangle scripts/aachen_net_RWTH.job
+    #!/usr/bin/env zsh
+
+    ### Job name
+    #BSUB -J SERIALJOB
+
+    ### File / path where STDOUT & STDERR will be written
+    ###    %J is the job ID, %I is the array ID
+    #BSUB -o SERIALJOB.%J.%I
+
+    ### Request the time you need for execution in minutes
+    ### The format for the parameter is: [hour:]minute,
+    ### that means for 80 minutes you could also use this: 1:20
+    #BSUB -W 1:23
+
+    ### Request memory you need for your job in TOTAL in MB
+    #BSUB -M 1024
+
+    ### Change to the work directory
+    cd /home/
+
+    ### Execute your application
+    a.out
   #+END_SRC
 
 * COMMENT Local variables
