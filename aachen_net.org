@@ -607,7 +607,7 @@
     # Setup variables #
     ###################
 
-    m = Model(log_output="logs/CPLEX.log")
+    m = Model(log_output=True)
 
     def name(source, target=None, var='x'):
         if target:
