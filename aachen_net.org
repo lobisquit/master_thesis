@@ -560,12 +560,11 @@
 * Solve associated ILP problem
 
   #+NAME: model_params
-  | Parameter      | Value |
-  | $d_M$ [m]      |  1500 |
-  | $c_r$ [€/unit] | 10000 |
-  | $c_f$ [€/m]    |     1 |
-  | $c_c$ [€/m]    |     1 |
-  | $c_e$ [€/m]    |     1 |
+  | $d_M$ [m]      | 1500 |
+  | $c_r$ [€/user] |  800 |
+  | $c_f$ [€/m]    |    3 |
+  | $c_c$ [€/m]    |    1 |
+  | $c_e$ [€/m]   |   50 |
 
   #+BEGIN_SRC python :noweb yes :var graph_path=flatten(graph_path) :var model_params=model_params :tangle scripts/aachen_net/10_ILP.py
     <<imports_&_defaults>>
