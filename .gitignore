@@ -8,7 +8,8 @@ scripts/!README
 figures/*
 figures/!README
 
-secrets.txt
+logs/*
+logs/!README
 
 aachen_net.pdf
 aachen_net.tex
