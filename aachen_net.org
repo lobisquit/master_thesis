@@ -269,7 +269,8 @@
      for index, row in buildings_map.iterrows():
          print("{}/{}".format(index, len(buildings_map)), end='\r')
          building_data = nearest_line(row, lines)
-         closest_lines.append(building_data)
+         if building_data:
+             closest_lines.append(building_data)
 
      pd.DataFrame(closest_lines).to_csv(closest_edges_path,
                                         quoting=csv.QUOTE_NONNUMERIC,
