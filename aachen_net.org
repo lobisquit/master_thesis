@@ -458,16 +458,18 @@
 
          edge_info['length'] = Haversine_distance(point0, point1)
 
-     # certains id seems to be of type numpy.int64 in edges definition!
-     # better fix them
+     # certains ids seem to be of type numpy.int64 in edges definition!
+     # better fix them: need to copy to avoid NetworkX freeze
+     G_fixed = nx.Graph(G)
+
      for source, target, data in G.edges(data=True):
          if type(source) == np.int64 or \
             type(target) == np.int64:
-             G.remove_edge(source, target)
-             G.add_edge(int(source), int(target), **data)
+             G_fixed.remove_edge(source, target)
+             G_fixed.add_edge(int(source), int(target), **data)
 
      # select buildings stats and output
-     buildings_n_lines = [data['n_lines'] for _, data in G.nodes(data=True) if data['n_lines'] > 0]
+     buildings_n_lines = [data['n_lines'] for _, data in G_fixed.nodes(data=True) if data['n_lines'] > 0]
      logger.info("Extracted polished graph with {} nodes ({} buildings, {} lines) and {} edges"\
                  .format(len(G.nodes),
                          len(buildings_n_lines),
@@ -475,7 +477,7 @@
                          len(G.edges)))
 
      with open(graph_path.replace('_raw.json', '_complete.json'), 'w') as output:
-         output.write(json.dumps(json_graph.node_link_data(G)))
+         output.write(json.dumps(json_graph.node_link_data(G_fixed)))
    #+END_SRC
 
 ** Plot obtained graph on the map
