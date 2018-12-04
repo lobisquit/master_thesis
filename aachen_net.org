@@ -578,17 +578,17 @@
     G = G.to_directed()
 
     # add artificial root node to G, with a zero-length arc for all the nodes
-    G.add_node('r', population=0, lat=0, lon=0)
+    G.add_node('r', n_lines=0, lat=0, lon=0)
 
     for node_id in G.nodes:
         # TODO check if node is in R (candidate sub-roots)
-        G.add_edge('r', node_id, distance=0)
+        G.add_edge('r', node_id, length=0)
 
     ####################
     # Model parameters #
     ####################
-    d_M = 100 # meters
-    n_M = 50  # users per DSLAM
+    d_M = 1000 # meters
+    n_M = 5000  # users per DSLAM
 
     n_DSLAM_max = 1500
     n_DSLAM_min = 1000
@@ -650,7 +650,7 @@
 
     # C)
     for source, target, data in G.edges(data=True):
-        obj_func += X[source][target] * data['distance'] * c_e
+        obj_func += X[source][target] * data['length'] * c_e
 
     # D)
     for _, target in G.out_edges('r'):
@@ -683,7 +683,7 @@
         # 2)
         if node_id == 'r':
             m.add_constraint(in_count_X == 0)
-        elif data['population'] > 0: # terminal
+        elif data['n_lines'] > 0: # terminal
             m.add_constraint(in_count_X == 1)
         else:
             m.add_constraint(in_count_X <= 1)
@@ -697,9 +697,9 @@
 
         # 7), 8)
         if node_id != 'r':
-            m.add_constraint(in_count_N - out_count_N == data['population'])
+            m.add_constraint(in_count_N - out_count_N == data['n_lines'])
         else:
-            total_population = sum([_data['population'] for _, _data in G.nodes(data=True)])
+            total_population = sum([_data['n_lines'] for _, _data in G.nodes(data=True)])
             m.add_constraint(out_count_N == total_population)
 
     logger.info('Set constraints 2, 3, 4, 7, 8')
@@ -708,14 +708,14 @@
         if i % 1000 == 0:
             print("Constraints on edge {}/{}".format(i, len(G.edges)), end='\r')
 
-        edge_length = data['distance']
+        edge_length = data['length']
 
         # 5)
-        # m.add_constraint(D[target] - D[source] >= edge_length * X[source][target] - d_M * (1 - X[source][target]))
-        # m.add_constraint(D[target] - D[source] <= edge_length * X[source][target] + d_M * (1 - X[source][target]))
+        m.add_constraint(D[target] - D[source] >= edge_length * X[source][target] - d_M * (1 - X[source][target]))
+        m.add_constraint(D[target] - D[source] <= edge_length * X[source][target] + d_M * (1 - X[source][target]))
 
         # 6)
-        # m.add_constraint(N[source][target] <= X[source][target] * n_M)
+        m.add_constraint(N[source][target] <= X[source][target] * n_M)
 
     logger.info('Set constraints 5, 6')
 
