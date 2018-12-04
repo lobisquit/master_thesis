@@ -690,18 +690,19 @@
         # 2)
         if node_id == 'r':
             m.add_constraint(ct=in_count_X == 0,
-                             ctname="{} == 0".format(name(node_id, var='in_count_X')))
-        elif data['n_lines'] > 0: # terminal
+                             ctname=name(node_id, var='in_count_X'))
+            # terminal node
+        elif data['n_lines'] > 0:
             m.add_constraint(ct=in_count_X == 1,
-                             ctname="{} == 1".format(name(node_id, var='in_count_X')))
+                             ctname=name(node_id, var='in_count_X'))
         else:
             m.add_constraint(ct=in_count_X <= 1,
-                             ctname="{} <= 0".format(name(node_id, var='in_count_X')))
+                             ctname=name(node_id, var='in_count_X'))
 
         # 3)
         if node_id == 'r':
             m.add_constraint(ct=out_count_X >= 1,
-                             ctname="{} >= 0".format(name(node_id, var='out_count_X')))
+                             ctname=name(node_id, var='out_count_X_lower'))
 
         # 4)
         m.add_constraint(ct=D[node_id] <= in_count_X * params['d_M'],
