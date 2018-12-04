@@ -167,7 +167,7 @@
 
      # plt.show()
 
-     plt.savefig('figures/aachen_citymap.png', dpi=200)
+     plt.savefig('figures/aachen_citymap.png', dpi=250)
      plt.close('all')
    #+END_SRC
 
@@ -547,13 +547,13 @@
      plt.axis('off')
 
      # cut a window for better visualization
-     ax.set_xlim(294133, 294804)
-     ax.set_ylim(5628460, 5628980)
-     plt.tight_layout(rect=[-0.05, 0, 1.02, 1])
+     ax.set_xlim(293117, 295351)
+     ax.set_ylim(5627800, 5629570)
+     plt.tight_layout(rect=[-0.11, 0, 1, 1])
 
      # plt.show()
 
-     plt.savefig('figures/aachen_city_graph.png')
+     plt.savefig('figures/aachen_city_graph.png', dpi=250)
      plt.close('all')
    #+END_SRC
 
