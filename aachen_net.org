@@ -577,9 +577,8 @@
         js_graph = json.load(f)
 
     G = json_graph.node_link_graph(js_graph)
+    assert nx.is_connected(G)
 
-    main_component_nodes = max(nx.connected_components(G), key=len)
-    G = nx.subgraph(G, main_component_nodes)
     G = G.to_directed()
 
     # add artificial root node to G, with a zero-length arc for all the nodes
@@ -595,10 +594,10 @@
     d_M = 1500 # meters
     n_M = 50   # users per DSLAM
 
-    n_DSLAM_max = 1500
-    n_DSLAM_min = 1000
+    # n_DSLAM_max = 1500
+    # n_DSLAM_min = 1000
 
-    c_r = 1 # sub-root node cost
+    c_r = 10000 # sub-root node cost
     c_f = 1 # unit cost of fiber cable
     c_c = 1 # unit cost of copper line
     c_e = 1 # unit cost of road excavation
@@ -607,7 +606,7 @@
     # Setup variables #
     ###################
 
-    m = Model(log_output=True)
+    m = Model(log_output=True) # "logs/CPLEX.log")
 
     def name(source, target=None, var='x'):
         if target:
@@ -630,7 +629,8 @@
         ## active edge indicator
         X[source][target] = m.binary_var(name=name(source, target, var='x'))
         N[source][target] = m.continuous_var(name=name(source, target, var='n'))
-        m.add_constraint(N[source][target] >= 0)
+        m.add_constraint(ct=N[source][target] >= 0,
+                         ctname="{} >= 0".format(name(source, target, var='n')))
 
     D = {}
     for i, (node_id, data) in enumerate(G.nodes(data=True)):
@@ -639,7 +639,8 @@
 
         ## set distance counter
         D[node_id] = m.continuous_var(name=name(node_id, var='d'))
-        m.add_constraint(D[node_id] >= 0)
+        m.add_constraint(ct=D[node_id] >= 0,
+                         ctname="{} >= 0".format(name(source, target, var='d')))
 
     logger.info('Initialized variables')
 
@@ -687,25 +688,32 @@
 
         # 2)
         if node_id == 'r':
-            m.add_constraint(in_count_X == 0)
+            m.add_constraint(ct=in_count_X == 0,
+                             ctname="{} == 0".format(name(node_id, var='in_count_X')))
         elif data['n_lines'] > 0: # terminal
-            m.add_constraint(in_count_X == 1)
+            m.add_constraint(ct=in_count_X == 1,
+                             ctname="{} == 1".format(name(node_id, var='in_count_X')))
         else:
-            m.add_constraint(in_count_X <= 1)
+            m.add_constraint(ct=in_count_X <= 1,
+                             ctname="{} <= 0".format(name(node_id, var='in_count_X')))
 
         # 3)
         if node_id == 'r':
-            m.add_constraint(out_count_X >= 1)
+            m.add_constraint(ct=out_count_X >= 1,
+                             ctname="{} >= 0".format(name(node_id, var='out_count_X')))
 
         # 4)
-        m.add_constraint(D[node_id] <= in_count_X * d_M)
+        m.add_constraint(ct=D[node_id] <= in_count_X * d_M,
+                         ctname="{}".format(name(node_id, var='distance_domain')))
 
         # 7), 8)
         if node_id != 'r':
-            m.add_constraint(in_count_N - out_count_N == data['n_lines'])
+            m.add_constraint(ct=in_count_N - out_count_N == data['n_lines'],
+                             ctname="{}".format(name(node_id, var='flow_balance')))
         else:
             total_population = sum([_data['n_lines'] for _, _data in G.nodes(data=True)])
-            m.add_constraint(out_count_N == total_population)
+            m.add_constraint(ct=out_count_N == total_population,
+                             ctname="{}".format(name(node_id, var='flow_balance')))
 
     logger.info('Set constraints 2, 3, 4, 7, 8')
 
@@ -716,21 +724,24 @@
         edge_length = data['length']
 
         # 5)
-        m.add_constraint(D[target] - D[source] >= edge_length * X[source][target] - d_M * (1 - X[source][target]))
-        m.add_constraint(D[target] - D[source] <= edge_length * X[source][target] + d_M * (1 - X[source][target]))
+
+        m.add_constraint(ct=D[target] - D[source] >= edge_length * X[source][target] - d_M * (1 - X[source][target]),
+                         ctname="{}".format(name(source, target, var='distance_upper')))
+
+        m.add_constraint(ct=D[target] - D[source] <= edge_length * X[source][target] + d_M * (1 - X[source][target]),
+                         ctname="{}".format(name(source, target, var='distance_lower')))
 
         # 6)
-        m.add_constraint(N[source][target] <= X[source][target] * n_M)
+        # m.add_constraint(ct=N[source][target] <= X[source][target] * n_M,
+        #                  ctname="{}".format(name(source, target, var='n_lines_upper')))
 
     logger.info('Set constraints 5, 6')
-
-    print()
 
     if m.solve() is None:
         print("Unable to solve")
         exit(1)
     else:
-        m.print_solution()
+        # m.print_solution()
 
     for source, target in G.edges:
         G[source][target]['x'] = X[source][target].solution_value
@@ -790,7 +801,7 @@
     edges_df[(edges_df['x'] == 1) & (edges_df['source'] != 'r')].plot(ax=ax,
                                                                       column='n',
                                                                       # column='weight',
-                                                                    linewidth=0.5,
+                                                                      linewidth=0.5,
                                                                       zorder=1)
 
     plt.axis('off')
