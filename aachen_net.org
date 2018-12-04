@@ -563,6 +563,11 @@
     <<projection>>
 
     from docplex.mp.model import Model
+    import cplex
+
+    cplex_engine = cplex.Cplex()
+    cplex_engine.parameters.mip.display.set(5)
+    cplex_engine.parameters.mip.interval.set(-1)
 
     ##############################
     # Load and pre-process graph #
@@ -587,8 +592,8 @@
     ####################
     # Model parameters #
     ####################
-    d_M = 1000 # meters
-    n_M = 5000  # users per DSLAM
+    d_M = 1500 # meters
+    n_M = 50   # users per DSLAM
 
     n_DSLAM_max = 1500
     n_DSLAM_min = 1000
@@ -602,7 +607,7 @@
     # Setup variables #
     ###################
 
-    m = Model()
+    m = Model(log_output=True)
 
     def name(source, target=None, var='x'):
         if target:
