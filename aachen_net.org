@@ -558,7 +558,16 @@
    #+END_SRC
 
 * Solve associated ILP problem
-  #+BEGIN_SRC python :noweb yes :var graph_path=flatten(graph_path) :tangle scripts/aachen_net/10_ILP.py
+
+  #+NAME: model_params
+  | Parameter      | Value |
+  | $d_M$ [m]      |  1500 |
+  | $c_r$ [€/unit] | 10000 |
+  | $c_f$ [€/m]    |     1 |
+  | $c_c$ [€/m]    |     1 |
+  | $c_e$ [€/m]    |     1 |
+
+  #+BEGIN_SRC python :noweb yes :var graph_path=flatten(graph_path) :var model_params=model_params :tangle scripts/aachen_net/10_ILP.py
     <<imports_&_defaults>>
     <<projection>>
 
@@ -591,22 +600,15 @@
     ####################
     # Model parameters #
     ####################
-    d_M = 1500 # meters
-    n_M = 50   # users per DSLAM
-
-    # n_DSLAM_max = 1500
-    # n_DSLAM_min = 1000
-
-    c_r = 10000 # sub-root node cost
-    c_f = 1 # unit cost of fiber cable
-    c_c = 1 # unit cost of copper line
-    c_e = 1 # unit cost of road excavation
+    params = { param[1:4]: value
+               for param, value in model_params
+               if param != "Parameter" }
 
     ###################
     # Setup variables #
     ###################
 
-    m = Model(log_output=True) # "logs/CPLEX.log")
+    m = Model(log_output="logs/CPLEX.log")
 
     def name(source, target=None, var='x'):
         if target:
@@ -652,15 +654,15 @@
 
     # A), B) ~> suppose full-fiber for now
     for node_id in G.nodes():
-        obj_func += D[node_id] * c_f
+        obj_func += D[node_id] * params['c_f']
 
     # C)
     for source, target, data in G.edges(data=True):
-        obj_func += X[source][target] * data['length'] * c_e
+        obj_func += X[source][target] * data['length'] * params['c_e']
 
     # D)
     for _, target in G.out_edges('r'):
-        obj_func += X['r'][target] * c_r
+        obj_func += X['r'][target] * params['c_r']
 
     m.set_objective('min', obj_func)
 
@@ -703,7 +705,7 @@
                              ctname="{} >= 0".format(name(node_id, var='out_count_X')))
 
         # 4)
-        m.add_constraint(ct=D[node_id] <= in_count_X * d_M,
+        m.add_constraint(ct=D[node_id] <= in_count_X * params['d_M'],
                          ctname="{}".format(name(node_id, var='distance_domain')))
 
         # 7), 8)
@@ -724,36 +726,45 @@
         edge_length = data['length']
 
         # 5)
-
-        m.add_constraint(ct=D[target] - D[source] >= edge_length * X[source][target] - d_M * (1 - X[source][target]),
+        m.add_constraint(ct=D[target] - D[source] >= edge_length * X[source][target] - params['d_M'] * (1 - X[source][target]),
                          ctname="{}".format(name(source, target, var='distance_upper')))
 
-        m.add_constraint(ct=D[target] - D[source] <= edge_length * X[source][target] + d_M * (1 - X[source][target]),
+        m.add_constraint(ct=D[target] - D[source] <= edge_length * X[source][target] + params['d_M'] * (1 - X[source][target]),
                          ctname="{}".format(name(source, target, var='distance_lower')))
 
-        # 6)
-        # m.add_constraint(ct=N[source][target] <= X[source][target] * n_M,
-        #                  ctname="{}".format(name(source, target, var='n_lines_upper')))
-
-    logger.info('Set constraints 5, 6')
+    logger.info('Set constraints 5')
 
     if m.solve() is None:
         print("Unable to solve")
         exit(1)
     else:
         # m.print_solution()
+        pass
 
     for source, target in G.edges:
         G[source][target]['x'] = X[source][target].solution_value
         G[source][target]['n'] = N[source][target].solution_value
 
-        if G[source][target]['n'] > n_M:
-            print(source, target)
-
     for node_id in G.nodes:
         G.node[node_id]['d'] = D[node_id].solution_value
-        ##
 
+    with open(graph_path.replace('_raw.json', '_DSLAM_solution.json'), 'w') as output:
+        output.write(json.dumps(json_graph.node_link_data(G)))
+  #+END_SRC
+
+  Plot graph resulting from optimization.
+
+  #+BEGIN_SRC python :var graph_path=flatten(graph_path) :tangle scripts/aachen_net/11_plot_ILP_result.py
+    <<imports_&_defaults>>
+    <<projection>>
+
+    with open(graph_path.replace('_raw.json', '_DSLAM_solution.json')) as f:
+        js_graph = json.load(f)
+
+    G = json_graph.node_link_graph(js_graph)
+    assert nx.is_connected(G)
+
+    # get graph information
     nodes = G.nodes(data=True)
 
     nodes_info = []
@@ -763,6 +774,7 @@
         data_ = data.copy()
         data_['geometry'] = point
         data_['id'] = id_
+        data_['is_subroot'] = 'r' in G.in_edges(id_)
 
         nodes_info.append(data_)
 
@@ -789,7 +801,7 @@
     edges_df.crs = {'init' :'epsg:4326'} # long-lat projection
     edges_df = edges_df.to_crs(projection.srs)
 
-    ##
+    ## plot
     fig = plt.figure(figsize=(6, 6), frameon=False)
     ax = fig.gca()
 
@@ -798,11 +810,16 @@
                                          color='black',
                                          zorder=2)
 
+    # highlight DSLAMS
+    nodes_df[nodes_df['is_subroot']].plot(ax=ax,
+                                          markersize=1,
+                                          color='red',
+                                          zorder=1)
     edges_df[(edges_df['x'] == 1) & (edges_df['source'] != 'r')].plot(ax=ax,
                                                                       column='n',
                                                                       # column='weight',
                                                                       linewidth=0.5,
-                                                                      zorder=1)
+                                                                      zorder=0)
 
     plt.axis('off')
     plt.tight_layout(rect=[-0.1, -0.05, 1.1, 1])
