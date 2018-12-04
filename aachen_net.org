@@ -753,7 +753,7 @@
 
   Plot graph resulting from optimization.
 
-  #+BEGIN_SRC python :var graph_path=flatten(graph_path) :tangle scripts/aachen_net/11_plot_ILP_result.py
+  #+BEGIN_SRC python :noweb yes :var graph_path=flatten(graph_path) :tangle scripts/aachen_net/11_plot_ILP_result.py
     <<imports_&_defaults>>
     <<projection>>
 
@@ -761,7 +761,6 @@
         js_graph = json.load(f)
 
     G = json_graph.node_link_graph(js_graph)
-    assert nx.is_connected(G)
 
     # get graph information
     nodes = G.nodes(data=True)
@@ -773,7 +772,7 @@
         data_ = data.copy()
         data_['geometry'] = point
         data_['id'] = id_
-        data_['is_subroot'] = 'r' in G.in_edges(id_)
+        data_['is_subroot'] = ('r', id_) in G.in_edges(id_)
 
         nodes_info.append(data_)
 
@@ -810,10 +809,11 @@
                                          zorder=2)
 
     # highlight DSLAMS
-    nodes_df[nodes_df['is_subroot']].plot(ax=ax,
-                                          markersize=1,
-                                          color='red',
-                                          zorder=1)
+    nodes_df[(nodes_df["id"] != 'r') & (nodes_df['is_subroot'])].plot(ax=ax,
+                                                                      markersize=1,
+                                                                      color='red',
+                                                                      zorder=1)
+
     edges_df[(edges_df['x'] == 1) & (edges_df['source'] != 'r')].plot(ax=ax,
                                                                       column='n',
                                                                       # column='weight',
