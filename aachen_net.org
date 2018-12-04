@@ -296,9 +296,13 @@
 
      closest_lines = pd.read_csv(closest_edges_path)
 
-     # pick only a fraction of buildings (resindential ones) since
+     # pick only a fraction of buildings (resindential ones): since
      # we have no info about it, we suppose "residentiality" to be iid
      closest_lines = closest_lines.sample(frac=0.6, random_state=13)
+
+     # remove buildings that are too big or too small to be residential
+     closest_lines = closest_lines[(closest_lines.area > 30) &
+                                   (closest_lines.area < 10000)]
 
      # split evenly the population across all district (remaining) buildings
      def split_population(group):
@@ -313,6 +317,11 @@
 
      # assigned each building an estimation of its number of inhabitants
      closest_lines = closest_lines.groupby('district_index').apply(split_population)
+
+     # infer number of families (internet lines)
+     # from number of inhabitants per building /heuristically/
+     closest_lines['n_lines'] = closest_lines.population // 4
+     closest_lines.loc[closest_lines['n_lines'] == 0.0, 'n_lines'] = 1.0
 
      # add new nodes, corresponding to buildings
      current_number = 0
@@ -334,10 +343,14 @@
              new_point = Point(projection(proj_new_point.x,
                                           proj_new_point.y,
                                           inverse=True))
+
+             if row.area > 10000:
+                 print(new_point.y, new_point.x)
+
              new_points.append({
-                 'n':          row.osm_id,
+                 'id_':          row.osm_id,
                  'new_point':  new_point,
-                 'population': row.population,
+                 'n_lines': row.n_lines,
                  'proj':       line.project(new_point)
              })
 
@@ -346,25 +359,25 @@
 
          # add all new nodes to graph
          for new_point in new_points:
-             G.add_node(node_for_adding=new_point['n'],
+             G.add_node(node_for_adding=new_point['id_'],
                         lon=new_point['new_point'].x,
                         lat=new_point['new_point'].y,
-                        population=new_point['population'])
+                        n_lines=new_point['n_lines'])
 
          # remove old edge
          G.remove_edge(*edge)
 
          # add new ones
-         G.add_edge(edge[0], new_points[0]['n'])
+         G.add_edge(edge[0], new_points[0]['id_'])
 
          # loop over couples of subsequent points
          for point1, point2 in zip(new_points[:-1], new_points[1:]):
              # distance will be added later (also for untouched edges)
-             G.add_edge(point1['n'], point2['n'])
+             G.add_edge(point1['id_'], point2['id_'])
 
-         G.add_edge(new_points[-1]['n'], edge[1])
+         G.add_edge(new_points[-1]['id_'], edge[1])
 
-     # polish the graph
+     ## polish the graph
 
      # relevant information for nodes are
      # - lat
@@ -376,26 +389,40 @@
          lat = node['lat']
          lon = node['lon']
 
-         if 'population' not in node:
-             population = 0
+         if 'n_lines' not in node:
+             n_lines = 0
          else:
-             population = node['population']
+             n_lines = node['n_lines']
 
          node.clear()
          node['lat'] = lat
          node['lon'] = lon
-         node['population'] = population
+         node['n_lines'] = n_lines
 
-     # prune unuseful nodes (no buildings, just two neighbours)
-     for node in G.nodes(data=True):
-         if G.degree(node[0]) == 2 and node[1]['population'] == 0:
-             neighbours_ids = [id_ for id_ in G[node[0]]]
+     # prune useless nodes (no building and just two neighbours)
+     nodes_to_remove = []
+     for node_id, data in G.nodes(data=True):
+         if G.degree(node_id) == 2 and data['n_lines'] == 0:
+             neighbours_ids = list(G[node_id])
 
              # remove previous two edges
-             G.remove_edge(node[0], neighbours_ids[0])
-             G.remove_edge(node[0], neighbours_ids[1])
+             G.remove_edge(node_id, neighbours_ids[0])
+             G.remove_edge(node_id, neighbours_ids[1])
 
              G.add_edge(neighbours_ids[0], neighbours_ids[1])
+
+             nodes_to_remove.append(node_id)
+
+         # remove terminal streets
+         elif G.degree(node_id) == 1 and data['n_lines'] == 0:
+             nodes_to_remove.append(node_id)
+
+     for node_id in nodes_to_remove:
+         G.remove_node(node_id)
+
+     # remove spurious nodes not part of the main component
+     main_component = sorted(nx.connected_components(G), key=len, reverse=True)[0]
+     G = nx.subgraph(G, main_component)
 
      # relevant information for edges is only their length
      def Haversine_distance(point0, point1):
@@ -417,26 +444,34 @@
          # use distance in meters
          return d * 1000
 
-     for edge in G.edges:
+     for source, target in G.edges:
          # read (and compute distance) between begin and end point
-         node0 = G.nodes[edge[0]]
-         node1 = G.nodes[edge[1]]
+         node0 = G.nodes[source]
+         node1 = G.nodes[target]
 
-         edge_info = G.edges[edge]
+         edge_info = G.edges[(source, target)]
          edge_info.clear()
 
          point0 = node0['lon'], node0['lat']
          point1 = node1['lon'], node1['lat']
 
-         edge_info['distance'] = Haversine_distance(point0, point1)
+         edge_info['length'] = Haversine_distance(point0, point1)
 
      # certains id seems to be of type numpy.int64 in edges definition!
      # better fix them
-     for edge_data in G.edges(data=True):
-         if type(edge_data[0]) == np.int64 or \
-            type(edge_data[1]) == np.int64:
-             G.remove_edge(edge_data[0], edge_data[1])
-             G.add_edge(int(edge_data[0]), int(edge_data[1]), **edge_data[2])
+     for source, target, data in G.edges(data=True):
+         if type(source) == np.int64 or \
+            type(target) == np.int64:
+             G.remove_edge(source, target)
+             G.add_edge(int(source), int(target), **data)
+
+     # select buildings stats and output
+     buildings_n_lines = [data['n_lines'] for _, data in G.nodes(data=True) if data['n_lines'] > 0]
+     logger.info("Extracted polished graph with {} nodes ({} buildings, {} lines) and {} edges"\
+                 .format(len(G.nodes),
+                         len(buildings_n_lines),
+                         int(sum(buildings_n_lines)),
+                         len(G.edges)))
 
      with open(graph_path.replace('_raw.json', '_complete.json'), 'w') as output:
          output.write(json.dumps(json_graph.node_link_data(G)))
