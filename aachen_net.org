@@ -642,15 +642,15 @@
         m.add_constraint(ct=N[source][target] >= 0,
                          ctname="{} >= 0".format(name(source, target, var='n')))
 
-    D = {}
+    # D = {}
     for i, (node_id, data) in enumerate(G.nodes(data=True)):
         if i % 10000 == 0:
             print("Initializing node {}/{}".format(i, len(G.nodes)), end='\r')
 
         ## set distance counter
-        D[node_id] = m.continuous_var(name=name(node_id, var='d'))
-        m.add_constraint(ct=D[node_id] >= 0,
-                         ctname="{} >= 0".format(name(source, target, var='d')))
+        # D[node_id] = m.continuous_var(name=name(node_id, var='d'))
+        # m.add_constraint(ct=D[node_id] >= 0,
+        #                  ctname="{} >= 0".format(name(source, target, var='d')))
 
     logger.info('Initialized variables')
 
@@ -661,8 +661,8 @@
     obj_func = 0
 
     # A), B) ~> suppose full-fiber for now
-    for node_id in G.nodes():
-        obj_func += D[node_id] * params['c_f']
+    # for node_id in G.nodes():
+    #    obj_func += D[node_id] * params['c_f']
 
     # C)
     for source, target, data in G.edges(data=True):
@@ -712,10 +712,12 @@
         if node_id == 'r':
             m.add_constraint(ct=out_count_X >= 1,
                              ctname=name(node_id, var='out_count_X_lower'))
+            m.add_constraint(ct=out_count_X <= 1500,
+                             ctname=name(node_id, var='out_count_X_upper'))
 
         # 4)
-        m.add_constraint(ct=D[node_id] <= in_count_X * params['d_M'],
-                         ctname="{}".format(name(node_id, var='distance_domain')))
+        # m.add_constraint(ct=D[node_id] <= in_count_X * params['d_M'],
+        #                 ctname="{}".format(name(node_id, var='distance_domain')))
 
         # 7), 8)
         if node_id != 'r':
@@ -735,16 +737,18 @@
         edge_length = data['length']
 
         # 5)
-        m.add_constraint(ct=D[target] - D[source] >= edge_length * X[source][target] - params['d_M'] * (1 - X[source][target]),
-                         ctname="{}".format(name(source, target, var='distance_upper')))
+        # m.add_constraint(ct=D[target] - D[source] >= edge_length * X[source][target] - params['d_M'] * (1 - X[source][target]),
+        #                 ctname="{}".format(name(source, target, var='distance_upper')))
 
-        m.add_constraint(ct=D[target] - D[source] <= edge_length * X[source][target] + params['d_M'] * (1 - X[source][target]),
-                         ctname="{}".format(name(source, target, var='distance_lower')))
+        # m.add_constraint(ct=D[target] - D[source] <= edge_length * X[source][target] + params['d_M'] * (1 - X[source][target]),
+        #                 ctname="{}".format(name(source, target, var='distance_lower')))
+
         # 6)
-        m.add_constraint(ct=N[source][target] <= n_M * N[source][target],
+        m.add_constraint(ct=N[source][target] <= params["n_M"] * N[source][target],
                          ctname="{}".format(name(source, target, var='n_max')))
 
-    logger.info('Set constraints 5')
+
+    logger.info('Set constraints 5, 6')
 
     if m.solve() is None:
         print("Unable to solve")
@@ -757,8 +761,8 @@
         G[source][target]['x'] = X[source][target].solution_value
         G[source][target]['n'] = N[source][target].solution_value
 
-    for node_id in G.nodes:
-        G.node[node_id]['d'] = D[node_id].solution_value
+    # for node_id in G.nodes:
+    #    G.node[node_id]['d'] = D[node_id].solution_value
 
     with open(graph_path.replace('_raw.json', '_DSLAM_solution.json'), 'w') as output:
         output.write(json.dumps(json_graph.node_link_data(G)))
