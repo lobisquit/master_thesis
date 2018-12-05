@@ -285,6 +285,14 @@
    line is supposed to be payed by the customer from the road to the home,
    so there is no cost for the operator.
 
+   TODO polish the graph better
+   - FIRST remove edges of length 0: merge the nodes if necessary
+   - merge the buildings (even the buildings to the road if necessary): this would lead |V|=16k, |E|=23k
+   - recursively prune non terminal "leaves" of the graph
+   - merge roads?
+   - limit (r, j) arcs number: how?
+   - NOTE limit the number of constraints does not seem too effective
+
    #+BEGIN_SRC python :noweb yes :var valid_types=flatten(utils.org:valid_types) :var graph_path=flatten(graph_path) :tangle scripts/aachen_net/08_add_buildings_to_graph.py :var closest_edges_path=flatten(closest_edges_path)
      <<all_datasets>>
 
@@ -296,13 +304,13 @@
 
      closest_lines = pd.read_csv(closest_edges_path)
 
+     # remove buildings that are too big or too small to be residential
+     closest_lines = closest_lines[(closest_lines.area > 40) &
+                                   (closest_lines.area < 2000)]
+
      # pick only a fraction of buildings (resindential ones): since
      # we have no info about it, we suppose "residentiality" to be iid
      closest_lines = closest_lines.sample(frac=0.6, random_state=13)
-
-     # remove buildings that are too big or too small to be residential
-     closest_lines = closest_lines[(closest_lines.area > 30) &
-                                   (closest_lines.area < 10000)]
 
      # split evenly the population across all district (remaining) buildings
      def split_population(group):
@@ -320,8 +328,9 @@
 
      # infer number of families (internet lines)
      # from number of inhabitants per building /heuristically/
-     closest_lines['n_lines'] = closest_lines.population // 4
-     closest_lines.loc[closest_lines['n_lines'] == 0.0, 'n_lines'] = 1.0
+     closest_lines['n_lines'] = (closest_lines.population // 6).astype(int)
+     closest_lines.loc[closest_lines['n_lines'] < 1, 'n_lines'] = 1
+     closest_lines.loc[closest_lines['n_lines'] > 48, 'n_lines'] = 48
 
      # add new nodes, corresponding to buildings
      current_number = 0
@@ -457,24 +466,26 @@
 
          edge_info['length'] = Haversine_distance(point0, point1)
 
-     # certains id seems to be of type numpy.int64 in edges definition!
-     # better fix them
+     # certains ids seem to be of type numpy.int64 in edges definition!
+     # better fix them: need to copy to avoid NetworkX freeze
+     G_fixed = nx.Graph(G)
+
      for source, target, data in G.edges(data=True):
          if type(source) == np.int64 or \
             type(target) == np.int64:
-             G.remove_edge(source, target)
-             G.add_edge(int(source), int(target), **data)
+             G_fixed.remove_edge(source, target)
+             G_fixed.add_edge(int(source), int(target), **data)
 
      # select buildings stats and output
-     buildings_n_lines = [data['n_lines'] for _, data in G.nodes(data=True) if data['n_lines'] > 0]
+     buildings_n_lines = [data['n_lines'] for _, data in G_fixed.nodes(data=True) if data['n_lines'] > 0]
      logger.info("Extracted polished graph with {} nodes ({} buildings, {} lines) and {} edges"\
                  .format(len(G.nodes),
                          len(buildings_n_lines),
                          int(sum(buildings_n_lines)),
                          len(G.edges)))
 
-     with open(graph_path.replace('_raw.json', '_complete.json'), 'w') as output:
-         output.write(json.dumps(json_graph.node_link_data(G)))
+     with open(graph_path.replace('_raw.json', '_buildings.json'), 'w') as output:
+         output.write(json.dumps(json_graph.node_link_data(G_fixed)))
    #+END_SRC
 
 ** Plot obtained graph on the map
@@ -486,7 +497,7 @@
      <<districts>>
 
      # read graph G
-     with open(graph_path.replace('_raw.json', '_complete.json')) as f:
+     with open(graph_path.replace('_raw.json', '_buildings.json')) as f:
          js_graph = json.load(f)
 
      G = json_graph.node_link_graph(js_graph)
@@ -558,51 +569,140 @@
    #+END_SRC
 
 * Solve associated ILP problem
-  #+BEGIN_SRC python :noweb yes :var graph_path=flatten(graph_path) :tangle scripts/aachen_net/10_ILP.py
+
+  #+NAME: dummy_graph_path
+  - data/aachen_net/dummy_graph.json
+
+  #+NAME: number_of_nodes
+  - 40
+
+  #+BEGIN_SRC python :results silent :var dummy_graph_path=flatten(dummy_graph_path) :var number_of_nodes=flatten(number_of_nodes) :tangle scripts/aachen_net/10_dummy_graph_generator.py
+    import json
+    from math import sqrt
+    import random
+    import matplotlib.pyplot as plt
+    import networkx as nx
+    from networkx.readwrite import json_graph
+
+    nodes = []
+
+    G = nx.Graph()
+
+    random.seed(13)
+
+    N = int(number_of_nodes)
+
+    def distance(i, j):
+        delta_lat = G.node[i]['lat'] - G.node[j]['lat']
+        delta_lon = G.node[i]['lon'] - G.node[j]['lon']
+
+        return sqrt(delta_lat**2 + delta_lon**2)
+
+    for i in range(N):
+        if random.random() < 0.2:
+            n_lines = 0
+        else:
+            n_lines = int(random.gauss(10, 3))
+
+        G.add_node(i,
+                   n_lines=n_lines,
+                   lat=random.random() * sqrt(N),
+                   lon=random.random() * sqrt(N))
+
+    for i in range(N):
+        for j in range(N):
+            if distance(i, j) < 2:
+                G.add_edge(i, j)
+
+    # randomly connect two components at a time
+    while not nx.is_connected(G):
+        comps = list(nx.connected_components(G))
+
+        for _ in range(N//10):
+            comp1, comp2 = random.sample(comps, 2)
+            node1 = random.choice(list(comp1))
+            node2 = random.choice(list(comp2))
+
+            G.add_edge(node1, node2)
+
+    assert nx.is_connected(G)
+
+    for node_id, pos in nx.spring_layout(G).items():
+        G.node[node_id]['lat'] = pos[0]
+        G.node[node_id]['lon'] = pos[1]
+
+    for i, j in G.edges():
+        G[i][j]['length'] = distance(i, j)
+
+    nx.draw_kamada_kawai(G)
+    plt.show()
+
+    with open(dummy_graph_path, 'w') as output:
+        output.write(json.dumps(json_graph.node_link_data(G)))
+  #+END_SRC
+
+  $c_r$, cost per sub-root node has to consider also the cable to reach the first level router.
+  We estimate 1000€ for the DSLAM and 4000€ for the mentioned connection.
+
+  See [[https://www.itscosts.its.dot.gov][here]] for pricing. TODO cite as a source
+
+  #+NAME: model_params
+  | $n_M$ [unit]   |   50 |
+  | $d_M$ [m]      | 1500 |
+  | $c_r$ [€/unit] | 5000 |
+  | $c_f$ [€/m]    |    3 |
+  | $c_c$ [€/m]    |    1 |
+  | $c_e$ [€/m]    |   50 |
+
+  #+NAME: choose_graph
+  - non-dummy
+
+  #+BEGIN_SRC python :noweb yes :var choose_graph=flatten(choose_graph) :var graph_path=flatten(graph_path) :var dummy_graph_path=flatten(dummy_graph_path) :var model_params=model_params :tangle scripts/aachen_net/11_ILP.py :results silent
     <<imports_&_defaults>>
     <<projection>>
 
     from docplex.mp.model import Model
+    import cplex
+
+    cplex_engine = cplex.Cplex()
+    cplex_engine.parameters.mip.display.set(5)
+    cplex_engine.parameters.mip.interval.set(-1)
 
     ##############################
     # Load and pre-process graph #
     ##############################
+    if choose_graph == "dummy":
+        path = dummy_graph_path
+    else:
+        path = graph_path.replace('_raw.json', '_buildings.json')
 
-    with open(graph_path.replace('_raw.json', '_complete.json')) as f:
+    with open(path) as f:
         js_graph = json.load(f)
 
     G = json_graph.node_link_graph(js_graph)
+    assert nx.is_connected(G)
 
-    main_component_nodes = max(nx.connected_components(G), key=len)
-    G = nx.subgraph(G, main_component_nodes)
     G = G.to_directed()
-
     # add artificial root node to G, with a zero-length arc for all the nodes
-    G.add_node('r', population=0, lat=0, lon=0)
+
+    G.add_node('r', n_lines=0, lat=-1, lon=0)
 
     for node_id in G.nodes:
         # TODO check if node is in R (candidate sub-roots)
-        G.add_edge('r', node_id, distance=0)
+        G.add_edge('r', node_id, length=0)
 
     ####################
     # Model parameters #
     ####################
-    d_M = 100 # meters
-    n_M = 50  # users per DSLAM
-
-    n_DSLAM_max = 1500
-    n_DSLAM_min = 1000
-
-    c_r = 1 # sub-root node cost
-    c_f = 1 # unit cost of fiber cable
-    c_c = 1 # unit cost of copper line
-    c_e = 1 # unit cost of road excavation
+    params = { param[1:4]: value
+               for param, value in model_params
+               if param != "Parameter" }
 
     ###################
     # Setup variables #
     ###################
 
-    m = Model()
+    m = Model(log_output=True)
 
     def name(source, target=None, var='x'):
         if target:
@@ -625,7 +725,8 @@
         ## active edge indicator
         X[source][target] = m.binary_var(name=name(source, target, var='x'))
         N[source][target] = m.continuous_var(name=name(source, target, var='n'))
-        m.add_constraint(N[source][target] >= 0)
+        m.add_constraint(ct=N[source][target] >= 0,
+                         ctname="{} >= 0".format(name(source, target, var='n')))
 
     D = {}
     for i, (node_id, data) in enumerate(G.nodes(data=True)):
@@ -634,7 +735,8 @@
 
         ## set distance counter
         D[node_id] = m.continuous_var(name=name(node_id, var='d'))
-        m.add_constraint(D[node_id] >= 0)
+        m.add_constraint(ct=D[node_id] >= 0,
+                         ctname="{} >= 0".format(name(source, target, var='d')))
 
     logger.info('Initialized variables')
 
@@ -646,15 +748,15 @@
 
     # A), B) ~> suppose full-fiber for now
     for node_id in G.nodes():
-        obj_func += D[node_id] * c_f
+        obj_func += D[node_id] * params['c_f']
 
     # C)
     for source, target, data in G.edges(data=True):
-        obj_func += X[source][target] * data['distance'] * c_e
+        obj_func += X[source][target] * data['length'] * params['c_e']
 
     # D)
-    for _, target in G.out_edges('r'):
-        obj_func += X['r'][target] * c_r
+    for source, target in G.out_edges('r'):
+        obj_func += X[source][target] * params['c_r']
 
     m.set_objective('min', obj_func)
 
@@ -682,25 +784,33 @@
 
         # 2)
         if node_id == 'r':
-            m.add_constraint(in_count_X == 0)
-        elif data['population'] > 0: # terminal
-            m.add_constraint(in_count_X == 1)
+            m.add_constraint(ct=in_count_X == 0,
+                             ctname=name(node_id, var='in_count_X'))
+            # terminal node
+        elif data['n_lines'] > 0:
+            m.add_constraint(ct=in_count_X == 1,
+                             ctname=name(node_id, var='in_count_X'))
         else:
-            m.add_constraint(in_count_X <= 1)
+            m.add_constraint(ct=in_count_X <= 1,
+                             ctname=name(node_id, var='in_count_X'))
 
         # 3)
         if node_id == 'r':
-            m.add_constraint(out_count_X >= 1)
+            m.add_constraint(ct=out_count_X >= 1,
+                             ctname=name(node_id, var='out_count_X_lower'))
 
         # 4)
-        m.add_constraint(D[node_id] <= in_count_X * d_M)
+        m.add_constraint(ct=D[node_id] <= in_count_X * params['d_M'],
+                         ctname="{}".format(name(node_id, var='distance_domain')))
 
         # 7), 8)
         if node_id != 'r':
-            m.add_constraint(in_count_N - out_count_N == data['population'])
+            m.add_constraint(ct=in_count_N - out_count_N == data['n_lines'],
+                             ctname="{}".format(name(node_id, var='flow_balance')))
         else:
-            total_population = sum([_data['population'] for _, _data in G.nodes(data=True)])
-            m.add_constraint(out_count_N == total_population)
+            total_population = sum([_data['n_lines'] for _, _data in G.nodes(data=True)])
+            m.add_constraint(ct=out_count_N == total_population,
+                             ctname="{}".format(name(node_id, var='flow_balance')))
 
     logger.info('Set constraints 2, 3, 4, 7, 8')
 
@@ -708,36 +818,51 @@
         if i % 1000 == 0:
             print("Constraints on edge {}/{}".format(i, len(G.edges)), end='\r')
 
-        edge_length = data['distance']
+        edge_length = data['length']
 
         # 5)
-        # m.add_constraint(D[target] - D[source] >= edge_length * X[source][target] - d_M * (1 - X[source][target]))
-        # m.add_constraint(D[target] - D[source] <= edge_length * X[source][target] + d_M * (1 - X[source][target]))
+        m.add_constraint(ct=D[target] - D[source] >= edge_length * X[source][target] - params['d_M'] * (1 - X[source][target]),
+                         ctname="{}".format(name(source, target, var='distance_upper')))
+
+        m.add_constraint(ct=D[target] - D[source] <= edge_length * X[source][target] + params['d_M'] * (1 - X[source][target]),
+                         ctname="{}".format(name(source, target, var='distance_lower')))
 
         # 6)
-        # m.add_constraint(N[source][target] <= X[source][target] * n_M)
+        m.add_constraint(ct=N[source][target] <= params["n_M"] * X[source][target],
+                         ctname="{}".format(name(source, target, var='n_max')))
 
     logger.info('Set constraints 5, 6')
-
-    print()
 
     if m.solve() is None:
         print("Unable to solve")
         exit(1)
     else:
-        m.print_solution()
+        # m.print_solution()
+        pass
 
     for source, target in G.edges:
         G[source][target]['x'] = X[source][target].solution_value
         G[source][target]['n'] = N[source][target].solution_value
 
-        if G[source][target]['n'] > n_M:
-            print(source, target)
-
     for node_id in G.nodes:
         G.node[node_id]['d'] = D[node_id].solution_value
-        ##
 
+    with open(graph_path.replace('_raw.json', '_DSLAM_solution.json'), 'w') as output:
+        output.write(json.dumps(json_graph.node_link_data(G)))
+  #+END_SRC
+
+  Plot graph resulting from optimization.
+
+  #+BEGIN_SRC python :noweb yes :var graph_path=flatten(graph_path) :tangle scripts/aachen_net/12_plot_ILP_result.py
+    <<imports_&_defaults>>
+    <<projection>>
+
+    with open(graph_path.replace('_raw.json', '_DSLAM_solution.json')) as f:
+        js_graph = json.load(f)
+
+    G = json_graph.node_link_graph(js_graph)
+
+    # get graph information
     nodes = G.nodes(data=True)
 
     nodes_info = []
@@ -747,6 +872,7 @@
         data_ = data.copy()
         data_['geometry'] = point
         data_['id'] = id_
+        data_['is_subroot'] = G['r'][id_]['x'] == 1
 
         nodes_info.append(data_)
 
@@ -773,25 +899,89 @@
     edges_df.crs = {'init' :'epsg:4326'} # long-lat projection
     edges_df = edges_df.to_crs(projection.srs)
 
-    ##
+    ## plot
+
+    # plot params
+    showroot = False
+
     fig = plt.figure(figsize=(6, 6), frameon=False)
     ax = fig.gca()
 
-    nodes_df[nodes_df["id"] != 'r'].plot(ax=ax,
-                                         markersize=1,
-                                         color='black',
-                                         zorder=2)
+    # terminals
+    nodes_df[(nodes_df["id"] != 'r') &
+             (nodes_df["n_lines"] >= 1)].plot(ax=ax,
+                                             markersize=10,
+                                             color='black',
+                                             zorder=1)
 
-    edges_df[(edges_df['x'] == 1) & (edges_df['source'] != 'r')].plot(ax=ax,
-                                                                      column='n',
-                                                                      # column='weight',
-                                                                    linewidth=0.5,
-                                                                      zorder=1)
+
+    nodes_df[(nodes_df["id"] != 'r') &
+             (nodes_df["n_lines"] < 1)].plot(ax=ax,
+                                             markersize=5,
+                                             color='#a0a0a0',
+                                             zorder=1)
+
+    # highlight DSLAMS
+    nodes_df[(nodes_df["id"] != 'r') &
+             (nodes_df['is_subroot'])].plot(ax=ax,
+                                            markersize=50,
+                                            color='red',
+                                            zorder=2)
+
+    edges_df[(edges_df['x'] == 0) &
+             (edges_df['source'] != 'r')].plot(ax=ax,
+                                              color="#a0a0a0",
+                                              linewidth=0.5,
+                                              zorder=0)
+
+    if showroot:
+        nodes_df[(nodes_df["id"] == 'r')].plot(ax=ax,
+                                              markersize=100,
+                                              color='green',
+                                              zorder=2)
+
+        edges_df[(edges_df['source'] == 'r') &
+                 (edges_df['n'] >= 1)].plot(ax=ax,
+                                           column='n',
+                                           color="green",
+                                           linewidth=0.5,
+                                           zorder=0)
+
+    edges_df[(edges_df['x'] == 1) &
+             (edges_df['source'] != 'r')].plot(ax=ax,
+                                              column='n',
+                                              color="black",
+                                              linewidth=0.5,
+                                              zorder=0)
+
+    for _, row in edges_df.iterrows():
+        if row.source == 'r':
+            color = 'green'
+        else:
+            color = 'black'
+
+        if row.x == 0:
+            continue
+
+        if row.length != 0:
+            ax.annotate(s="{0:.0f} - {0:.2f}".format(row.n, row.length),
+                        xy=row.geometry.centroid.coords[0],
+                        color=color,
+                        zorder=5)
+
+    for _, row in nodes_df[(nodes_df['d'] > 0)].iterrows():
+        ax.annotate(s="{0:.2f}".format(row.d),
+                    xy=row.geometry.centroid.coords[0],
+                    color="blue",
+                    zorder=5)
 
     plt.axis('off')
     plt.tight_layout(rect=[-0.1, -0.05, 1.1, 1])
     plt.show()
   #+END_SRC
+
+  #+RESULTS:
+  : None
 
 * COMMENT Local variables
   # Local Variables:
