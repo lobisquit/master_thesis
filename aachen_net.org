@@ -908,45 +908,51 @@
     ax = fig.gca()
 
     # terminals
-    nodes_df[(nodes_df["id"] != 'r') & (nodes_df["n_lines"] >= 1)].plot(ax=ax,
-                                                                        markersize=10,
-                                                                        color='black',
-                                                                        zorder=1)
+    nodes_df[(nodes_df["id"] != 'r') &
+             (nodes_df["n_lines"] >= 1)].plot(ax=ax,
+                                             markersize=10,
+                                             color='black',
+                                             zorder=1)
 
 
-    nodes_df[(nodes_df["id"] != 'r') & (nodes_df["n_lines"] < 1)].plot(ax=ax,
-                                                                       markersize=5,
-                                                                       color='#a0a0a0',
-                                                                       zorder=1)
+    nodes_df[(nodes_df["id"] != 'r') &
+             (nodes_df["n_lines"] < 1)].plot(ax=ax,
+                                             markersize=5,
+                                             color='#a0a0a0',
+                                             zorder=1)
 
     # highlight DSLAMS
-    nodes_df[(nodes_df["id"] != 'r') & (nodes_df['is_subroot'])].plot(ax=ax,
-                                                                      markersize=50,
-                                                                      color='red',
-                                                                      zorder=2)
+    nodes_df[(nodes_df["id"] != 'r') &
+             (nodes_df['is_subroot'])].plot(ax=ax,
+                                            markersize=50,
+                                            color='red',
+                                            zorder=2)
 
-    edges_df[(edges_df['x'] == 0) & (edges_df['source'] != 'r')].plot(ax=ax,
-                                                                      color="#a0a0a0",
-                                                                      linewidth=0.5,
-                                                                      zorder=0)
+    edges_df[(edges_df['x'] == 0) &
+             (edges_df['source'] != 'r')].plot(ax=ax,
+                                              color="#a0a0a0",
+                                              linewidth=0.5,
+                                              zorder=0)
 
     if showroot:
         nodes_df[(nodes_df["id"] == 'r')].plot(ax=ax,
-                                               markersize=100,
-                                               color='green',
-                                               zorder=2)
+                                              markersize=100,
+                                              color='green',
+                                              zorder=2)
 
-        edges_df[(edges_df['source'] == 'r') & (edges_df['n'] >= 1)].plot(ax=ax,
-                                                                          column='n',
-                                                                          color="green",
-                                                                          linewidth=0.5,
-                                                                          zorder=0)
+        edges_df[(edges_df['source'] == 'r') &
+                 (edges_df['n'] >= 1)].plot(ax=ax,
+                                           column='n',
+                                           color="green",
+                                           linewidth=0.5,
+                                           zorder=0)
 
-    edges_df[(edges_df['x'] == 1) & (edges_df['source'] != 'r')].plot(ax=ax,
-                                                                      column='n',
-                                                                      color="black",
-                                                                      linewidth=0.5,
-                                                                      zorder=0)
+    edges_df[(edges_df['x'] == 1) &
+             (edges_df['source'] != 'r')].plot(ax=ax,
+                                              column='n',
+                                              color="black",
+                                              linewidth=0.5,
+                                              zorder=0)
 
     for _, row in edges_df.iterrows():
         if row.source == 'r':
