@@ -565,7 +565,10 @@
   $c_r$, cost per sub-root node has to consider also the cable to reach the first level router.
   We estimate 1000€ for the DSLAM and 4000€ for the mentioned connection.
 
+  See [[https://www.itscosts.its.dot.gov][here]] for pricing. TODO cite as a source
+
   #+NAME: model_params
+  | $n_M$ [unit]   |   50 |
   | $d_M$ [m]      | 1500 |
   | $c_r$ [€/unit] | 5000 |
   | $c_f$ [€/m]    |    3 |
@@ -737,6 +740,9 @@
 
         m.add_constraint(ct=D[target] - D[source] <= edge_length * X[source][target] + params['d_M'] * (1 - X[source][target]),
                          ctname="{}".format(name(source, target, var='distance_lower')))
+        # 6)
+        m.add_constraint(ct=N[source][target] <= n_M * N[source][target],
+                         ctname="{}".format(name(source, target, var='n_max')))
 
     logger.info('Set constraints 5')
 
