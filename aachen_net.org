@@ -562,6 +562,77 @@
 
 * Solve associated ILP problem
 
+  #+NAME: dummy_graph_path
+  - data/aachen_net/dummy_graph.json
+
+  #+NAME: number_of_nodes
+  - 40
+
+  #+BEGIN_SRC python :results silent :var dummy_graph_path=flatten(dummy_graph_path) :var number_of_nodes=flatten(number_of_nodes) :tangle scripts/aachen_net/10_dummy_graph_generator.py
+    import json
+    from math import sqrt
+    import random
+    import matplotlib.pyplot as plt
+    import networkx as nx
+    from networkx.readwrite import json_graph
+
+    nodes = []
+
+    G = nx.Graph()
+
+    random.seed(13)
+
+    N = int(number_of_nodes)
+
+    def distance(i, j):
+        delta_lat = G.node[i]['lat'] - G.node[j]['lat']
+        delta_lon = G.node[i]['lon'] - G.node[j]['lon']
+
+        return sqrt(delta_lat**2 + delta_lon**2)
+
+    for i in range(N):
+        if random.random() < 0.2:
+            n_lines = 0
+        else:
+            n_lines = int(random.gauss(10, 3))
+
+        G.add_node(i,
+                   n_lines=n_lines,
+                   lat=random.random() * sqrt(N),
+                   lon=random.random() * sqrt(N))
+
+    for i in range(N):
+        for j in range(N):
+            if distance(i, j) < 2:
+                G.add_edge(i, j)
+
+    # randomly connect two components at a time
+    while not nx.is_connected(G):
+        comps = list(nx.connected_components(G))
+
+        for _ in range(N//10):
+            comp1, comp2 = random.sample(comps, 2)
+            node1 = random.choice(list(comp1))
+            node2 = random.choice(list(comp2))
+
+            G.add_edge(node1, node2)
+
+    assert nx.is_connected(G)
+
+    for node_id, pos in nx.spring_layout(G).items():
+        G.node[node_id]['lat'] = pos[0]
+        G.node[node_id]['lon'] = pos[1]
+
+    for i, j in G.edges():
+        G[i][j]['length'] = distance(i, j)
+
+    nx.draw_kamada_kawai(G)
+    plt.show()
+
+    with open(dummy_graph_path, 'w') as output:
+        output.write(json.dumps(json_graph.node_link_data(G)))
+  #+END_SRC
+
   $c_r$, cost per sub-root node has to consider also the cable to reach the first level router.
   We estimate 1000€ for the DSLAM and 4000€ for the mentioned connection.
 
@@ -575,7 +646,10 @@
   | $c_c$ [€/m]    |    1 |
   | $c_e$ [€/m]    |   50 |
 
-  #+BEGIN_SRC python :noweb yes :var graph_path=flatten(graph_path) :var model_params=model_params :tangle scripts/aachen_net/10_ILP.py
+  #+NAME: choose_graph
+  - dummy
+
+  #+BEGIN_SRC python :noweb yes :var choose_graph=flatten(choose_graph) :var graph_path=flatten(graph_path) :var dummy_graph_path=flatten(dummy_graph_path) :var model_params=model_params :tangle scripts/aachen_net/11_ILP.py :results silent
     <<imports_&_defaults>>
     <<projection>>
 
@@ -589,17 +663,21 @@
     ##############################
     # Load and pre-process graph #
     ##############################
+    if choose_graph == "dummy":
+        path = dummy_graph_path
+    else:
+        path = graph_path
 
-    with open(graph_path.replace('_raw.json', '_complete.json')) as f:
+    with open(path) as f:
         js_graph = json.load(f)
 
     G = json_graph.node_link_graph(js_graph)
     assert nx.is_connected(G)
 
     G = G.to_directed()
-
     # add artificial root node to G, with a zero-length arc for all the nodes
-    G.add_node('r', n_lines=0, lat=0, lon=0)
+
+    G.add_node('r', n_lines=0, lat=-1, lon=0)
 
     for node_id in G.nodes:
         # TODO check if node is in R (candidate sub-roots)
@@ -642,15 +720,15 @@
         m.add_constraint(ct=N[source][target] >= 0,
                          ctname="{} >= 0".format(name(source, target, var='n')))
 
-    # D = {}
+    D = {}
     for i, (node_id, data) in enumerate(G.nodes(data=True)):
         if i % 10000 == 0:
             print("Initializing node {}/{}".format(i, len(G.nodes)), end='\r')
 
         ## set distance counter
-        # D[node_id] = m.continuous_var(name=name(node_id, var='d'))
-        # m.add_constraint(ct=D[node_id] >= 0,
-        #                  ctname="{} >= 0".format(name(source, target, var='d')))
+        D[node_id] = m.continuous_var(name=name(node_id, var='d'))
+        m.add_constraint(ct=D[node_id] >= 0,
+                         ctname="{} >= 0".format(name(source, target, var='d')))
 
     logger.info('Initialized variables')
 
@@ -661,16 +739,16 @@
     obj_func = 0
 
     # A), B) ~> suppose full-fiber for now
-    # for node_id in G.nodes():
-    #    obj_func += D[node_id] * params['c_f']
+    for node_id in G.nodes():
+        obj_func += D[node_id] * params['c_f']
 
     # C)
     for source, target, data in G.edges(data=True):
         obj_func += X[source][target] * data['length'] * params['c_e']
 
     # D)
-    for _, target in G.out_edges('r'):
-        obj_func += X['r'][target] * params['c_r']
+    for source, target in G.out_edges('r'):
+        obj_func += X[source][target] * params['c_r']
 
     m.set_objective('min', obj_func)
 
@@ -712,12 +790,10 @@
         if node_id == 'r':
             m.add_constraint(ct=out_count_X >= 1,
                              ctname=name(node_id, var='out_count_X_lower'))
-            m.add_constraint(ct=out_count_X <= 1500,
-                             ctname=name(node_id, var='out_count_X_upper'))
 
         # 4)
-        # m.add_constraint(ct=D[node_id] <= in_count_X * params['d_M'],
-        #                 ctname="{}".format(name(node_id, var='distance_domain')))
+        m.add_constraint(ct=D[node_id] <= in_count_X * params['d_M'],
+                         ctname="{}".format(name(node_id, var='distance_domain')))
 
         # 7), 8)
         if node_id != 'r':
@@ -737,14 +813,14 @@
         edge_length = data['length']
 
         # 5)
-        # m.add_constraint(ct=D[target] - D[source] >= edge_length * X[source][target] - params['d_M'] * (1 - X[source][target]),
-        #                 ctname="{}".format(name(source, target, var='distance_upper')))
+        m.add_constraint(ct=D[target] - D[source] >= edge_length * X[source][target] - params['d_M'] * (1 - X[source][target]),
+                         ctname="{}".format(name(source, target, var='distance_upper')))
 
-        # m.add_constraint(ct=D[target] - D[source] <= edge_length * X[source][target] + params['d_M'] * (1 - X[source][target]),
-        #                 ctname="{}".format(name(source, target, var='distance_lower')))
+        m.add_constraint(ct=D[target] - D[source] <= edge_length * X[source][target] + params['d_M'] * (1 - X[source][target]),
+                         ctname="{}".format(name(source, target, var='distance_lower')))
 
         # 6)
-        m.add_constraint(ct=N[source][target] <= params["n_M"] * N[source][target],
+        m.add_constraint(ct=N[source][target] <= params["n_M"] * X[source][target],
                          ctname="{}".format(name(source, target, var='n_max')))
 
 
@@ -761,8 +837,8 @@
         G[source][target]['x'] = X[source][target].solution_value
         G[source][target]['n'] = N[source][target].solution_value
 
-    # for node_id in G.nodes:
-    #    G.node[node_id]['d'] = D[node_id].solution_value
+    for node_id in G.nodes:
+        G.node[node_id]['d'] = D[node_id].solution_value
 
     with open(graph_path.replace('_raw.json', '_DSLAM_solution.json'), 'w') as output:
         output.write(json.dumps(json_graph.node_link_data(G)))
@@ -770,7 +846,7 @@
 
   Plot graph resulting from optimization.
 
-  #+BEGIN_SRC python :noweb yes :var graph_path=flatten(graph_path) :tangle scripts/aachen_net/11_plot_ILP_result.py
+  #+BEGIN_SRC python :noweb yes :var graph_path=flatten(graph_path) :tangle scripts/aachen_net/12_plot_ILP_result.py
     <<imports_&_defaults>>
     <<projection>>
 
@@ -789,7 +865,7 @@
         data_ = data.copy()
         data_['geometry'] = point
         data_['id'] = id_
-        data_['is_subroot'] = ('r', id_) in G.in_edges(id_)
+        data_['is_subroot'] = G['r'][id_]['x'] == 1
 
         nodes_info.append(data_)
 
@@ -817,25 +893,47 @@
     edges_df = edges_df.to_crs(projection.srs)
 
     ## plot
+
+    # plot params
+    showroot = False
+
     fig = plt.figure(figsize=(6, 6), frameon=False)
     ax = fig.gca()
 
-    nodes_df[nodes_df["id"] != 'r'].plot(ax=ax,
-                                         markersize=1,
-                                         color='black',
-                                         zorder=1)
+    # terminals
+    nodes_df[(nodes_df["id"] != 'r') & (nodes_df["n_lines"] >= 1)].plot(ax=ax,
+                                                                        markersize=10,
+                                                                        color='black',
+                                                                        zorder=1)
+
+
+    nodes_df[(nodes_df["id"] != 'r') & (nodes_df["n_lines"] < 1)].plot(ax=ax,
+                                                                       markersize=5,
+                                                                       color='#a0a0a0',
+                                                                       zorder=1)
 
     # highlight DSLAMS
     nodes_df[(nodes_df["id"] != 'r') & (nodes_df['is_subroot'])].plot(ax=ax,
-                                                                      markersize=1.5,
+                                                                      markersize=50,
                                                                       color='red',
                                                                       zorder=2)
 
     edges_df[(edges_df['x'] == 0) & (edges_df['source'] != 'r')].plot(ax=ax,
-                                                                      column='n',
                                                                       color="#a0a0a0",
                                                                       linewidth=0.5,
                                                                       zorder=0)
+
+    if showroot:
+        nodes_df[(nodes_df["id"] == 'r')].plot(ax=ax,
+                                               markersize=100,
+                                               color='green',
+                                               zorder=2)
+
+        edges_df[(edges_df['source'] == 'r') & (edges_df['n'] >= 1)].plot(ax=ax,
+                                                                          column='n',
+                                                                          color="green",
+                                                                          linewidth=0.5,
+                                                                          zorder=0)
 
     edges_df[(edges_df['x'] == 1) & (edges_df['source'] != 'r')].plot(ax=ax,
                                                                       column='n',
@@ -843,10 +941,34 @@
                                                                       linewidth=0.5,
                                                                       zorder=0)
 
+    for _, row in edges_df.iterrows():
+        if row.source == 'r':
+            color = 'green'
+        else:
+            color = 'black'
+
+        if row.x == 0:
+            continue
+
+        if row.length != 0:
+            ax.annotate(s="{0:.0f} - {0:.2f}".format(row.n, row.length),
+                        xy=row.geometry.centroid.coords[0],
+                        color=color,
+                        zorder=5)
+
+    for _, row in nodes_df[(nodes_df['d'] > 0)].iterrows():
+        ax.annotate(s="{0:.2f}".format(row.d),
+                    xy=row.geometry.centroid.coords[0],
+                    color="blue",
+                    zorder=5)
+
     plt.axis('off')
     plt.tight_layout(rect=[-0.1, -0.05, 1.1, 1])
     plt.show()
   #+END_SRC
+
+  #+RESULTS:
+  : None
 
 * COMMENT Local variables
   # Local Variables:
