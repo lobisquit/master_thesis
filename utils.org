@@ -16,10 +16,12 @@
     import networkx as nx
     import numpy as np
     import pandas as pd
+    from geographiclib.geodesic import Geodesic
     from matplotlib import rcParams
     from networkx.readwrite import json_graph
     from pyproj import Proj
     from s2g import ShapeGraph
+    from scipy.spatial.distance import cdist
     from shapely import wkt
     from shapely.geometry import LineString, Point, shape
     from shapely.geometry.polygon import Polygon
@@ -54,10 +56,103 @@
     logger.info('matplotlib ok')
   #+END_SRC
 
+  Plot a ~networkx~ graph in a geographical map, plus various utilities.
+
+  #+NAME: graph_utils
+  #+BEGIN_SRC python
+    def compute_distance(point1, point2, lon_label='lon', lat_label='lat'):
+        g = Geodesic.WGS84.Inverse(point1[lat_label], point1[lon_label],
+                                   point2[lat_label], point2[lon_label])
+
+        return g['s12']
+
+    def node_distance(G, source, target, lon_label='lon', lat_label='lat'):
+        point1 = G.node[source]
+        point2 = G.node[target]
+
+        return compute_distance
+
+    def refresh_distances(G, **kwargs):
+        for source, target in G.edges():
+            G[source][target]['length'] = compute_distance(G, source, target, **kwargs)
+
+    def plot_graph(G, lon_label='lon', lat_label='lat', ax=None, figsize=(6, 6), title=None):
+        ## collect data into proper lists
+        nodes = G.nodes(data=True)
+
+        nodes_info = []
+        for id_, data in nodes:
+            point = Point(data[lon_label], data[lat_label])
+            nodes_info.append({'geometry': point, **data})
+
+        edges_info = []
+        for node_id1, node_id2, data in G.edges(data=True):
+            edge = LineString((
+                (nodes[node_id1][lon_label], nodes[node_id1][lat_label]),
+                (nodes[node_id2][lon_label], nodes[node_id2][lat_label])
+            ))
+
+            edges_info.append({'geometry': edge, **data})
+
+        ## convert to GeoDataFrames
+        nodes_df = gpd.GeoDataFrame(nodes_info)
+        nodes_df.crs = {'init' :'epsg:4326'} # long-lat projection
+        nodes_df = nodes_df.to_crs(projection.srs)
+
+        edges_df = gpd.GeoDataFrame(edges_info)
+        edges_df.crs = {'init' :'epsg:4326'} # long-lat projection
+        edges_df = edges_df.to_crs(projection.srs)
+
+        ## plot everything
+        if ax is None:
+            fig = plt.figure(figsize=figsize, frameon=False)
+            ax = fig.gca()
+
+        if title:
+            ax.set_title(title + "\n",
+                         fontsize=15,
+                         fontweight=font_spec['font.weight'])
+
+        nodes_df.plot(ax=ax,
+                      markersize=1,
+                      color='black',
+                      zorder=2)
+
+        edges_df.plot(ax=ax,
+                      color='black',
+                      # column='weight',
+                      linewidth=0.5,
+                      zorder=1)
+
+        plt.axis('off')
+  #+END_SRC
+
+  #+NAME: mean_variance_collector
+  #+BEGIN_SRC python
+    class MeanVarianceCollector:
+        def __init__(self):
+            self.sum_of_nums = 0
+            self.sum_of_squares = 0
+            self.count = 0
+
+        def insert(self, value):
+            self.sum_of_nums += value
+            self.sum_of_squares += value ** 2
+            self.count += 1
+
+        def mean(self):
+            return self.sum_of_nums / self.count
+
+        def variance(self):
+            return self.sum_of_squares / self.count
+  #+END_SRC
+
   #+NAME: imports_&_defaults
   #+BEGIN_SRC python :noweb yes
     <<imports>>
     <<matplotlib_defaults>>
+    <<graph_utils>>
+    <<mean_variance_collector>>
   #+END_SRC
 
   Flatten ~org~ tables in lists of strings or single string.
