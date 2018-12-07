@@ -76,7 +76,7 @@ Plot a ~networkx~ graph in a geographical map, plus various utilities.
 
   def refresh_distances(G, **kwargs):
       for source, target in G.edges():
-          G[source][target]['length'] = compute_distance(G, source, target, **kwargs)
+          G[source][target]['length'] = node_distance(G, source, target, **kwargs)
 
   def plot_graph(G, lon_label='lon', lat_label='lat', ax=None, figsize=(6, 6), title=None):
       ## collect data into proper lists

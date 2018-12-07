@@ -254,6 +254,7 @@ make our setting buildings in street corners accurate enough.
       if current_min_length > MIN_LENGTH:
           break
 
+      # segment from source to target with minimum length
       min_g = Geodesic.WGS84.Inverse(G.node[min_source]['lat'],
                                      G.node[min_source]['lon'],
                                      G.node[min_target]['lat'],
@@ -280,17 +281,9 @@ make our setting buildings in street corners accurate enough.
   MAX_LENGTH = 200
 
   # collect edges (not to mess up with G iterator)
-  edges_to_split_distance = {}
-
-  for source, target in G.edges():
-      point1 = G.node[source]
-      point2 = G.node[target]
-
-      g = Geodesic.WGS84.Inverse(point1['lat'], point1['lon'],
-                                 point2['lat'], point2['lon'])
-
-      if g['s12'] > MAX_LENGTH:
-          edges_to_split_distance[(source, target)] = g['s12']
+  edges_to_split_distance = { edge: node_distance(G, *edge)
+                              for edge in G.edges()
+                              if node_distance(G, *edge) > MAX_LENGTH }
 
   progress = 1
   for (source, target), distance in edges_to_split_distance.items():
@@ -307,9 +300,17 @@ make our setting buildings in street corners accurate enough.
       # n + source + target now are in the segment
       delta = distance / (n_intermediate + 2)
 
+      # run along segment from source to target
+      g = Geodesic.WGS84.Inverse(G.node[source]['lat'],
+                                 G.node[source]['lon'],
+                                 G.node[target]['lat'],
+                                 G.node[target]['lon'])
+
       new_points = []
       for i in range(n_intermediate):
           point_distance = delta * (i + 1)
+
+          # disseminate points every delta
           point = Geodesic.WGS84.Direct(lat1=G.node[source]['lat'],
                                         lon1=G.node[source]['lon'],
                                         azi1=g['azi1'],
@@ -322,7 +323,7 @@ make our setting buildings in street corners accurate enough.
 
       G.add_edge(source, new_points[0])
 
-      for i in range(n_intermediate -1):
+      for i in range(n_intermediate - 1):
           G.add_edge(new_points[i], new_points[i+1], length=delta)
 
       G.add_edge(new_points[-1], target)
@@ -367,7 +368,7 @@ This has to consider only roads in the major component of the city, not the unco
       return min_id, min_dist
 
   # load graph
-  with open(graph_path + "_0_raw.json") as f:
+  with open(graph_path + "_1_fix_roads.json") as f:
       js_graph = json.load(f)
 
   G = json_graph.node_link_graph(js_graph)
