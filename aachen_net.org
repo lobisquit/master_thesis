@@ -52,26 +52,26 @@ Database is run localy as normal user inside a proper socket directory.
 
 See [[https://simonb83.github.io/making-a-map-in-matplotlib.html][here]] for details on moving ~shp~ to ~postgresql~.
 
-  #+NAME: socket_dir
-  - data/aachen_net/postgres/socket_dir/
+#+NAME: socket_dir
+- data/aachen_net/postgres/socket_dir/
 
-    #+BEGIN_SRC bash :results none :tangle scripts/aachen_net/02_postgres_init.sh :var socket_dir=socket_dir
-      # create and start local postgres session
-      mkdir -p data/aachen_net/postgres/
-      initdb -D data/aachen_net/postgres/
+#+BEGIN_SRC bash :results none :tangle scripts/aachen_net/02_postgres_init.sh :var socket_dir=socket_dir
+  # create and start local postgres session
+  mkdir -p data/aachen_net/postgres/
+  initdb -D data/aachen_net/postgres/
 
-      mkdir -p $(pwd)/$socket_dir
-      postgres -D data/aachen_net/postgres/ -k $(pwd)/$socket_dir &
+  mkdir -p $(pwd)/$socket_dir
+  postgres -D data/aachen_net/postgres/ -k $(pwd)/$socket_dir &
 
-      dropdb nrw -h $(pwd)/$socket_dir
-      createdb nrw -h $(pwd)/$socket_dir
-      psql nrw -c 'CREATE EXTENSION postgis' -h $(pwd)/$socket_dir
+  dropdb nrw -h $(pwd)/$socket_dir
+  createdb nrw -h $(pwd)/$socket_dir
+  psql nrw -c 'CREATE EXTENSION postgis' -h $(pwd)/$socket_dir
 
-      echo "WARNING: this takes some time..."
+  echo "WARNING: this takes some time..."
 
-      shp2pgsql -s 4326 data/aachen_net/NRW_roads.shp roads | psql nrw -h $(pwd)/$socket_dir > /dev/null
-      shp2pgsql -s 4326 data/aachen_net/NRW_buildings.shp buildings | psql nrw -h $(pwd)/$socket_dir > /dev/null
-    #+END_SRC
+  shp2pgsql -s 4326 data/aachen_net/NRW_roads.shp roads | psql nrw -h $(pwd)/$socket_dir > /dev/null
+  shp2pgsql -s 4326 data/aachen_net/NRW_buildings.shp buildings | psql nrw -h $(pwd)/$socket_dir > /dev/null
+#+END_SRC
 
 ** Retrieve city border
 Extract the union of Aachen metropolitan area, in order to filter roads properly.
@@ -176,107 +176,66 @@ Create final plot, with roads as well as population density.
 ** Create an abstract graph from the roads
 When creating the graph, remember ~OSM_ID~, in order to assign each building a proper edge.
 
-  #+NAME: graph_path
-  - data/aachen_net/aachen_graph
+#+NAME: graph_path
+- data/aachen_net/aachen_graph
 
-    #+BEGIN_SRC python :noweb yes :var valid_types=flatten(utils.org:valid_types) :var graph_path=flatten(graph_path) :tangle scripts/aachen_net/06_get_roads_graph.py
-      <<imports_&_defaults>>
-      <<projection>>
-      <<roads>>
-      <<buildings>>
+#+BEGIN_SRC python :noweb yes :var valid_types=flatten(utils.org:valid_types) :var graph_path=flatten(graph_path) :tangle scripts/aachen_net/06_get_roads_graph.py
+  <<imports_&_defaults>>
+  <<projection>>
+  <<roads>>
+  <<buildings>>
 
-      sg = ShapeGraph(shapefile=roads_path, to_graph=True, properties=['OSM_ID'])
+  sg = ShapeGraph(shapefile=roads_path, to_graph=True, properties=['OSM_ID'])
 
-      # convert graph to json
-      G = json_graph.node_link_data(sg.graph)
+  # convert graph to json
+  G = json_graph.node_link_data(sg.graph)
 
-      for node in G['nodes']:
-          node['lat'], node['lon'] = sg.node_xy[node['id']]
+  for node in G['nodes']:
+      node['lat'], node['lon'] = sg.node_xy[node['id']]
 
-      # use of private variable seems to be mandatory here
-      edge_osm_id_map = {
-          edge: sg.line_info(info.line_index).props['OSM_ID']
-          for edge, info in sg._edges.items() if info.line_index is not None
-      }
+  # use of private variable seems to be mandatory here
+  edge_osm_id_map = {
+      edge: sg.line_info(info.line_index).props['OSM_ID']
+      for edge, info in sg._edges.items() if info.line_index is not None
+  }
 
-      for edge in G['edges']:
-          if edge in edge_osm_id_map:
-              G[edge[0]][edge[1]]['OSM_ID'] = edge_osm_id_map[edge]
+  for edge in G['edges']:
+      if edge in edge_osm_id_map:
+          G[edge[0]][edge[1]]['OSM_ID'] = edge_osm_id_map[edge]
 
-      with open(graph_path + "_0_raw.json", 'w') as output:
-          output.write(json.dumps(G))
-    #+END_SRC
+  with open(graph_path + "_0_raw.json", 'w') as output:
+      output.write(json.dumps(G))
+#+END_SRC
 
 ** Preprocess obtained graph
 For our purposes, roads should have a maximum length of 200m, in order to
 make our setting buildings in street corners accurate enough.
 
-  #+NAME: closest_nodes_path
-  - data/aachen_net/closest_nodes.csv
+#+NAME: closest_nodes_path
+- data/aachen_net/closest_nodes.csv
 
-    #+BEGIN_SRC python :noweb yes :tangle scripts/aachen_net/07_fix_roads.py :var valid_types=flatten(utils.org:valid_types) :var closest_nodes_path=flatten(closest_nodes_path) :var graph_path=flatten(graph_path)
-      <<all_datasets>>
+#+BEGIN_SRC python :noweb yes :tangle scripts/aachen_net/07_fix_roads.py :var valid_types=flatten(utils.org:valid_types) :var closest_nodes_path=flatten(closest_nodes_path) :var graph_path=flatten(graph_path)
+  <<all_datasets>>
 
-      # load graph
-      with open(graph_path + "_0_raw.json") as f:
-          js_graph = json.load(f)
+  # load graph
+  with open(graph_path + "_0_raw.json") as f:
+      js_graph = json.load(f)
 
-      G = json_graph.node_link_graph(js_graph)
+  G = json_graph.node_link_graph(js_graph)
 
-      ## remove too short roads
+  ## remove too short roads
 
-      MIN_LENGTH = 20 # meters
+  MIN_LENGTH = 20 # meters
 
-      # proceed until all roads are longer than MIN_LENGTH
-      # using a do-while procedure
-      while True:
-          current_min_length = float('inf')
-          min_source = None
-          min_target = None
+  # proceed until all roads are longer than MIN_LENGTH
+  # using a do-while procedure
+  while True:
+      current_min_length = float('inf')
+      min_source = None
+      min_target = None
 
-          n = 0
-          # compute length of each road
-          for source, target in G.edges():
-              point1 = G.node[source]
-              point2 = G.node[target]
-
-              g = Geodesic.WGS84.Inverse(point1['lat'], point1['lon'],
-                                         point2['lat'], point2['lon'])
-
-              if g['s12'] < current_min_length:
-                  current_min_length = g['s12']
-                  min_source = source
-                  min_target = target
-
-              if g['s12'] < MIN_LENGTH:
-                  n += 1
-
-          if current_min_length > MIN_LENGTH:
-              break
-
-          # merge the two points that realize the minimum length (very slow: rebuilding G!)
-          G = nx.contracted_edge(G, (min_source, min_target), self_loops=False)
-
-          # use mid-point for contracted node position
-          mid_point = Geodesic.WGS84.Direct(lat1=G.node[source]['lat'],
-                                            lon1=G.node[source]['lon'],
-                                            azi1=g['azi1'],
-                                            s12=g['s12']/2)
-
-          # first node *should* remain as id
-          G.node[min_source].clear()
-          G.node[min_source]['lat'] = mid_point['lat2']
-          G.node[min_source]['lon'] = mid_point['lon2']
-
-          print('{} remaining'.format(n-1), end="\r")
-
-      ## split roads that are too long
-
-      MAX_LENGTH = 200
-
-      # collect edges (not to mess up with G iterator)
-      edges_to_split_distance = {}
-
+      n = 0
+      # compute length of each road
       for source, target in G.edges():
           point1 = G.node[source]
           point2 = G.node[target]
@@ -284,195 +243,253 @@ make our setting buildings in street corners accurate enough.
           g = Geodesic.WGS84.Inverse(point1['lat'], point1['lon'],
                                      point2['lat'], point2['lon'])
 
-          if g['s12'] > MAX_LENGTH:
-              edges_to_split_distance[(source, target)] = g['s12']
+          if g['s12'] < current_min_length:
+              current_min_length = g['s12']
+              min_source = source
+              min_target = target
 
-      progress = 1
-      for (source, target), distance in edges_to_split_distance.items():
-          print("{}/{} roads splitted".format(progress, len(edges_to_split_distance)), end='\r')
-          progress += 1
+          if g['s12'] < MIN_LENGTH:
+              n += 1
 
-          G.remove_edge(source, target)
+      if current_min_length > MIN_LENGTH:
+          break
 
-          if distance % MAX_LENGTH == 0:
-              n_intermediate = int(distance // MAX_LENGTH - 1)
-          else:
-              n_intermediate = int(distance // MAX_LENGTH)
+      # merge the two points that realize the minimum length (very slow: rebuilding G!)
+      G = nx.contracted_edge(G, (min_source, min_target), self_loops=False)
 
-          # n + source + target now are in the segment
-          delta = distance / (n_intermediate + 2)
+      # use mid-point for contracted node position
+      mid_point = Geodesic.WGS84.Direct(lat1=G.node[source]['lat'],
+                                        lon1=G.node[source]['lon'],
+                                        azi1=g['azi1'],
+                                        s12=g['s12']/2)
 
-          new_points = []
-          for i in range(n_intermediate):
-              point_distance = delta * (i + 1)
-              point = Geodesic.WGS84.Direct(lat1=G.node[source]['lat'],
-                                            lon1=G.node[source]['lon'],
-                                            azi1=g['azi1'],
-                                            s12=point_distance)
+      # first node *should* remain as id
+      G.node[min_source].clear()
+      G.node[min_source]['lat'] = mid_point['lat2']
+      G.node[min_source]['lon'] = mid_point['lon2']
 
-              new_points.append(max(G.nodes) + 1)
-              G.add_node(max(G.nodes) + 1,
-                         lat=point['lat2'],
-                         lon=point['lon2'])
+      print('{} remaining'.format(n-1), end="\r")
 
-          G.add_edge(source, new_points[0])
+  ## split roads that are too long
 
-          for i in range(n_intermediate -1):
-              G.add_edge(new_points[i], new_points[i+1], length=delta)
+  MAX_LENGTH = 200
 
-          G.add_edge(new_points[-1], target)
+  # collect edges (not to mess up with G iterator)
+  edges_to_split_distance = {}
 
-      # check distances respect the constraints
-      refresh_distances(G)
+  for source, target in G.edges():
+      point1 = G.node[source]
+      point2 = G.node[target]
 
-      lengths = [data['length'] for _, _, data in G.edges(data=True)]
-      assert min(lengths) >= MIN_LENGTH
-      assert max(lengths) <= MAX_LENGTH
+      g = Geodesic.WGS84.Inverse(point1['lat'], point1['lon'],
+                                 point2['lat'], point2['lon'])
 
-      assert nx.is_connected(G)
+      if g['s12'] > MAX_LENGTH:
+          edges_to_split_distance[(source, target)] = g['s12']
 
-      # plt.hist(lengths, bins=1000)
-      # plt.show()
+  progress = 1
+  for (source, target), distance in edges_to_split_distance.items():
+      print("{}/{} roads splitted".format(progress, len(edges_to_split_distance)), end='\r')
+      progress += 1
 
-      with open(graph_path + "_1_fix_roads.json", 'w') as output:
-          output.write(json.dumps(G))
-    #+END_SRC
+      G.remove_edge(source, target)
 
-    Find the closest road on the map for each house, in order to set the house as a node on the road graph.
-    This has to consider only roads in the major component of the city, not the unconnected ones.
+      if distance % MAX_LENGTH == 0:
+          n_intermediate = int(distance // MAX_LENGTH - 1)
+      else:
+          n_intermediate = int(distance // MAX_LENGTH)
 
-    #+BEGIN_SRC python :noweb yes :tangle scripts/aachen_net/08_add_buildings.py :var valid_types=flatten(utils.org:valid_types) :var closest_nodes_path=flatten(closest_nodes_path) :var graph_path=flatten(graph_path)
-      <<all_datasets>>
+      # n + source + target now are in the segment
+      delta = distance / (n_intermediate + 2)
 
-      def find_closest_vertex(G, building_point):
-          min_dist = float('inf')
-          min_id = None
+      new_points = []
+      for i in range(n_intermediate):
+          point_distance = delta * (i + 1)
+          point = Geodesic.WGS84.Direct(lat1=G.node[source]['lat'],
+                                        lon1=G.node[source]['lon'],
+                                        azi1=g['azi1'],
+                                        s12=point_distance)
 
-          # inspect the very node of this boy
-          for node_id in G.nodes():
-              node_point = G.node[node_id]
+          new_points.append(max(G.nodes) + 1)
+          G.add_node(max(G.nodes) + 1,
+                     lat=point['lat2'],
+                     lon=point['lon2'])
 
-              dist = compute_distance(building_point, node_point)
-              if min_dist < dist:
-                  dist = min_dist
-                  min_id = node_id
+      G.add_edge(source, new_points[0])
 
-          return min_id, min_dist
+      for i in range(n_intermediate -1):
+          G.add_edge(new_points[i], new_points[i+1], length=delta)
 
-      # load graph
-      with open(graph_path + "_1_fix_roads.json") as f:
-          js_graph = json.load(f)
+      G.add_edge(new_points[-1], target)
 
-      G = json_graph.node_link_graph(js_graph)
+  # check distances respect the constraints
+  refresh_distances(G)
 
-      collector = MeanVarianceCollector()
+  lengths = [data['length'] for _, _, data in G.edges(data=True)]
+  assert min(lengths) >= MIN_LENGTH
+  assert max(lengths) <= MAX_LENGTH
 
-      ## filter out buildings, heuristically
+  assert nx.is_connected(G)
 
-      # remove buildings that are too big or too small to be residential
-      buildings_map = buildings_map[(buildings_map.area > 40) &
-                                    (buildings_map.area < 2000)]
+  # plt.hist(lengths, bins=1000)
+  # plt.show()
 
-      # pick only a fraction of buildings (resindential ones): since
-      # we have no info about it, we suppose "residentiality" to be iid
-      buildings_map = buildings_map.sample(frac=0.6, random_state=13)
+  with open(graph_path + "_1_fix_roads.json", 'w') as output:
+      output.write(json.dumps(G))
+#+END_SRC
 
-      ## assign each building area and district to a node
+Find the closest road on the map for each house, in order to set the house as a node on the road graph.
+This has to consider only roads in the major component of the city, not the unconnected ones.
 
-      for index, building in buildings_map.iterrows():
-          print("{}/{}".format(index, len(buildings_map)), end='\r')
+#+BEGIN_SRC python :noweb yes :tangle scripts/aachen_net/08_add_buildings.py :var valid_types=flatten(utils.org:valid_types) :var closest_nodes_path=flatten(closest_nodes_path) :var graph_path=flatten(graph_path)
+  <<all_datasets>>
 
-          ## work only if building can be assigned to a district (not outside city)
-          district_index = -1
-          for index, district_row in district_map.iterrows():
-              if building.geometry.centroid.within(district_row.geometry):
-                  district_index = index
+  from scipy import spatial
 
-          # avoid adding buildings which center is outside the city
-          if district_index == -1:
-              continue
+  def find_closest_vertex(G, building_point):
+      min_dist = float('inf')
+      min_id = None
 
-          ## find closest point in the graph
-          lon, lat = projection(building.geometry.centroid.x,
-                                building.geometry.centroid.y,
-                                inverse=True)
-
-          min_id, min_dist = find_closest_vertex(G, {'lat': lat, 'lon': lon})
-
-          # register value
-          collector.insert(min_dist)
-
-          node_data = G.node[min_id]
-
-          # fill the structures if needed
-          if 'area' not in node_data:
-              node_data['area'] = 0
-
-          if 'district_count' not in node_data:
-              node_data['district_count'] = {}
-
-          if district_index not in node_data['district_count']:
-              node_data['district_count'][district_index] = 0
-
-          # update values for the node
-          node_data['district_count'][district_index] += building.geometry.area
-
-      with open('data/aachen_net/buildings_position_error.csv', 'w') as f:
-          f.write("mean,variance\n")
-          f.write("{},{}\n".format(collector.mean(), collector.variance()))
-
-      ## assign the district by majority vote on area
-
+      # inspect the very node of this boy
       for node_id in G.nodes():
-          G.node[node_id]['area'] = 0
-          G.node[node_id]['district'] = None
+          node_point = G.node[node_id]
 
-          # override values if needed
-          if 'district_count' in node_data:
-              area_count = node_data['district_count']
+          dist = compute_distance(building_point, node_point)
+          if dist < min_dist:
+              min_dist = dist
+              min_id = node_id
 
-              if area_count:
-                  G.node[node_id]['area'] = sum(area_count.values())
-                  G.node[node_id]['district'] = max(area_count, key=lambda x: area_count[x])
+      return min_id, min_dist
 
-              del node_data['district_count']
+  # load graph
+  with open(graph_path + "_0_raw.json") as f:
+      js_graph = json.load(f)
 
-      ## split population across all nodes in the same district
-      district_node_map = {}
-      for node_id, data in G.nodes(data=True):
-          if data['district']:
-              if data['district'] not in district_node_map:
-                  district_node_map[data['district']] = []
+  G = json_graph.node_link_graph(js_graph)
 
-              district_node_map[data['district']].append(node_id)
+  collector = MeanVarianceCollector()
 
-      for district, nodes in district_node_map.items():
-          total_population = district_map.loc[district].population
+  ## filter out buildings, heuristically
 
-          total_area = 0
-          for node_id in nodes:
-              total_area += G.node[node_id]['area']
+  # remove buildings that are too big or too small to be residential
+  buildings_map = buildings_map[(buildings_map.area > 40) &
+                                (buildings_map.area < 2000)]
 
-          G.node[node_id]['population'] = total_population * G.node[node_id]['area'] / total_area
+  ## assign each building area and district to a node
 
-      # check if necessary
-      for node_id in G.nodes():
-          if 'population' not in G.node[node_id]:
-              G.node[node_id]['population'] = 0
+  # pre-compute all (projected) node points with scipy.spatial.KDTree
+  node_ids = list(G.nodes)
+  node_coords = list(projection(data['lon'], data['lat'])
+                     for _, data in G.nodes(data=True))
+  search_tree = spatial.KDTree(node_coords)
 
-      assert nx.is_connected(G)
+  building_index = 0
+  for _, building in buildings_map.iterrows():
+      if building_index % 200 == 0:
+          print("{}/{}".format(building_index, len(buildings_map)), end='\r')
+      building_index += 1
 
-      # plt.hist(lengths, bins=1000)
-      # plt.show()
+      ## work only if building can be assigned to a district (not outside city)
+      district_index = -1
+      for index, district_row in district_map.iterrows():
+          if building.geometry.centroid.within(district_row.geometry):
+              district_index = index
 
-      with open(graph_path + "_1_fix_roads.json", 'w') as output:
-          output.write(json.dumps(G))
+      # avoid adding buildings which center is outside the city
+      if district_index == -1:
+          continue
 
-    #+END_SRC
+      ## find closest point in the graph
 
-    TODO
-    -[ ] assign each node its corresponding n_lines, based on area, district
-    -[ ] cleanup unneccesary nodes: non-building leaves and degree-2 non-building nodes
+      _, min_node_index = search_tree.query( (building.geometry.centroid.x,
+                                              building.geometry.centroid.y) )
+      node_id = node_ids[min_node_index]
+
+      # measure distance precisely
+      building_lon, building_lat = projection(building.geometry.centroid.x,
+                                              building.geometry.centroid.y,
+                                              inverse=True)
+
+      node_lon, node_lat = projection(*node_coords[min_node_index], inverse=True)
+
+      min_dist = compute_distance({'lon': building_lon, 'lat': building_lat},
+                                  {'lon': node_lon, 'lat': node_lat})
+
+      ## register value both in graph and error measurer
+
+      collector.insert(min_dist)
+
+      node_data = G.node[node_id]
+
+      # fill the structures if needed
+      if 'area' not in node_data:
+          node_data['area'] = 0
+
+      if 'district_count' not in node_data:
+          node_data['district_count'] = {}
+
+      if district_index not in node_data['district_count']:
+          node_data['district_count'][district_index] = 0
+
+      # update values for the node
+      node_data['district_count'][district_index] += building.geometry.area
+
+  with open('data/aachen_net/buildings_position_error.csv', 'w') as f:
+      f.write("mean,variance\n")
+      f.write("{},{}\n".format(collector.mean(), collector.variance()))
+
+  ## assign the district by majority vote on area
+
+  for node_id in G.nodes():
+      G.node[node_id]['area'] = 0
+      G.node[node_id]['district'] = None
+
+      # override values if needed
+      if 'district_count' in node_data:
+          area_count = node_data['district_count']
+
+          if area_count:
+              G.node[node_id]['area'] = sum(area_count.values())
+              G.node[node_id]['district'] = max(area_count, key=lambda x: area_count[x])
+
+          del node_data['district_count']
+
+  ## split population across all nodes in the same district
+  district_node_map = {}
+  for node_id, data in G.nodes(data=True):
+      if data['district']:
+          if data['district'] not in district_node_map:
+              district_node_map[data['district']] = []
+
+          district_node_map[data['district']].append(node_id)
+
+  for district, nodes in district_node_map.items():
+      total_population = district_map.loc[district].population
+
+      total_area = 0
+      for node_id in nodes:
+          total_area += G.node[node_id]['area']
+
+      G.node[node_id]['population'] = total_population * G.node[node_id]['area'] / total_area
+
+  # check if necessary
+  for node_id in G.nodes():
+      if 'population' not in G.node[node_id]:
+          G.node[node_id]['population'] = 0
+
+  assert nx.is_connected(G)
+
+  # plt.hist(lengths, bins=1000)
+  # plt.show()
+
+  with open(graph_path + "_1_fix_roads.json", 'w') as output:
+      output.write(json.dumps(G))
+
+#+END_SRC
+
+TODO
+-[ ] assign each node its corresponding n_lines, based on area, district
+-[ ] cleanup unneccesary nodes: non-building leaves and degree-2 non-building nodes
 
 ** Plot obtained graph on the map
 Plot final graph on top of district map.
