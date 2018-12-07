@@ -228,7 +228,8 @@ make our setting buildings in street corners accurate enough.
   MIN_LENGTH = 20 # meters
 
   # proceed until all roads are longer than MIN_LENGTH
-  # using a do-while procedure
+  # using a do-while procedure.
+
   while True:
       current_min_length = float('inf')
       min_source = None
@@ -240,28 +241,32 @@ make our setting buildings in street corners accurate enough.
           point1 = G.node[source]
           point2 = G.node[target]
 
-          g = Geodesic.WGS84.Inverse(point1['lat'], point1['lon'],
-                                     point2['lat'], point2['lon'])
+          d = node_distance(G, source, target)
 
-          if g['s12'] < current_min_length:
-              current_min_length = g['s12']
+          if d < current_min_length:
+              current_min_length = d
               min_source = source
               min_target = target
 
-          if g['s12'] < MIN_LENGTH:
+          if d < MIN_LENGTH:
               n += 1
 
       if current_min_length > MIN_LENGTH:
           break
 
-      # merge the two points that realize the minimum length (very slow: rebuilding G!)
+      min_g = Geodesic.WGS84.Inverse(G.node[min_source]['lat'],
+                                     G.node[min_source]['lon'],
+                                     G.node[min_target]['lat'],
+                                     G.node[min_target]['lon'])
+
+      # merge the two points that realize the minimum length (very slow)
       G = nx.contracted_edge(G, (min_source, min_target), self_loops=False)
 
       # use mid-point for contracted node position
-      mid_point = Geodesic.WGS84.Direct(lat1=G.node[source]['lat'],
-                                        lon1=G.node[source]['lon'],
-                                        azi1=g['azi1'],
-                                        s12=g['s12']/2)
+      mid_point = Geodesic.WGS84.Direct(lat1=G.node[min_source]['lat'],
+                                        lon1=G.node[min_source]['lon'],
+                                        azi1=min_g['azi1'],
+                                        s12=min_g['s12']/2)
 
       # first node *should* remain as id
       G.node[min_source].clear()
