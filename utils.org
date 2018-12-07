@@ -1,331 +1,328 @@
+#+STARTUP: indent
+
 * Imports and defaults settings
-  All imports should be gathered here.
+All imports should be gathered here.
 
-  #+NAME: imports
-  #+BEGIN_SRC python
-    import csv
-    import json
-    import logging
-    import math
-    from math import sqrt
-    from pathlib import Path
+#+NAME: imports
+#+BEGIN_SRC python
+  import csv
+  import json
+  import logging
+  import math
+  from math import sqrt
+  from pathlib import Path
 
-    import fiona
-    import geopandas as gpd
-    import matplotlib.pyplot as plt
-    import networkx as nx
-    import numpy as np
-    import pandas as pd
-    from geographiclib.geodesic import Geodesic
-    from matplotlib import rcParams
-    from networkx.readwrite import json_graph
-    from pyproj import Proj
-    from s2g import ShapeGraph
-    from scipy.spatial.distance import cdist
-    from shapely import wkt
-    from shapely.geometry import LineString, Point, shape
-    from shapely.geometry.polygon import Polygon
-    from shapely.ops import cascaded_union, nearest_points
+  import fiona
+  import geopandas as gpd
+  import matplotlib.pyplot as plt
+  import networkx as nx
+  import numpy as np
+  import pandas as pd
+  from geographiclib.geodesic import Geodesic
+  from matplotlib import rcParams
+  from networkx.readwrite import json_graph
+  from pyproj import Proj
+  from s2g import ShapeGraph
+  from scipy.spatial.distance import cdist
+  from shapely import wkt
+  from shapely.geometry import LineString, Point, shape
+  from shapely.geometry.polygon import Polygon
+  from shapely.ops import cascaded_union, nearest_points
 
-    logger = logging.getLogger('aachen_net.org')
-    logger.setLevel(logging.INFO)
-    logger.propagate = False
+  logger = logging.getLogger('aachen_net.org')
+  logger.setLevel(logging.INFO)
+  logger.propagate = False
 
-    formatter = logging.Formatter("%(asctime)s::%(levelname)s::%(module)s::%(message)s",
-                                  "%Y-%m-%d %H:%M:%S")
+  formatter = logging.Formatter("%(asctime)s::%(levelname)s::%(module)s::%(message)s",
+                                "%Y-%m-%d %H:%M:%S")
 
-    ch = logging.StreamHandler()
-    ch.setLevel(logging.INFO)
-    ch.setFormatter(formatter)
-    logger.addHandler(ch)
+  ch = logging.StreamHandler()
+  ch.setLevel(logging.INFO)
+  ch.setFormatter(formatter)
+  logger.addHandler(ch)
 
-    logger.info('import ok')
-  #+END_SRC
+  logger.info('import ok')
+#+END_SRC
 
-  Default settings for ~matplotlib~.
+Default settings for ~matplotlib~.
 
-  #+NAME: matplotlib_defaults
-  #+BEGIN_SRC python
-    font_spec = {
-        'font.family':'sans-serif',
-        'font.sans-serif':['Fira Sans'],
-        'font.weight': 'regular'
-    }
-    rcParams.update(font_spec)
+#+NAME: matplotlib_defaults
+#+BEGIN_SRC python
+  font_spec = {
+      'font.family':'sans-serif',
+      'font.sans-serif':['Fira Sans'],
+      'font.weight': 'regular'
+  }
+  rcParams.update(font_spec)
 
-    logger.info('matplotlib ok')
-  #+END_SRC
+  logger.info('matplotlib ok')
+#+END_SRC
 
-  Plot a ~networkx~ graph in a geographical map, plus various utilities.
+Plot a ~networkx~ graph in a geographical map, plus various utilities.
 
-  #+NAME: graph_utils
-  #+BEGIN_SRC python
-    def compute_distance(point1, point2, lon_label='lon', lat_label='lat'):
-        g = Geodesic.WGS84.Inverse(point1[lat_label], point1[lon_label],
-                                   point2[lat_label], point2[lon_label])
+#+NAME: graph_utils
+#+BEGIN_SRC python
+  def compute_distance(point1, point2, lon_label='lon', lat_label='lat'):
+      g = Geodesic.WGS84.Inverse(point1[lat_label], point1[lon_label],
+                                 point2[lat_label], point2[lon_label])
 
-        return g['s12']
+      return g['s12']
 
-    def node_distance(G, source, target, lon_label='lon', lat_label='lat'):
-        point1 = G.node[source]
-        point2 = G.node[target]
+  def node_distance(G, source, target, lon_label='lon', lat_label='lat'):
+      point1 = G.node[source]
+      point2 = G.node[target]
 
-        return compute_distance
+      return compute_distance
 
-    def refresh_distances(G, **kwargs):
-        for source, target in G.edges():
-            G[source][target]['length'] = compute_distance(G, source, target, **kwargs)
+  def refresh_distances(G, **kwargs):
+      for source, target in G.edges():
+          G[source][target]['length'] = compute_distance(G, source, target, **kwargs)
 
-    def plot_graph(G, lon_label='lon', lat_label='lat', ax=None, figsize=(6, 6), title=None):
-        ## collect data into proper lists
-        nodes = G.nodes(data=True)
+  def plot_graph(G, lon_label='lon', lat_label='lat', ax=None, figsize=(6, 6), title=None):
+      ## collect data into proper lists
+      nodes = G.nodes(data=True)
 
-        nodes_info = []
-        for id_, data in nodes:
-            point = Point(data[lon_label], data[lat_label])
-            nodes_info.append({'geometry': point, **data})
+      nodes_info = []
+      for id_, data in nodes:
+          point = Point(data[lon_label], data[lat_label])
+          nodes_info.append({'geometry': point, **data})
 
-        edges_info = []
-        for node_id1, node_id2, data in G.edges(data=True):
-            edge = LineString((
-                (nodes[node_id1][lon_label], nodes[node_id1][lat_label]),
-                (nodes[node_id2][lon_label], nodes[node_id2][lat_label])
-            ))
+      edges_info = []
+      for node_id1, node_id2, data in G.edges(data=True):
+          edge = LineString((
+              (nodes[node_id1][lon_label], nodes[node_id1][lat_label]),
+              (nodes[node_id2][lon_label], nodes[node_id2][lat_label])
+          ))
 
-            edges_info.append({'geometry': edge, **data})
+          edges_info.append({'geometry': edge, **data})
 
-        ## convert to GeoDataFrames
-        nodes_df = gpd.GeoDataFrame(nodes_info)
-        nodes_df.crs = {'init' :'epsg:4326'} # long-lat projection
-        nodes_df = nodes_df.to_crs(projection.srs)
+      ## convert to GeoDataFrames
+      nodes_df = gpd.GeoDataFrame(nodes_info)
+      nodes_df.crs = {'init' :'epsg:4326'} # long-lat projection
+      nodes_df = nodes_df.to_crs(projection.srs)
 
-        edges_df = gpd.GeoDataFrame(edges_info)
-        edges_df.crs = {'init' :'epsg:4326'} # long-lat projection
-        edges_df = edges_df.to_crs(projection.srs)
+      edges_df = gpd.GeoDataFrame(edges_info)
+      edges_df.crs = {'init' :'epsg:4326'} # long-lat projection
+      edges_df = edges_df.to_crs(projection.srs)
 
-        ## plot everything
-        if ax is None:
-            fig = plt.figure(figsize=figsize, frameon=False)
-            ax = fig.gca()
+      ## plot everything
+      if ax is None:
+          fig = plt.figure(figsize=figsize, frameon=False)
+          ax = fig.gca()
 
-        if title:
-            ax.set_title(title + "\n",
-                         fontsize=15,
-                         fontweight=font_spec['font.weight'])
+      if title:
+          ax.set_title(title + "\n",
+                       fontsize=15,
+                       fontweight=font_spec['font.weight'])
 
-        nodes_df.plot(ax=ax,
-                      markersize=1,
-                      color='black',
-                      zorder=2)
+      nodes_df.plot(ax=ax,
+                    markersize=1,
+                    color='black',
+                    zorder=2)
 
-        edges_df.plot(ax=ax,
-                      color='black',
-                      # column='weight',
-                      linewidth=0.5,
-                      zorder=1)
+      edges_df.plot(ax=ax,
+                    color='black',
+                    # column='weight',
+                    linewidth=0.5,
+                    zorder=1)
 
-        plt.axis('off')
-  #+END_SRC
+      plt.axis('off')
+#+END_SRC
 
-  #+NAME: mean_variance_collector
-  #+BEGIN_SRC python
-    class MeanVarianceCollector:
-        def __init__(self):
-            self.sum_of_nums = 0
-            self.sum_of_squares = 0
-            self.count = 0
+#+NAME: mean_variance_collector
+#+BEGIN_SRC python
+  class MeanVarianceCollector:
+      def __init__(self):
+          self.sum_of_nums = 0
+          self.sum_of_squares = 0
+          self.count = 0
 
-        def insert(self, value):
-            self.sum_of_nums += value
-            self.sum_of_squares += value ** 2
-            self.count += 1
+      def insert(self, value):
+          self.sum_of_nums += value
+          self.sum_of_squares += value ** 2
+          self.count += 1
 
-        def mean(self):
-            return self.sum_of_nums / self.count
+      def mean(self):
+          return self.sum_of_nums / self.count
 
-        def variance(self):
-            return self.sum_of_squares / self.count
-  #+END_SRC
+      def variance(self):
+          return self.sum_of_squares / self.count
+#+END_SRC
 
-  #+NAME: imports_&_defaults
-  #+BEGIN_SRC python :noweb yes
-    <<imports>>
-    <<matplotlib_defaults>>
-    <<graph_utils>>
-    <<mean_variance_collector>>
-  #+END_SRC
+#+NAME: imports_&_defaults
+#+BEGIN_SRC python :noweb yes
+  <<imports>>
+  <<matplotlib_defaults>>
+  <<graph_utils>>
+  <<mean_variance_collector>>
+#+END_SRC
 
-  Flatten ~org~ tables in lists of strings or single string.
-  #+NAME: flatten
-  #+BEGIN_SRC elisp :var listlike='()
-    (let ((flattened-list (-flatten listlike)))
-      (if (= 1 (length flattened-list))
-          (car flattened-list)
-        flattened-list))
-  #+END_SRC
+Flatten ~org~ tables in lists of strings or single string.
+#+NAME: flatten
+#+BEGIN_SRC elisp :var listlike='()
+  (let ((flattened-list (-flatten listlike)))
+    (if (= 1 (length flattened-list))
+        (car flattened-list)
+      flattened-list))
+#+END_SRC
 
 * Datasets reading routines
-  Read district map and its projection details.
+Read district map and its projection details.
 
-  #+NAME: districts
-  #+BEGIN_SRC python
-    district_map = gpd.read_file("data/aachen_net/aachen_district_map.shp")
-    del district_map['FLäcHE'] # whole zero column
+#+NAME: districts
+#+BEGIN_SRC python
+  district_map = gpd.read_file("data/aachen_net/aachen_district_map.shp")
+  del district_map['FLäcHE'] # whole zero column
 
-    logger.info('districts ok')
-  #+END_SRC
+  logger.info('districts ok')
+#+END_SRC
 
 
-  Read district map projection, used as default one across the computations.
-  See [[https://gis.stackexchange.com/questions/17341/projection-pyproj-puzzle-and-understanding-srs-format][here]] for getting projection from ~prj~ file.
+Read district map projection, used as default one across the computations.
+See [[https://gis.stackexchange.com/questions/17341/projection-pyproj-puzzle-and-understanding-srs-format][here]] for getting projection from ~prj~ file.
 
-  #+NAME: projection
-  #+BEGIN_SRC python
-    prj_string_file = Path("data/aachen_net/aachen_district_map_prj.txt")
-    if not prj_string_file.is_file():
-        import osr # troublesome to install in cluster
+#+NAME: projection
+#+BEGIN_SRC python
+  prj_string_file = Path("data/aachen_net/aachen_district_map_prj.txt")
+  if not prj_string_file.is_file():
+      import osr # troublesome to install in cluster
 
-        prj_content = open('data/aachen_net/aachen_district_map.prj', 'r').read()
-        srs = osr.SpatialReference()
-        srs.ImportFromWkt(prj_content)
+      prj_content = open('data/aachen_net/aachen_district_map.prj', 'r').read()
+      srs = osr.SpatialReference()
+      srs.ImportFromWkt(prj_content)
 
-        with open(str(prj_string_file), 'w') as f:
-            f.write(srs.ExportToProj4())
+      with open(str(prj_string_file), 'w') as f:
+          f.write(srs.ExportToProj4())
 
-    prj_string = open(str(prj_string_file), 'r').read()
-    projection = Proj(prj_string)
+  prj_string = open(str(prj_string_file), 'r').read()
+  projection = Proj(prj_string)
 
-    logger.info('projection ok')
-  #+END_SRC
+  logger.info('projection ok')
+#+END_SRC
 
-  Read population statistics for each district and join them to the district ~GeoDataFrame~.
+Read population statistics for each district and join them to the district ~GeoDataFrame~.
 
-  #+NAME: population
-  #+BEGIN_SRC python
-    district_population = pd.read_csv("data/aachen_net/20170630_population_density.csv")
-    district_population.columns = ['STATBEZ', 'PERS']
+#+NAME: population
+#+BEGIN_SRC python
+  district_population = pd.read_csv("data/aachen_net/20170630_population_density.csv")
+  district_population.columns = ['STATBEZ', 'PERS']
 
-    # join using index
-    district_map.set_index('STATBEZ', inplace=True)
-    district_population.set_index('STATBEZ', inplace=True)
+  # join using index
+  district_map.set_index('STATBEZ', inplace=True)
+  district_population.set_index('STATBEZ', inplace=True)
 
-    district_map['population'] = district_population['PERS']
+  district_map['population'] = district_population['PERS']
 
-    # compute area in km^2: I checked some in wikipedia to be sure
-    district_map['area'] = district_map['geometry'].area / 10**6
-    district_map['density'] = district_map['population'] / district_map['area']
+  # compute area in km^2: I checked some in wikipedia to be sure
+  district_map['area'] = district_map['geometry'].area / 10**6
+  district_map['density'] = district_map['population'] / district_map['area']
 
-    logger.info('population ok')
-  #+END_SRC
+  logger.info('population ok')
+#+END_SRC
 
-  Read all roads and buildings that are either of ~None~ type or member of this group.
-  #+NAME: valid_types
-  | house            |
-  | residential      |
-  | apartments       |
-  | industrial       |
-  | school           |
-  | farm             |
-  | retail           |
-  | allotment_house  |
-  | warehouse        |
-  | office           |
-  | public           |
-  | civic            |
-  | hospital         |
-  | university       |
-  | manufacture      |
-  | dormitory        |
-  | community_centre |
-  | hotel            |
-  | bungalow         |
-  | family_house     |
-  | commercial       |
+Read all roads and buildings that are either of ~None~ type or member of this group.
+#+NAME: valid_types
+| house            |
+| residential      |
+| apartments       |
+| industrial       |
+| school           |
+| farm             |
+| retail           |
+| allotment_house  |
+| warehouse        |
+| office           |
+| public           |
+| civic            |
+| hospital         |
+| university       |
+| manufacture      |
+| dormitory        |
+| community_centre |
+| hotel            |
+| bungalow         |
+| family_house     |
+| commercial       |
 
-  #+NAME: roads
-  #+BEGIN_SRC python
-    roads_path = "data/aachen_net/aachen_roads.shp"
-    roads_map = gpd.read_file(roads_path)
-    roads_map.OSM_ID = pd.to_numeric(roads_map.OSM_ID)
-    roads_map.crs = {'init': 'epsg:4326'}
-    roads_map = roads_map.to_crs(projection.srs)
+#+NAME: roads
+#+BEGIN_SRC python
+  roads_path = "data/aachen_net/aachen_roads.shp"
+  roads_map = gpd.read_file(roads_path)
+  roads_map.OSM_ID = pd.to_numeric(roads_map.OSM_ID)
+  roads_map.crs = {'init': 'epsg:4326'}
+  roads_map = roads_map.to_crs(projection.srs)
 
-    logger.info('roads ok')
-  #+END_SRC
+  logger.info('roads ok')
+#+END_SRC
 
-  #+NAME: buildings
-  #+BEGIN_SRC python
-    buildings_path = "data/aachen_net/aachen_buildings.shp"
-    buildings_map = gpd.read_file(buildings_path)
-    buildings_map.OSM_ID = pd.to_numeric(buildings_map.OSM_ID)
-    buildings_map.crs = {'init': 'epsg:4326'}
-    buildings_map = buildings_map.to_crs(projection.srs)
+#+NAME: buildings
+#+BEGIN_SRC python
+  buildings_path = "data/aachen_net/aachen_buildings.shp"
+  buildings_map = gpd.read_file(buildings_path)
+  buildings_map.OSM_ID = pd.to_numeric(buildings_map.OSM_ID)
+  buildings_map.crs = {'init': 'epsg:4326'}
+  buildings_map = buildings_map.to_crs(projection.srs)
 
-    # set a custom label instead of None
-    buildings_map.loc[buildings_map['TYPE'].isnull(), 'TYPE'] = "UNSET"
+  # set a custom label instead of None
+  buildings_map.loc[buildings_map['TYPE'].isnull(), 'TYPE'] = "UNSET"
 
-    # remove unwanted types, but keep UNSET ones
-    buildings_map = buildings_map[buildings_map['TYPE'].isin(valid_types + ['UNSET'])]
+  # remove unwanted types, but keep UNSET ones
+  buildings_map = buildings_map[buildings_map['TYPE'].isin(valid_types + ['UNSET'])]
 
-    logger.info('buildings ok')
-  #+END_SRC
+  logger.info('buildings ok')
+#+END_SRC
 
-  #+NAME: all_datasets
-  #+BEGIN_SRC python :noweb yes :var valid_types=flatten(valid_types)
-    <<imports_&_defaults>>
-    <<projection>>
-    <<districts>>
-    <<population>>
-    <<roads>>
-    <<buildings>>
-  #+END_SRC
+#+NAME: all_datasets
+#+BEGIN_SRC python :noweb yes :var valid_types=flatten(valid_types)
+  <<imports_&_defaults>>
+  <<projection>>
+  <<districts>>
+  <<population>>
+  <<roads>>
+  <<buildings>>
+#+END_SRC
 
 * Cluster utilities
-  Here comes handy job files for cluster execution, both for UniPD DEI and RWTH
-  systems.
-  Just replace the script with the one you want to run.
+Here comes handy job files for cluster execution, both for UniPD DEI and RWTH
+systems.
+Just replace the script with the one you want to run.
 
-  #+BEGIN_SRC bash :tangle scripts/aachen_net_UniPD.job
-    #!/bin/bash
+#+BEGIN_SRC bash :tangle scripts/aachen_net_UniPD.job
+  #!/bin/bash
 
-    # create ouput files in job directory
-    #$ -o /home/lovisott/master_thesis/out.txt
-    #$ -e /home/lovisott/master_thesis/err.txt
+  # create ouput files in job directory
+  #$ -o /home/lovisott/master_thesis/out.txt
+  #$ -e /home/lovisott/master_thesis/err.txt
 
-    cd /home/lovisott/master_thesis/
+  cd /home/lovisott/master_thesis/
 
-    source venv/bin/activate
-    GDAL_DATA=/home/lovisott/gdal python scripts/aachen_net/07_get_closest_roads.py
-  #+END_SRC
+  source venv/bin/activate
+  GDAL_DATA=/home/lovisott/gdal python scripts/aachen_net/07_get_closest_roads.py
+#+END_SRC
 
-  #+BEGIN_SRC bash :tangle scripts/aachen_net_RWTH.job
-    #!/usr/bin/env zsh
+#+BEGIN_SRC bash :tangle scripts/aachen_net_RWTH.job
+  #!/usr/bin/env zsh
 
-    ### Job name
-    #BSUB -J SERIALJOB
+  ### Job name
+  #BSUB -J SERIALJOB
 
-    ### File / path where STDOUT & STDERR will be written
-    ###    %J is the job ID, %I is the array ID
-    #BSUB -o logs/%J-output.txt
+  ### File / path where STDOUT & STDERR will be written
+  ###    %J is the job ID, %I is the array ID
+  #BSUB -o logs/%J-output.txt
 
-    ### Request the time you need for execution in minutes
-    ### The format for the parameter is: [hour:]minute,
-    ### that means for 80 minutes you could also use this: 1:20
-    #BSUB -W 100:23
+  ### Request the time you need for execution in minutes
+  ### The format for the parameter is: [hour:]minute,
+  ### that means for 80 minutes you could also use this: 1:20
+  #BSUB -W 100:23
 
-    ### Request memory you need for your job in TOTAL in MB
-    #BSUB -M 8192
+  ### Request memory you need for your job in TOTAL in MB
+  #BSUB -M 8192
 
-    ### Change to the work directory
-    cd /home/qt636081/master_thesis/
+  ### Change to the work directory
+  cd /home/qt636081/master_thesis/
 
-    ### Execute your application
-    source venv/bin/activate
-    # pip install -r requirements.txt
-    python2 scripts/aachen_net/11_ILP.py
-  #+END_SRC
-
-* COMMENT Local variables
-  # Local Variables:
-  # eval: (add-hook 'before-save-hook (lambda () (indent-region (point-min) (point-max) nil)) t t)
-  # End:
+  ### Execute your application
+  source venv/bin/activate
+  # pip install -r requirements.txt
+  python2 scripts/aachen_net/11_ILP.py
+#+END_SRC
