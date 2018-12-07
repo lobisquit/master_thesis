@@ -211,7 +211,7 @@
 
     ### File / path where STDOUT & STDERR will be written
     ###    %J is the job ID, %I is the array ID
-    #BSUB -o logs/%J-%I
+    #BSUB -o logs/%J-output.txt
 
     ### Request the time you need for execution in minutes
     ### The format for the parameter is: [hour:]minute,
@@ -219,13 +219,15 @@
     #BSUB -W 100:23
 
     ### Request memory you need for your job in TOTAL in MB
-    #BSUB -M 4096
+    #BSUB -M 8192
 
     ### Change to the work directory
-    cd /home/qt636081
+    cd /home/qt636081/master_thesis/
 
     ### Execute your application
-    python3 scripts/aachen_net/11_ILP.py
+    source venv/bin/activate
+    # pip install -r requirements.txt
+    python2 scripts/aachen_net/11_ILP.py
   #+END_SRC
 
 * COMMENT Local variables
