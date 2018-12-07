@@ -383,6 +383,8 @@ This has to consider only roads in the major component of the city, not the unco
                      for _, data in G.nodes(data=True))
   search_tree = spatial.KDTree(node_coords)
 
+  building_distances = []
+
   building_index = 0
   for _, building in buildings_map.iterrows():
       if building_index % 200 == 0:
@@ -417,7 +419,7 @@ This has to consider only roads in the major component of the city, not the unco
 
       ## register value both in graph and error measurer
 
-      collector.insert(min_dist)
+      building_distances.append(min_dist)
 
       node_data = G.node[node_id]
 
@@ -435,8 +437,8 @@ This has to consider only roads in the major component of the city, not the unco
       node_data['district_count'][district_index] += building.geometry.area
 
   with open('data/aachen_net/buildings_position_error.csv', 'w') as f:
-      f.write("mean,variance\n")
-      f.write("{},{}\n".format(collector.mean(), collector.variance()))
+      for dist in building_distances:
+          f.write("{}\n".format(dist))
 
   ## assign the district by majority vote on area
 

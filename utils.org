@@ -68,11 +68,11 @@ Plot a ~networkx~ graph in a geographical map, plus various utilities.
 
       return g['s12']
 
-  def node_distance(G, source, target, lon_label='lon', lat_label='lat'):
+  def node_distance(G, source, target, **kwargs):
       point1 = G.node[source]
       point2 = G.node[target]
 
-      return compute_distance
+      return compute_distance(point1, point2, **kwargs)
 
   def refresh_distances(G, **kwargs):
       for source, target in G.edges():
