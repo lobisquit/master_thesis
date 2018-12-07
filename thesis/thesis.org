@@ -214,7 +214,7 @@ population is distributed across the city district.
 A visual representation of them is provided in the map in [[ref:fig:aachen_citymap]].
 
 #+LABEL: fig:aachen_citymap
-#+CAPTION: Summary of all Aachen district information we will employ: building, roads and population distribution.
+#+CAPTION: Summary of all Aachen district information we will employ: building, roads positions and population distribution.
 #+RESULTS[ea0d941863a2f88dda8d4c477b78e3c1fdef18bc]: fig:stack_diagram
 [[file:../figures/aachen_citymap.png]]
 
