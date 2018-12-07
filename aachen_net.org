@@ -800,7 +800,7 @@
             m.add_constraint(ct=in_count_N - out_count_N == data['n_lines'],
                              ctname="{}".format(name(node_id, var='flow_balance')))
         else:
-            total_population = sum([_data['n_lines'] for _, _data in G.nodes(data=True)])
+            total_population = sum(data_['n_lines'] for _, data_ in G.nodes(data=True))
             m.add_constraint(ct=out_count_N == total_population,
                              ctname="{}".format(name(node_id, var='flow_balance')))
 
