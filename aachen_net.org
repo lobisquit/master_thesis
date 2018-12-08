@@ -207,7 +207,7 @@ When creating the graph, remember ~OSM_ID~, in order to assign each building a p
       output.write(json.dumps(G))
 #+END_SRC
 
-** Preprocess obtained graph
+** Adjust road length
 For our purposes, roads should have a maximum length of 200m and a minimum of
 20m, in order to make our setting buildings in street corners accurate enough.
 
@@ -311,7 +311,7 @@ For our purposes, roads should have a maximum length of 200m and a minimum of
       output.write(json.dumps(json_graph.node_link_data(G)))
 #+END_SRC
 
-Split long roads so that they are smaller than ~MAX_LENGTH~.
+Use saved data (with roads /long/ enough) to start working on the ones too long.
 
 #+BEGIN_SRC python :noweb yes :tangle scripts/aachen_net/08_fix_long_roads.py :var graph_path=flatten(graph_path) :var min_length=flatten(MIN_LENGTH) :var max_length=flatten(MAX_LENGTH)
   <<imports_&_defaults>>
@@ -391,28 +391,13 @@ Split long roads so that they are smaller than ~MAX_LENGTH~.
 Find the closest road on the map for each house, in order to set the house as a node on the road graph.
 This has to consider only roads in the major component of the city, not the unconnected ones.
 
+** Assign buildings to nodes
 #+NAME: closest_nodes_path
 - data/aachen_net/closest_nodes.csv
 
-#+BEGIN_SRC python :noweb yes :tangle scripts/aachen_net/08_add_buildings.py :var valid_types=flatten(utils.org:valid_types) :var closest_nodes_path=flatten(closest_nodes_path) :var graph_path=flatten(graph_path)
+Load data from buildings dataset into graph.
+#+BEGIN_SRC python :noweb yes :tangle scripts/aachen_net/09_add_buildings.py :var valid_types=flatten(utils.org:valid_types) :var closest_nodes_path=flatten(closest_nodes_path) :var graph_path=flatten(graph_path)
   <<all_datasets>>
-
-  from scipy import spatial
-
-  def find_closest_vertex(G, building_point):
-      min_dist = float('inf')
-      min_id = None
-
-      # inspect the very node of this boy
-      for node_id in G.nodes():
-          node_point = G.node[node_id]
-
-          dist = compute_distance(building_point, node_point)
-          if dist < min_dist:
-              min_dist = dist
-              min_id = node_id
-
-      return min_id, min_dist
 
   # load graph
   with open(graph_path + "_1_fix_roads.json") as f:
@@ -425,8 +410,8 @@ This has to consider only roads in the major component of the city, not the unco
   ## filter out buildings, heuristically
 
   # remove buildings that are too big or too small to be residential
-  buildings_map = buildings_map[(buildings_map.area > 40) &
-                                (buildings_map.area < 2000)]
+  buildings_map = buildings_map[ (buildings_map.area > 40) &
+                                 (buildings_map.area < 2000) ]
 
   ## assign each building area and district to a node
 
@@ -444,7 +429,9 @@ This has to consider only roads in the major component of the city, not the unco
           print("{}/{}".format(building_index, len(buildings_map)), end='\r')
       building_index += 1
 
-      ## work only if building can be assigned to a district (not outside city)
+      ## work only if building can be assigned to a district (not ones outside
+      ## city)
+
       district_index = -1
       for index, district_row in district_map.iterrows():
           if building.geometry.centroid.within(district_row.geometry):
@@ -460,7 +447,7 @@ This has to consider only roads in the major component of the city, not the unco
                                               building.geometry.centroid.y) )
       node_id = node_ids[min_node_index]
 
-      # measure distance precisely
+      # measure building -> node distance precisely
       building_lon, building_lat = projection(building.geometry.centroid.x,
                                               building.geometry.centroid.y,
                                               inverse=True)
@@ -468,25 +455,26 @@ This has to consider only roads in the major component of the city, not the unco
       node_lon, node_lat = projection(*node_coords[min_node_index], inverse=True)
 
       min_dist = compute_distance({'lon': building_lon, 'lat': building_lat},
-                                  {'lon': node_lon, 'lat': node_lat})
+                                  {'lon': node_lon,     'lat': node_lat    })
 
-      ## register value both in graph and error measurer
+      ## register value both in error measurer and graph
 
       building_distances.append(min_dist)
 
       node_data = G.node[node_id]
 
       # fill the structures if needed
-      if 'area' not in node_data:
-          node_data['area'] = 0
-
       if 'district_count' not in node_data:
           node_data['district_count'] = {}
 
       if district_index not in node_data['district_count']:
           node_data['district_count'][district_index] = 0
 
-      # update values for the node
+      # update values for the node: each building contributes with its area to
+      # the district count, in order to have
+
+      # 1) total building area assigned to the node
+      # 2) voting on district (based on area) to assigned the node to a district
       node_data['district_count'][district_index] += building.geometry.area
 
   with open('data/aachen_net/buildings_position_error.csv', 'w') as f:
@@ -495,6 +483,7 @@ This has to consider only roads in the major component of the city, not the unco
 
   ## assign the district by majority vote on area
 
+  # nodes with no area have not to be assigned any district
   for node_id in G.nodes():
       G.node[node_id]['area'] = 0
       G.node[node_id]['district'] = None
@@ -503,11 +492,10 @@ This has to consider only roads in the major component of the city, not the unco
       if 'district_count' in node_data:
           area_count = node_data['district_count']
 
-          if area_count:
-              G.node[node_id]['area'] = sum(area_count.values())
-              G.node[node_id]['district'] = max(area_count, key=lambda x: area_count[x])
+          G.node[node_id]['area'] = sum(area_count.values())
+          G.node[node_id]['district'] = max(area_count, key=lambda x: area_count[x])
 
-          del node_data['district_count']
+          # del node_data['district_count']
 
   ## split population across all nodes in the same district
   district_node_map = {}
@@ -532,13 +520,65 @@ This has to consider only roads in the major component of the city, not the unco
       if 'population' not in G.node[node_id]:
           G.node[node_id]['population'] = 0
 
-
   assert nx.is_connected(G), "Final G is not connected"
 
   with open(graph_path + "_2_added_buildings.json", 'w') as output:
       output.write(json.dumps(json_graph.node_link_data(G)))
 #+END_SRC
 
+Based on area and district metric, assign each node a number of internet customer lines.
+#+BEGIN_SRC python :noweb yes :tangle scripts/aachen_net/10_compute_n_lines.py :var closest_nodes_path=flatten(closest_nodes_path) :var graph_path=flatten(graph_path)
+<<imports_&_defaults>>
+
+with open(graph_path + "_2_temp.json") as f:
+    js_graph = json.load(f)
+
+G = json_graph.node_link_graph(js_graph)
+
+## assign the district by majority vote on area
+
+# nodes with no area have not to be assigned any district
+for node_id in G.nodes():
+    G.node[node_id]['area'] = 0
+    G.node[node_id]['district'] = None
+
+    # override values if needed
+    if 'district_count' in node_data:
+        area_count = node_data['district_count']
+
+        G.node[node_id]['area'] = sum(area_count.values())
+        G.node[node_id]['district'] = max(area_count, key=lambda x: area_count[x])
+
+        # del node_data['district_count']
+
+## split population across all nodes in the same district
+district_node_map = {}
+for node_id, data in G.nodes(data=True):
+    if data['district']:
+        if data['district'] not in district_node_map:
+            district_node_map[data['district']] = []
+
+        district_node_map[data['district']].append(node_id)
+
+for district, nodes in district_node_map.items():
+    total_population = district_map.loc[district].population
+
+    total_area = 0
+    for node_id in nodes:
+        total_area += G.node[node_id]['area']
+
+    G.node[node_id]['population'] = total_population * G.node[node_id]['area'] / total_area
+
+# check if necessary
+for node_id in G.nodes():
+    if 'population' not in G.node[node_id]:
+        G.node[node_id]['population'] = 0
+
+assert nx.is_connected(G), "Final G is not connected"
+
+with open(graph_path + "_2_added_buildings.json", 'w') as output:
+    output.write(json.dumps(json_graph.node_link_data(G)))
+#+END_SRC
 TODO
 -[ ] assign each node its corresponding n_lines, based on area, district
 -[ ] cleanup unneccesary nodes: non-building leaves and degree-2 non-building nodes
