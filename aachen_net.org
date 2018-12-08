@@ -223,12 +223,13 @@ make our setting buildings in street corners accurate enough.
 
   G = json_graph.node_link_graph(js_graph)
 
+  assert nx.is_connected(G), "Raw G is not connected"
+
   ## remove too short roads
 
   MIN_LENGTH = 20 # meters
 
-  # proceed until all roads are longer than MIN_LENGTH
-  # using a do-while procedure.
+  # proceed splitting all roads that are shorter than MIN_LENGTH
 
   while True:
       current_min_length = float('inf')
@@ -274,7 +275,12 @@ make our setting buildings in street corners accurate enough.
       G.node[min_source]['lat'] = mid_point['lat2']
       G.node[min_source]['lon'] = mid_point['lon2']
 
-      print('{} remaining'.format(n-1), end="\r")
+      print('{} remaining'.format(n - 1), end="\r")
+
+  assert nx.is_connected(G), "Intermediate G is not connected"
+
+  with open(graph_path + "_1_temp.json", 'w') as output:
+      output.write(json.dumps(json_graph.node_link_data(G)))
 
   ## split roads that are too long
 
@@ -328,6 +334,8 @@ make our setting buildings in street corners accurate enough.
 
       G.add_edge(new_points[-1], target)
 
+      assert nx.is_connected(G), "WHAT2"
+
   # check distances respect the constraints
   refresh_distances(G)
 
@@ -373,7 +381,7 @@ This has to consider only roads in the major component of the city, not the unco
 
   G = json_graph.node_link_graph(js_graph)
 
-  collector = MeanVarianceCollector()
+  assert nx.is_connected(G), "Fixed roads G is not connected"
 
   ## filter out buildings, heuristically
 
@@ -485,14 +493,11 @@ This has to consider only roads in the major component of the city, not the unco
       if 'population' not in G.node[node_id]:
           G.node[node_id]['population'] = 0
 
-  assert nx.is_connected(G)
 
-  # plt.hist(lengths, bins=1000)
-  # plt.show()
+  assert nx.is_connected(G), "Final G is not connected"
 
-  with open(graph_path + "_1_fix_roads.json", 'w') as output:
-      output.write(json.dumps(G))
-
+  with open(graph_path + "_2_added_buildings.json", 'w') as output:
+      output.write(json.dumps(json_graph.node_link_data(G)))
 #+END_SRC
 
 TODO
