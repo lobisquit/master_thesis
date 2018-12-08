@@ -211,11 +211,8 @@ When creating the graph, remember ~OSM_ID~, in order to assign each building a p
 For our purposes, roads should have a maximum length of 200m, in order to
 make our setting buildings in street corners accurate enough.
 
-#+NAME: closest_nodes_path
-- data/aachen_net/closest_nodes.csv
-
-#+BEGIN_SRC python :noweb yes :tangle scripts/aachen_net/07_fix_roads.py :var valid_types=flatten(utils.org:valid_types) :var closest_nodes_path=flatten(closest_nodes_path) :var graph_path=flatten(graph_path)
-  <<all_datasets>>
+#+BEGIN_SRC python :noweb yes :tangle scripts/aachen_net/07_fix_short_roads.py :var graph_path=flatten(graph_path)
+  <<imports_&_defaults>>
 
   # load graph
   with open(graph_path + "_0_raw.json") as f:
@@ -229,8 +226,14 @@ make our setting buildings in street corners accurate enough.
 
   MIN_LENGTH = 20 # meters
 
-  # proceed splitting all roads that are shorter than MIN_LENGTH
+  def order_edge(edge):
+      return min(edge), max(edge)
 
+  # precompute expensive distance dictionary (update each cycle)
+  edge_length_map = { order_edge(edge): node_distance(G, *edge)
+                      for edge in G.edges() }
+
+  # proceed splitting all roads that are shorter than MIN_LENGTH
   while True:
       current_min_length = float('inf')
       min_source = None
@@ -238,49 +241,80 @@ make our setting buildings in street corners accurate enough.
 
       n = 0
       # compute length of each road
-      for source, target in G.edges():
-          point1 = G.node[source]
-          point2 = G.node[target]
+      for edge, length in edge_length_map.items():
+          # keep track of the shortest road
+          if length < current_min_length:
+              current_min_length = length
+              min_source, min_target = edge
 
-          d = node_distance(G, source, target)
-
-          if d < current_min_length:
-              current_min_length = d
-              min_source = source
-              min_target = target
-
-          if d < MIN_LENGTH:
+          # count how many are still there
+          if length < MIN_LENGTH:
               n += 1
 
       if current_min_length > MIN_LENGTH:
           break
 
-      # segment from source to target with minimum length
-      min_g = Geodesic.WGS84.Inverse(G.node[min_source]['lat'],
-                                     G.node[min_source]['lon'],
-                                     G.node[min_target]['lat'],
-                                     G.node[min_target]['lon'])
-
-      # merge the two points that realize the minimum length (very slow)
-      G = nx.contracted_edge(G, (min_source, min_target), self_loops=False)
+      # segment from min_source to min_target
+      min_g = Geodesic.WGS84.Inverse(
+          G.node[min_source]['lat'], G.node[min_source]['lon'],
+          G.node[min_target]['lat'], G.node[min_target]['lon']
+      )
 
       # use mid-point for contracted node position
-      mid_point = Geodesic.WGS84.Direct(lat1=G.node[min_source]['lat'],
-                                        lon1=G.node[min_source]['lon'],
-                                        azi1=min_g['azi1'],
-                                        s12=min_g['s12']/2)
+      mid_point = Geodesic.WGS84.Direct(lat1= G.node[min_source]['lat'],
+                                        lon1= G.node[min_source]['lon'],
+                                        azi1= min_g['azi1'],
+                                        s12=  min_g['s12']/2)
 
-      # first node *should* remain as id
+      # new edges from min_target will be from min_source
+      # work on (min_target, ...) but avoid (min_target, min_source)
+      new_edges = [ (min_source, w)
+                    for x, w in G.edges(min_target)
+                    if w != min_source ]
+
+      # remove edges touching min_target from the lengths dictionary
+      for edge in G.edges(min_target):
+          del edge_length_map[ order_edge(edge) ]
+
+      # remove node and its edges and add new ones
+      G.remove_node(min_target)
+      G.add_edges_from(new_edges)
+
+      # move node to keep in the middle point
       G.node[min_source].clear()
       G.node[min_source]['lat'] = mid_point['lat2']
       G.node[min_source]['lon'] = mid_point['lon2']
 
+      # min_source has moved: recompute distances for each edge
+      for edge in G.edges(min_source):
+          edge_length_map[ order_edge(edge) ] = node_distance(G, *edge)
+
+      # compute distances for each of the new edges
+      for edge in new_edges:
+          edge_length_map[ order_edge(edge) ] = node_distance(G, *edge)
+
       print('{} remaining'.format(n - 1), end="\r")
+
+  # check if operation was successful
+  refresh_distances(G)
+  assert min(data['length'] for _, _, data in G.edges(data=True)) >= MIN_LENGTH
 
   assert nx.is_connected(G), "Intermediate G is not connected"
 
   with open(graph_path + "_1_temp.json", 'w') as output:
       output.write(json.dumps(json_graph.node_link_data(G)))
+#+END_SRC
+
+Split long roads so that they are smaller than ~MAX_LENGTH~.
+
+#+BEGIN_SRC python :noweb yes :tangle scripts/aachen_net/08_fix_long_roads.py :var graph_path=flatten(graph_path)
+  <<imports_&_defaults>>
+
+  # load graph
+  with open(graph_path + "_1_temp.json", "r") as f:
+      js_graph = json.load(f)
+
+  G = json_graph.node_link_graph(js_graph)
 
   ## split roads that are too long
 
@@ -307,10 +341,10 @@ make our setting buildings in street corners accurate enough.
       delta = distance / (n_intermediate + 2)
 
       # run along segment from source to target
-      g = Geodesic.WGS84.Inverse(G.node[source]['lat'],
-                                 G.node[source]['lon'],
-                                 G.node[target]['lat'],
-                                 G.node[target]['lon'])
+      g = Geodesic.WGS84.Inverse(
+          G.node[source]['lat'], G.node[source]['lon'],
+          G.node[target]['lat'], G.node[target]['lon']
+      )
 
       new_points = []
       for i in range(n_intermediate):
@@ -354,6 +388,9 @@ make our setting buildings in street corners accurate enough.
 
 Find the closest road on the map for each house, in order to set the house as a node on the road graph.
 This has to consider only roads in the major component of the city, not the unconnected ones.
+
+#+NAME: closest_nodes_path
+- data/aachen_net/closest_nodes.csv
 
 #+BEGIN_SRC python :noweb yes :tangle scripts/aachen_net/08_add_buildings.py :var valid_types=flatten(utils.org:valid_types) :var closest_nodes_path=flatten(closest_nodes_path) :var graph_path=flatten(graph_path)
   <<all_datasets>>

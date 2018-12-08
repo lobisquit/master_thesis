@@ -129,26 +129,6 @@ Plot a ~networkx~ graph in a geographical map, plus various utilities.
       plt.axis('off')
 #+END_SRC
 
-#+NAME: mean_variance_collector
-#+BEGIN_SRC python
-  class MeanVarianceCollector:
-      def __init__(self):
-          self.sum_of_nums = 0
-          self.sum_of_squares = 0
-          self.count = 0
-
-      def insert(self, value):
-          self.sum_of_nums += value
-          self.sum_of_squares += value ** 2
-          self.count += 1
-
-      def mean(self):
-          return self.sum_of_nums / self.count
-
-      def variance(self):
-          return self.sum_of_squares / self.count
-#+END_SRC
-
 #+NAME: imports_&_defaults
 #+BEGIN_SRC python :noweb yes
   <<imports>>
