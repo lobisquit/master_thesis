@@ -208,10 +208,16 @@ When creating the graph, remember ~OSM_ID~, in order to assign each building a p
 #+END_SRC
 
 ** Preprocess obtained graph
-For our purposes, roads should have a maximum length of 200m, in order to
-make our setting buildings in street corners accurate enough.
+For our purposes, roads should have a maximum length of 200m and a minimum of
+20m, in order to make our setting buildings in street corners accurate enough.
 
-#+BEGIN_SRC python :noweb yes :tangle scripts/aachen_net/07_fix_short_roads.py :var graph_path=flatten(graph_path)
+#+MIN_LENGTH
+- 20
+
+#+MAX_LENGTH
+- 200
+
+#+BEGIN_SRC python :noweb yes :tangle scripts/aachen_net/07_fix_short_roads.py :var graph_path=flatten(graph_path) :var min_length=flatten(min_length)
   <<imports_&_defaults>>
 
   # load graph
@@ -224,7 +230,7 @@ make our setting buildings in street corners accurate enough.
 
   ## remove too short roads
 
-  MIN_LENGTH = 20 # meters
+  MIN_LENGTH = int(min_length)
 
   def order_edge(edge):
       return min(edge), max(edge)
@@ -307,8 +313,10 @@ make our setting buildings in street corners accurate enough.
 
 Split long roads so that they are smaller than ~MAX_LENGTH~.
 
-#+BEGIN_SRC python :noweb yes :tangle scripts/aachen_net/08_fix_long_roads.py :var graph_path=flatten(graph_path)
+#+BEGIN_SRC python :noweb yes :tangle scripts/aachen_net/08_fix_long_roads.py :var graph_path=flatten(graph_path) :var min_length=flatten(min_length) :var max_length=flatten(max_length)
   <<imports_&_defaults>>
+
+  from math import ceil
 
   # load graph
   with open(graph_path + "_1_temp.json", "r") as f:
@@ -316,14 +324,17 @@ Split long roads so that they are smaller than ~MAX_LENGTH~.
 
   G = json_graph.node_link_graph(js_graph)
 
+  assert nx.is_connected(G), "Raw G is not connected!"
+
   ## split roads that are too long
 
-  MAX_LENGTH = 200
+  MIN_LENGTH = int(min_length)
+  MAX_LENGTH = int(max_length)
 
   # collect edges (not to mess up with G iterator)
   edges_to_split_distance = { edge: node_distance(G, *edge)
                               for edge in G.edges()
-                              if node_distance(G, *edge) > MAX_LENGTH }
+                              if node_distance(G, *edge) >= MAX_LENGTH }
 
   progress = 1
   for (source, target), distance in edges_to_split_distance.items():
@@ -332,13 +343,15 @@ Split long roads so that they are smaller than ~MAX_LENGTH~.
 
       G.remove_edge(source, target)
 
-      if distance % MAX_LENGTH == 0:
-          n_intermediate = int(distance // MAX_LENGTH - 1)
-      else:
-          n_intermediate = int(distance // MAX_LENGTH)
+      # number of new segments
+      n_segments = int(ceil(distance / MAX_LENGTH))
 
       # n + source + target now are in the segment
-      delta = distance / (n_intermediate + 2)
+      delta = distance / n_segments
+
+      if delta > MAX_LENGTH:
+          print("Nope", delta)
+          exit(1)
 
       # run along segment from source to target
       g = Geodesic.WGS84.Inverse(
@@ -347,14 +360,12 @@ Split long roads so that they are smaller than ~MAX_LENGTH~.
       )
 
       new_points = []
-      for i in range(n_intermediate):
-          point_distance = delta * (i + 1)
-
+      for i in range(1, n_segments):
           # disseminate points every delta
-          point = Geodesic.WGS84.Direct(lat1=G.node[source]['lat'],
-                                        lon1=G.node[source]['lon'],
-                                        azi1=g['azi1'],
-                                        s12=point_distance)
+          point = Geodesic.WGS84.Direct(lat1= G.node[source]['lat'],
+                                        lon1= G.node[source]['lon'],
+                                        azi1= g['azi1'],
+                                        s12=  delta * i)
 
           new_points.append(max(G.nodes) + 1)
           G.add_node(max(G.nodes) + 1,
@@ -363,27 +374,20 @@ Split long roads so that they are smaller than ~MAX_LENGTH~.
 
       G.add_edge(source, new_points[0])
 
-      for i in range(n_intermediate - 1):
-          G.add_edge(new_points[i], new_points[i+1], length=delta)
+      for j in range(n_segments - 2):
+          G.add_edge(new_points[j], new_points[j+1])
 
       G.add_edge(new_points[-1], target)
 
-      assert nx.is_connected(G), "WHAT2"
-
   # check distances respect the constraints
   refresh_distances(G)
+  assert max(data['length'] for _, _, data in G.edges(data=True)) <= MAX_LENGTH, "Max length exceeded"
+  assert min(data['length'] for _, _, data in G.edges(data=True)) >= MIN_LENGTH, "Min length not respected"
 
-  lengths = [data['length'] for _, _, data in G.edges(data=True)]
-  assert min(lengths) >= MIN_LENGTH
-  assert max(lengths) <= MAX_LENGTH
-
-  assert nx.is_connected(G)
-
-  # plt.hist(lengths, bins=1000)
-  # plt.show()
+  assert nx.is_connected(G), "Processed G not connected!"
 
   with open(graph_path + "_1_fix_roads.json", 'w') as output:
-      output.write(json.dumps(G))
+      output.write(json.dumps(json_graph.node_link_data(G)))
 #+END_SRC
 
 Find the closest road on the map for each house, in order to set the house as a node on the road graph.
