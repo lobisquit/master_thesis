@@ -703,15 +703,7 @@ See [[https://www.itscosts.its.dot.gov][here]] for pricing. TODO cite as a sourc
 - non-dummy
 
 #+BEGIN_SRC python :noweb yes :var choose_graph=flatten(choose_graph) :var graph_path=flatten(graph_path) :var dummy_graph_path=flatten(dummy_graph_path) :var model_params=model_params :tangle scripts/aachen_net/13_ILP.py :results silent
-  import csv
-  import json
-  import logging
-  import math
-  from math import sqrt
-  from pathlib import Path
-
-  import networkx as nx
-  from networkx.readwrite import json_graph
+  <<imports_&_defaults>>
 
   import cplex
   from docplex.mp.model import Model
@@ -729,7 +721,7 @@ See [[https://www.itscosts.its.dot.gov][here]] for pricing. TODO cite as a sourc
       path = graph_path + "_complete.json"
 
   with open(path) as f:
-      js_graph = json.load(f)
+      G = json_graph.node_link_graph(json.load(f))
 
   G = G.to_directed()
   # add artificial root node to G, with a zero-length arc for all the nodes
@@ -896,7 +888,7 @@ See [[https://www.itscosts.its.dot.gov][here]] for pricing. TODO cite as a sourc
   for node_id in G.nodes:
       G.node[node_id]['d'] = D[node_id].solution_value
 
-  with open(graph_path.replace('_raw.json', '_DSLAM_solution.json'), 'w') as output:
+  with open(graph_path + "_ILP.json", 'w') as output:
       output.write(json.dumps(json_graph.node_link_data(G)))
 #+END_SRC
 
