@@ -211,13 +211,13 @@ When creating the graph, remember ~OSM_ID~, in order to assign each building a p
 For our purposes, roads should have a maximum length of 200m and a minimum of
 20m, in order to make our setting buildings in street corners accurate enough.
 
-#+MIN_LENGTH
+#+NAME: MIN_LENGTH
 - 20
 
-#+MAX_LENGTH
+#+NAME: MAX_LENGTH
 - 200
 
-#+BEGIN_SRC python :noweb yes :tangle scripts/aachen_net/07_fix_short_roads.py :var graph_path=flatten(graph_path) :var min_length=flatten(min_length)
+#+BEGIN_SRC python :noweb yes :tangle scripts/aachen_net/07_fix_short_roads.py :var graph_path=flatten(graph_path) :var min_length=flatten(MIN_LENGTH)
   <<imports_&_defaults>>
 
   # load graph
@@ -313,7 +313,7 @@ For our purposes, roads should have a maximum length of 200m and a minimum of
 
 Split long roads so that they are smaller than ~MAX_LENGTH~.
 
-#+BEGIN_SRC python :noweb yes :tangle scripts/aachen_net/08_fix_long_roads.py :var graph_path=flatten(graph_path) :var min_length=flatten(min_length) :var max_length=flatten(max_length)
+#+BEGIN_SRC python :noweb yes :tangle scripts/aachen_net/08_fix_long_roads.py :var graph_path=flatten(graph_path) :var min_length=flatten(MIN_LENGTH) :var max_length=flatten(MAX_LENGTH)
   <<imports_&_defaults>>
 
   from math import ceil

@@ -61,7 +61,9 @@ Default settings for ~matplotlib~.
 Plot a ~networkx~ graph in a geographical map, plus various utilities.
 
 #+NAME: graph_utils
-#+BEGIN_SRC python
+#+BEGIN_SRC python :noweb yes
+  <<projection>>
+
   def compute_distance(point1, point2, lon_label='lon', lat_label='lat'):
       g = Geodesic.WGS84.Inverse(point1[lat_label], point1[lon_label],
                                  point2[lat_label], point2[lon_label])
@@ -156,7 +158,6 @@ Read district map and its projection details.
 
   logger.info('districts ok')
 #+END_SRC
-
 
 Read district map projection, used as default one across the computations.
 See [[https://gis.stackexchange.com/questions/17341/projection-pyproj-puzzle-and-understanding-srs-format][here]] for getting projection from ~prj~ file.
