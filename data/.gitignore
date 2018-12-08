@@ -2,5 +2,7 @@ aachen_net/NRW_buildings.*
 aachen_net/NRW_roads.*
 aachen_net/*.zip
 aachen_net/postgres/
+aachen_net/*_temp*
+
 
 lambdanet/*
