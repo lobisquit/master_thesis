@@ -9,7 +9,7 @@ All imports should be gathered here.
   import json
   import logging
   import math
-  from math import sqrt
+  from math import sqrt, ceil
   from pathlib import Path
 
   import fiona
@@ -23,6 +23,7 @@ All imports should be gathered here.
   from networkx.readwrite import json_graph
   from pyproj import Proj
   from s2g import ShapeGraph
+  from scipy import spatial
   from scipy.spatial.distance import cdist
   from shapely import wkt
   from shapely.geometry import LineString, Point, shape
@@ -256,7 +257,6 @@ Read all roads and buildings that are either of ~None~ type or member of this gr
 #+NAME: all_datasets
 #+BEGIN_SRC python :noweb yes :var valid_types=flatten(valid_types)
   <<imports_&_defaults>>
-  <<projection>>
   <<districts>>
   <<population>>
   <<roads>>

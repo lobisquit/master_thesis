@@ -316,8 +316,6 @@ Split long roads so that they are smaller than ~MAX_LENGTH~.
 #+BEGIN_SRC python :noweb yes :tangle scripts/aachen_net/08_fix_long_roads.py :var graph_path=flatten(graph_path) :var min_length=flatten(MIN_LENGTH) :var max_length=flatten(MAX_LENGTH)
   <<imports_&_defaults>>
 
-  from math import ceil
-
   # load graph
   with open(graph_path + "_1_temp.json", "r") as f:
       js_graph = json.load(f)
