@@ -490,6 +490,8 @@ Based on area and district metric, assign each node a number of internet custome
 
 #+BEGIN_SRC python :noweb yes :tangle scripts/aachen_net/10_compute_n_lines.py :var closest_nodes_path=flatten(closest_nodes_path) :var graph_path=flatten(graph_path)
   <<imports_&_defaults>>
+  <<districts>>
+  <<population>>
 
   with open(graph_path + "_2_temp.json") as f:
       js_graph = json.load(f)
@@ -500,49 +502,70 @@ Based on area and district metric, assign each node a number of internet custome
 
   # nodes with no area have not to be assigned any district
   for node_id in G.nodes():
-      G.node[node_id]['area'] = 0
-      G.node[node_id]['district'] = None
+      node_data = G.node[node_id]
+
+      node_data['area'] = 0
+      node_data['district'] = None
 
       # override values if needed
       if 'district_count' in node_data:
           area_count = node_data['district_count']
 
-          G.node[node_id]['area'] = sum(area_count.values())
-          G.node[node_id]['district'] = max(area_count, key=lambda x: area_count[x])
+          node_data['area'] = sum(area_count.values())
+          node_data['district'] = max(area_count, key=lambda x: area_count[x])
 
-          # del node_data['district_count']
+          del node_data['district_count']
 
   ## split population across all nodes in the same district
-  district_node_map = {}
+
+  # compute total building area per district
+  district_area_map = { id_: 0 for id_ in district_map.index }
   for node_id, data in G.nodes(data=True):
       if data['district']:
-          if data['district'] not in district_node_map:
-              district_node_map[data['district']] = []
+          district_area_map[int(data['district'])] += data['area']
 
-          district_node_map[data['district']].append(node_id)
-
-  for district, nodes in district_node_map.items():
-      total_population = district_map.loc[district].population
-
-      total_area = 0
-      for node_id in nodes:
-          total_area += G.node[node_id]['area']
-
-      G.node[node_id]['population'] = total_population * G.node[node_id]['area'] / total_area
-
-  # check if necessary
+  # distribute population accordingly
   for node_id in G.nodes():
-      if 'population' not in G.node[node_id]:
-          G.node[node_id]['population'] = 0
+      node_data = G.node[node_id]
 
-  assert nx.is_connected(G), "Final G is not connected"
+      if node_data['district']:
+          district_id = int(node_data['district'])
+
+          node_data['population'] = \
+              node_data['area'] / \
+              district_area_map[district_id] * \
+              district_map.loc[district_id].population
+      else:
+          node_data['population'] = 0
+
+      del node_data['area']
+      del node_data['district']
+
+  ## this section is /completely/ heuristic! done to match probable (supposed)
+  ## numbers about Aachen network
+
+  # compute number of lines per node, given assigned population
+  for node_id in G.nodes():
+      node_data = G.node[node_id]
+
+      n_lines = int(node_data['population'] // 6)
+
+      # avoid number of lines too small or too big
+      if n_lines < 1:
+          node_data['n_lines'] = 0
+      elif n_lines > 48:
+          node_data['n_lines'] = 48
+      else:
+          node_data['n_lines'] = n_lines
+
+      del node_data['population']
 
   with open(graph_path + "_2_added_buildings.json", 'w') as output:
       output.write(json.dumps(json_graph.node_link_data(G)))
 #+END_SRC
 
 TODO
--[ ] assign each node its corresponding n_lines, based on area, district
+-[X] assign each node its corresponding n_lines, based on area, district
 -[ ] cleanup unneccesary nodes: non-building leaves and degree-2 non-building nodes
 
 ** Plot obtained graph on the map
