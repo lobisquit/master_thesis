@@ -564,7 +564,7 @@ Based on area and district metric, assign each node a number of internet custome
       output.write(json.dumps(json_graph.node_link_data(G)))
 
       # since this is the last process, just save it as "complete"
-  with open(graph_path + "_compute.json", 'w') as output:
+  with open(graph_path + "_complete.json", 'w') as output:
       output.write(json.dumps(json_graph.node_link_data(G)))
 #+END_SRC
 
