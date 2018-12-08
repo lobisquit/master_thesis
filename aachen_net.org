@@ -575,71 +575,32 @@ TODO
 ** Plot obtained graph on the map
 Plot final graph on top of district map.
 
-#+BEGIN_SRC python :noweb yes :var valid_types=flatten(utils.org:valid_types) :var graph_path=flatten(graph_path) :tangle scripts/aachen_net/09_plot_city_graph.py
+#+BEGIN_SRC python :noweb yes :var valid_types=flatten(utils.org:valid_types) :var graph_path=flatten(graph_path) :tangle scripts/aachen_net/11_plot_city_graph.py
   <<imports_&_defaults>>
   <<projection>>
   <<districts>>
 
   # read graph G
-  with open(graph_path.replace('_raw.json', '_buildings.json')) as f:
+  with open(graph_path + "_complete.json", 'r') as f:
       js_graph = json.load(f)
 
   G = json_graph.node_link_graph(js_graph)
-
-  ## "convert" graph to GeoDataFrame
-
-  # collect data into proper lists
-  nodes = G.nodes(data=True)
-
-  nodes_info = []
-  for id_, data in nodes:
-      point = Point(data['lon'], data['lat'])
-      nodes_info.append({'geometry': point, **data})
-
-  edges_info = []
-  for node_id1, node_id2, data in G.edges(data=True):
-      edge = LineString((
-          (nodes[node_id1]['lon'], nodes[node_id1]['lat']),
-          (nodes[node_id2]['lon'], nodes[node_id2]['lat'])
-      ))
-
-      edges_info.append({'geometry': edge, **data})
-
-  ## provide GeoDataFrames
-  nodes_df = gpd.GeoDataFrame(nodes_info)
-  nodes_df.crs = {'init' :'epsg:4326'} # long-lat projection
-  nodes_df = nodes_df.to_crs(projection.srs)
-
-  edges_df = gpd.GeoDataFrame(edges_info)
-  edges_df.crs = {'init' :'epsg:4326'} # long-lat projection
-  edges_df = edges_df.to_crs(projection.srs)
 
   ## plot everything
   fig = plt.figure(figsize=(6, 6), frameon=False)
   ax = fig.gca()
 
-  ax.set_title("Detail of extracted city graph\n",
-               fontsize=15,
-               fontweight=font_spec['font.weight'])
+  plot_graph(G,
+             ax=ax,
+             title="Detail of extracted city graph\n")
 
   # plot just city external border
   aachen_border = cascaded_union(district_map.geometry)
   gpd.GeoDataFrame({'geometry': [aachen_border]}).plot(color='white',
                                                        edgecolor='black',
                                                        linewidth=0.5,
-                                                       ax=ax)
-
-  nodes_df.plot(ax=ax,
-                markersize=1,
-                color='black',
-                zorder=2)
-
-  edges_df.plot(ax=ax,
-                color='grey',
-                linewidth=0.5,
-                zorder=1)
-
-  plt.axis('off')
+                                                       ax=ax,
+                                                       zorder=0)
 
   # cut a window for better visualization
   ax.set_xlim(293117, 295351)
@@ -660,7 +621,7 @@ Plot final graph on top of district map.
   #+NAME: number_of_nodes
   - 40
 
-  #+BEGIN_SRC python :results silent :var dummy_graph_path=flatten(dummy_graph_path) :var number_of_nodes=flatten(number_of_nodes) :tangle scripts/aachen_net/10_dummy_graph_generator.py
+  #+BEGIN_SRC python :results silent :var dummy_graph_path=flatten(dummy_graph_path) :var number_of_nodes=flatten(number_of_nodes) :tangle scripts/aachen_net/12_dummy_graph_generator.py
     import json
     from math import sqrt
     import random
@@ -741,7 +702,7 @@ Plot final graph on top of district map.
   #+NAME: choose_graph
   - non-dummy
 
-  #+BEGIN_SRC python :noweb yes :var choose_graph=flatten(choose_graph) :var graph_path=flatten(graph_path) :var dummy_graph_path=flatten(dummy_graph_path) :var model_params=model_params :tangle scripts/aachen_net/11_ILP.py :results silent
+  #+BEGIN_SRC python :noweb yes :var choose_graph=flatten(choose_graph) :var graph_path=flatten(graph_path) :var dummy_graph_path=flatten(dummy_graph_path) :var model_params=model_params :tangle scripts/aachen_net/13_ILP.py :results silent
     import csv
     import json
     import logging
