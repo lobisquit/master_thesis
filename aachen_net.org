@@ -711,6 +711,7 @@ See [[https://www.itscosts.its.dot.gov][here]] for pricing. TODO cite as a sourc
   cplex_engine = cplex.Cplex()
   cplex_engine.parameters.mip.display.set(5)
   cplex_engine.parameters.mip.interval.set(-1)
+  cplex_engine.parameters.workmem.set(2048)
 
   ##############################
   # Load and pre-process graph #
