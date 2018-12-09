@@ -694,7 +694,7 @@ See [[https://www.itscosts.its.dot.gov][here]] for pricing. TODO cite as a sourc
 #+NAME: model_params
 | $n_M$ [unit]   |   50 |
 | $d_M$ [m]      | 1500 |
-| $c_r$ [€/unit] | 5000 |
+| $c_r$ [€/unit] | 7000 |
 | $c_f$ [€/m]    |    3 |
 | $c_c$ [€/m]    |    1 |
 | $c_e$ [€/m]    |   50 |
@@ -789,7 +789,7 @@ See [[https://www.itscosts.its.dot.gov][here]] for pricing. TODO cite as a sourc
 
       ## active edge indicator
       X[source][target] = m.binary_var(name=name(source, target, var='x'))
-      N[source][target] = m.continuous_var(name=name(source, target, var='n'))
+      N[source][target] = m.integer_var(name=name(source, target, var='n'))
       m.add_constraint(ct=N[source][target] >= 0,
                        ctname="{} >= 0".format(name(source, target, var='n')))
 
@@ -920,9 +920,8 @@ Plot graph resulting from optimization.
 
 #+BEGIN_SRC python :noweb yes :var graph_path=flatten(graph_path) :tangle scripts/aachen_net/14_plot_ILP_result.py
   <<imports_&_defaults>>
-  <<projection>>
 
-  with open(graph_path + "_complete.json") as f:
+  with open(graph_path + "_ILP.json") as f:
       js_graph = json.load(f)
 
   G = json_graph.node_link_graph(js_graph)
@@ -986,6 +985,8 @@ Plot graph resulting from optimization.
                                            color='#a0a0a0',
                                            zorder=1)
 
+  print("G contains", sum(nodes_df['is_subroot']), "subroots nodes")
+
   # highlight DSLAMS
   nodes_df[(nodes_df["id"] != 'r') &
            (nodes_df['is_subroot'])].plot(ax=ax,
@@ -1019,26 +1020,26 @@ Plot graph resulting from optimization.
                                              linewidth=0.5,
                                              zorder=0)
 
-  for _, row in edges_df.iterrows():
-      if row.source == 'r':
-          color = 'green'
-      else:
-          color = 'black'
+  # for _, row in edges_df.iterrows():
+  #     if row.source == 'r':
+  #         color = 'green'
+  #     else:
+  #         color = 'black'
 
-      if row.x == 0:
-          continue
+  #     if row.x == 0:
+  #         continue
 
-      if row.length != 0:
-          ax.annotate(s="{0:.0f} - {0:.2f}".format(row.n, row.length),
-                      xy=row.geometry.centroid.coords[0],
-                      color=color,
-                      zorder=5)
+  #     if row.length != 0:
+  #         ax.annotate(s="{0:.0f} - {0:.2f}".format(row.n, row.length),
+  #                     xy=row.geometry.centroid.coords[0],
+  #                     color=color,
+  #                     zorder=5)
 
-  for _, row in nodes_df[(nodes_df['d'] > 0)].iterrows():
-      ax.annotate(s="{0:.2f}".format(row.d),
-                  xy=row.geometry.centroid.coords[0],
-                  color="blue",
-                  zorder=5)
+  # for _, row in nodes_df[(nodes_df['d'] > 0)].iterrows():
+  #     ax.annotate(s="{0:.2f}".format(row.d),
+  #                 xy=row.geometry.centroid.coords[0],
+  #                 color="blue",
+  #                 zorder=5)
 
   plt.axis('off')
   plt.tight_layout(rect=[-0.1, -0.05, 1.1, 1])
