@@ -703,10 +703,33 @@ See [[https://www.itscosts.its.dot.gov][here]] for pricing. TODO cite as a sourc
 - non-dummy
 
 #+BEGIN_SRC python :noweb yes :var choose_graph=flatten(choose_graph) :var graph_path=flatten(graph_path) :var dummy_graph_path=flatten(dummy_graph_path) :var model_params=model_params :tangle scripts/aachen_net/13_ILP.py :results silent
-  <<imports>>
+  import csv
+  import json
+  import logging
+  import math
+  from math import sqrt
+  from pathlib import Path
+
+  import matplotlib.pyplot as plt
+  import networkx as nx
+  from networkx.readwrite import json_graph
 
   import cplex
   from docplex.mp.model import Model
+
+  logger = logging.getLogger('aachen_net.org')
+  logger.setLevel(logging.INFO)
+  logger.propagate = False
+
+  formatter = logging.Formatter("%(asctime)s::%(levelname)s::%(module)s::%(message)s",
+                                "%Y-%m-%d %H:%M:%S")
+
+  ch = logging.StreamHandler()
+  ch.setLevel(logging.INFO)
+  ch.setFormatter(formatter)
+  logger.addHandler(ch)
+
+  logger.info('import ok')
 
   cplex_engine = cplex.Cplex()
   cplex_engine.parameters.mip.display.set(5)
