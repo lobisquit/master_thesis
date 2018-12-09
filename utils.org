@@ -137,7 +137,6 @@ Plot a ~networkx~ graph in a geographical map, plus various utilities.
   <<imports>>
   <<matplotlib_defaults>>
   <<graph_utils>>
-  <<mean_variance_collector>>
 #+END_SRC
 
 Flatten ~org~ tables in lists of strings or single string.
@@ -305,5 +304,5 @@ Just replace the script with the one you want to run.
   ### Execute your application
   source venv/bin/activate
   # pip install -r requirements.txt
-  python2 scripts/aachen_net/11_ILP.py
+  python2 scripts/aachen_net/13_ILP.py
 #+END_SRC
