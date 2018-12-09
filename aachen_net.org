@@ -625,7 +625,6 @@ Plot final graph on top of district map.
   import json
   from math import sqrt
   import random
-  import matplotlib.pyplot as plt
   import networkx as nx
   from networkx.readwrite import json_graph
 

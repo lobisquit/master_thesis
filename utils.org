@@ -284,7 +284,7 @@ Just replace the script with the one you want to run.
   #!/usr/bin/env zsh
 
   ### Job name
-  #BSUB -J SERIALJOB
+  #BSUB -J OMP12JOB
 
   ### File / path where STDOUT & STDERR will be written
   ###    %J is the job ID, %I is the array ID
@@ -295,8 +295,14 @@ Just replace the script with the one you want to run.
   ### that means for 80 minutes you could also use this: 1:20
   #BSUB -W 100:23
 
+  ### Request the number of compute slots you want to use
+  #BSUB -n 12
+
   ### Request memory you need for your job in TOTAL in MB
-  #BSUB -M 8192
+  #BSUB -M 16000
+
+  ### Use esub for OpenMP/shared memeory jobs
+  #BSUB -a openmp
 
   ### Change to the work directory
   cd /home/qt636081/master_thesis/
