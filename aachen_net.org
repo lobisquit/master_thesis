@@ -1191,7 +1191,7 @@ Plot graph resulting from optimization.
   else:
       path = graph_path + "_complete.json"
 
-  # load graph and convert to graph_tool format (Floyd-Warshall is way faster)
+  # load graph and convert to graph_tool format (Floyd-Warshall is waaaay faster)
   with open(path) as f:
       G_nx = json_graph.node_link_graph(json.load(f))
 
@@ -1199,9 +1199,6 @@ Plot graph resulting from optimization.
 
   # compute pair-wise distances for all nodes
   vertex_distances = shortest_distance(G, weights=G.edge_properties['length'])
-
-  # starting point: all terminals are sub-root nodes
-  terminals = [v for v in G.vertices() if G.vertex_properties['n_lines'][v] > 0]
 
   class Cluster:
       def __init__(self, elements, n_lines=0):
@@ -1212,33 +1209,12 @@ Plot graph resulting from optimization.
       def index(self):
           return min(self._elements)
 
-      def __eq__(self, other):
-          if isinstance(other, Cluster):
-              return self.index == other.index
-          else:
-              return False
-
-      def __ne__(self, other):
-          if isinstance(other, self.__class__):
-              return self.index != other.index
-          else:
-              return False
-
-      def __gt__(self, other):
-          if isinstance(other, self.__class__):
-              return self.index > other.index
-          else:
-              return False
-
-      def __lt__(self, other):
-          if isinstance(other, self.__class__):
-              return self.index < other.index
-          else:
-              return False
-
       def __repr__(self):
           return "<Cluster(index={}, elements={})>"\
-              .format(self.index, set(self._elements))
+              .format(self.index, self._elements)
+
+      def __str__(self):
+          return str(self._elements)
 
       def __sum__(self, other):
           return Cluster(
@@ -1246,17 +1222,8 @@ Plot graph resulting from optimization.
               n_lines=self.n_lines + other.n_lines
           )
 
-      def __hash__(self):
-          return self.index
-
       def __iter__(self):
           return iter(self._elements)
-
-  clusters = { Cluster({ int(t) }) for t in terminals }
-  node_cluster_map = {c.index: c for c in clusters}
-
-  min_cluster_distances = vertex_distances.copy()
-  max_cluster_distances = vertex_distances.copy()
 
   def order(a, b):
       if a < b:
@@ -1265,43 +1232,67 @@ Plot graph resulting from optimization.
           return b, a
 
   # update other cluster distances from new one, created merging c1 and c2
-  def update_distances(min_cluster_distances, max_cluster_distances, c1, c2):
-      for c in clusters:
+  def update_distances(max_cluster_distances, clusters, c1_id, c2_id):
+      c_new_id = min(c1_id, c2_id)
+
+      for c_id in clusters:
           if c != c1 and c != c2:
-              min_cluster_distances[order(c.index, c_new.index)] = min(
-                  min_cluster_distances[order(c, c1)],
-                  min_cluster_distances[order(c, c2)]
-              )
-              max_cluster_distances[order(c.index, c_new.index)] = max(
+              max_cluster_distances[order(c_id, c_new_id)] = max(
                   max_cluster_distances[order(c, c1)],
                   max_cluster_distances[order(c, c2)]
               )
 
-  def mergeable(max_cluster_distances, c1, c2, n_M=50, d_M=1500):
-      if max_cluster_distances[order(c1.index, c2.index)] <= d_M:
+  def mergeable(max_cluster_distances, c1_id, c2_id, n_M=50, d_M=1500):
+      if max_cluster_distances[order(c1_id, c2_id)] <= d_M:
           if c1.n_lines + c2.n_lines <= n_M:
               return True
 
       return False
 
-  edges = ( order(int(edge.source()), int(edge.target())) for edge in G.edges() )
+  # starting point: all terminals are sub-root nodes (head of their cluster)
+  clusters = { int(t): Cluster({ int(t) }) for t in terminals if G.vertex_properties['n_lines'][v] > 0 }
+  node_cluster_map = { c_id: c_id for c_id in clusters }
+
+  # track the diameter of the cluster that would be obtained merging each couple
+  max_cluster_distances = vertex_distances.copy()
+
+  edges = ( int(edge.source()), int(edge.target()) for edge in G.edges() )
   edges = sorted(edges, key=lambda edge: G.edge_properties['length'][edge])
 
   while edges:
+      print("{} remaining".format(len(edges)))
+
       # pick and edge
       source, target = edges.pop(0)
 
-      c1 = node_cluster_map[source]
-      c2 = node_cluster_map[target]
+      c1_id = node_cluster_map[source]
+      c2_id = node_cluster_map[target]
 
-      if mergeable(max_cluster_distances, c1, c2):
-          clusters.remove(c1)
-          clusters.remove(c2)
+      # not process if they are already part of the same cluster
+      if c1_id == c2_id:
+          continue
 
-          c_new = c1 + c2
-          clusters.add(c_new)
+      # proceed if operator conditions are met
+      if mergeable(max_cluster_distances, c1_id, c2_id):
+          c_new_id = min(c1_id, c2_id)
+          c_old_id = max(c1_id, c2_id)
 
-          for vertex in max(c1, c2):
+          # merge the two candidates
+          clusters[c_new_id] += clusters[c_old_id]
+
+          # update map information for all the nodes in the old one
+          for vertex in clusters[c_old_id]:
+              node_cluster_map[vertex] = c_new
+
+          # update distance information for all other clusters
+          update_distances(max_cluster_distances, clusters, c_new_id, c_old_id)
+
+          # delete cluster
+          del clusters[c_old_id]
+
+  with open("logs/heuristic_output.txt", "w") as f:
+      for id_, cluster in clusters.items():
+          f.write(str(cluster) + "\n")
 #+END_SRC
 
 * COMMENT Local variables
