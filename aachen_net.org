@@ -1186,20 +1186,6 @@ Plot graph resulting from optimization.
 
   from graph_tool import topology
 
-  if choose_graph == "dummy":
-      path = dummy_graph_path
-  else:
-      path = graph_path + "_complete.json"
-
-  # load graph and convert to graph_tool format (Floyd-Warshall is waaaay faster)
-  with open(path) as f:
-      G_nx = json_graph.node_link_graph(json.load(f))
-
-  G = nx2gt(G_nx)
-
-  # compute pair-wise distances for all nodes
-  vertex_distances = shortest_distance(G, weights=G.edge_properties['length'])
-
   class Cluster:
       def __init__(self, elements, n_lines=0):
           self._elements = set(elements)
@@ -1231,8 +1217,37 @@ Plot graph resulting from optimization.
       else:
           return b, a
 
-  # update other cluster distances from new one, created merging c1 and c2
+  # load graph and convert to graph_tool format (Floyd-Warshall is waaaay faster)
+  if choose_graph == "dummy":
+      path = dummy_graph_path
+  else:
+      path = graph_path + "_complete.json"
+
+  with open(path) as f:
+      G_nx = json_graph.node_link_graph(json.load(f))
+
+  G = nx2gt(G_nx)
+
+  # compute pair-wise distances for all nodes
+  vertex_distances = shortest_distance(G, weights=G.edge_properties['length'])
+
+  # starting point: all terminals are sub-root nodes (head of their cluster)
+  clusters = {
+      int(t): Cluster({ int(t) }) for t in terminals
+      if G.vertex_properties['n_lines'][t] > 0
+  }
+  node_cluster_map = { c_id: c_id for c_id in clusters }
+
+  # track the diameter of the cluster that would be obtained merging each couple
+  max_cluster_distances = vertex_distances.copy()
+
+  edges = ( int(edge.source()), int(edge.target()) for edge in G.edges() )
+  edges = sorted(edges, key=lambda edge: G.edge_properties['length'][edge])
+
+  # primitive operations
+
   def update_distances(max_cluster_distances, clusters, c1_id, c2_id):
+      ''' Update other cluster distances from new one, the sum of c1 and c2 '''
       c_new_id = min(c1_id, c2_id)
 
       for c_id in clusters:
@@ -1249,16 +1264,6 @@ Plot graph resulting from optimization.
 
       return False
 
-  # starting point: all terminals are sub-root nodes (head of their cluster)
-  clusters = { int(t): Cluster({ int(t) }) for t in terminals if G.vertex_properties['n_lines'][v] > 0 }
-  node_cluster_map = { c_id: c_id for c_id in clusters }
-
-  # track the diameter of the cluster that would be obtained merging each couple
-  max_cluster_distances = vertex_distances.copy()
-
-  edges = ( int(edge.source()), int(edge.target()) for edge in G.edges() )
-  edges = sorted(edges, key=lambda edge: G.edge_properties['length'][edge])
-
   while edges:
       print("{} remaining".format(len(edges)))
 
@@ -1273,16 +1278,17 @@ Plot graph resulting from optimization.
           continue
 
       # proceed if operator conditions are met
+      # TODO consider making d_M shorter
       if mergeable(max_cluster_distances, c1_id, c2_id):
           c_new_id = min(c1_id, c2_id)
           c_old_id = max(c1_id, c2_id)
 
-          # merge the two candidates
-          clusters[c_new_id] += clusters[c_old_id]
-
-          # update map information for all the nodes in the old one
+          # update map information for all the nodes in the old cluster (the one to delete)
           for vertex in clusters[c_old_id]:
               node_cluster_map[vertex] = c_new
+
+          # merge the two candidates
+          clusters[c_new_id] += clusters[c_old_id]
 
           # update distance information for all other clusters
           update_distances(max_cluster_distances, clusters, c_new_id, c_old_id)
