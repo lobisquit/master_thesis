@@ -1211,11 +1211,15 @@ Plot graph resulting from optimization.
       def __iter__(self):
           return iter(self._elements)
 
-  def order(a, b):
-      if a < b:
-          return a, b
-      else:
+  def order(a, b, ascending=True):
+      if (a < b) ^ ascending:
           return b, a
+      else:
+          return a, b
+
+  #####
+  debug_ = True
+  #####
 
   # load graph and convert to graph_tool format (Floyd-Warshall is waaaay faster)
   if choose_graph == "dummy":
@@ -1246,6 +1250,16 @@ Plot graph resulting from optimization.
 
   # primitive operations
 
+  def compute_max_distance(clusters, vertex_distances, c1_id, c2_id):
+      max_dist = 0
+      for vertex1 in clusters(c1_id):
+          for vertex2 in clusters(c2_id):
+              dist = vertex_distances[vertex1][vertex2]
+              if dist > max_dist:
+                  max_dist = dist
+
+      return max_dist
+
   def update_distances(max_cluster_distances, clusters, c1_id, c2_id):
       ''' Update other cluster distances from new one, the sum of c1 and c2 '''
       c_new_id = min(c1_id, c2_id)
@@ -1256,6 +1270,15 @@ Plot graph resulting from optimization.
                   max_cluster_distances[order(c, c1)],
                   max_cluster_distances[order(c, c2)]
               )
+
+              if debug_:
+                  # just to be sure, make other NaN
+                  max_cluster_distances[order(c_id, c_new_id, False)] = float('nan')
+
+              if debug_:
+                  max_dist = compute_max_distance(clusters, vertex_distances, c_id, c_new_id)
+                  assert max_dist == max_cluster_distances[order(c_id, c_new_id)], \
+                      'Invariant on max_cluster_distances not guaranteed'
 
   def mergeable(max_cluster_distances, c1_id, c2_id, n_M=50, d_M=1500):
       if max_cluster_distances[order(c1_id, c2_id)] <= d_M:
@@ -1299,6 +1322,9 @@ Plot graph resulting from optimization.
   with open("logs/heuristic_output.txt", "w") as f:
       for id_, cluster in clusters.items():
           f.write(str(cluster) + "\n")
+
+
+  ## IDEA for debug, measure distance *every* time: checking max_cluster_distances by hand
 #+END_SRC
 
 * COMMENT Local variables
