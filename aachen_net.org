@@ -625,7 +625,6 @@ Plot final graph on top of district map.
   import json
   from math import sqrt
   import random
-  import matplotlib.pyplot as plt
   import networkx as nx
   from networkx.readwrite import json_graph
 
@@ -710,7 +709,6 @@ See [[https://www.itscosts.its.dot.gov][here]] for pricing. TODO cite as a sourc
   from math import sqrt
   from pathlib import Path
 
-  import matplotlib.pyplot as plt
   import networkx as nx
   from networkx.readwrite import json_graph
 
