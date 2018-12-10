@@ -896,6 +896,12 @@ See [[https://www.itscosts.its.dot.gov][here]] for pricing. TODO cite as a sourc
       m.add_constraint(ct=N[source][target] <= params["n_M"] * X[source][target],
                        ctname="{}".format(name(source, target, var='n_max')))
 
+      # 7)
+      if source != 'r' and source < target:
+          m.add_constraint(ct=X[source][target] + X[target][source] <= 1,
+                           ctname="{}".format(name(source, target, var='simple_loops')))
+
+
   logger.info('Set constraints 5, 6')
 
   if m.solve() is None:
