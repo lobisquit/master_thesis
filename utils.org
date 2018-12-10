@@ -296,10 +296,10 @@ Just replace the script with the one you want to run.
   #BSUB -W 100:23
 
   ### Request the number of compute slots you want to use
-  #BSUB -n 12
+  #BSUB -n 32
 
   ### Request memory you need for your job in TOTAL in MB
-  #BSUB -M 16000
+  #BSUB -M 64000
 
   ### Use esub for OpenMP/shared memeory jobs
   #BSUB -a openmp
