@@ -1050,6 +1050,260 @@ Plot graph resulting from optimization.
   plt.show()
 #+END_SRC
 
+* Heuristic approach
+
+#+NAME: networkx_to_graph_tool
+#+BEGIN_SRC python
+  import graph_tool as gt
+
+  def get_prop_type(value, key=None):
+      """
+      Performs typing and value conversion for the graph_tool PropertyMap class.
+      If a key is provided, it also ensures the key is in a format that can be
+      used with the PropertyMap. Returns a tuple, (type name, value, key)
+      """
+      # Deal with the value
+      if isinstance(value, bool):
+          tname = 'bool'
+
+      elif isinstance(value, int):
+          tname = 'float'
+          value = float(value)
+
+      elif isinstance(value, float):
+          tname = 'float'
+
+      elif isinstance(value, dict):
+          tname = 'object'
+
+      else:
+          tname = 'string'
+          value = str(value)
+
+      return tname, value, key
+
+
+  def nx2gt(nxG):
+      """
+      Converts a networkx graph to a graph-tool graph.
+      """
+      # Phase 0: Create a directed or undirected graph-tool Graph
+      gtG = gt.Graph(directed=nxG.is_directed())
+
+      # Add the Graph properties as "internal properties"
+      for key, value in nxG.graph.items():
+          # Convert the value and key into a type for graph-tool
+          tname, value, key = get_prop_type(value, key)
+
+          prop = gtG.new_graph_property(tname) # Create the PropertyMap
+          gtG.graph_properties[key] = prop     # Set the PropertyMap
+          gtG.graph_properties[key] = value    # Set the actual value
+
+      # Phase 1: Add the vertex and edge property maps
+      # Go through all nodes and edges and add seen properties
+      # Add the node properties first
+      nprops = set() # cache keys to only add properties once
+      for node, data in nxG.nodes(data=True):
+
+          # Go through all the properties if not seen and add them.
+          for key, val in data.items():
+              if key in nprops: continue # Skip properties already added
+
+              # Convert the value and key into a type for graph-tool
+              tname, _, key  = get_prop_type(val, key)
+
+              prop = gtG.new_vertex_property(tname) # Create the PropertyMap
+              gtG.vertex_properties[key] = prop     # Set the PropertyMap
+
+              # Add the key to the already seen properties
+              nprops.add(key)
+
+      # Also add the node id: in NetworkX a node can be any hashable type, but
+      # in graph-tool node are defined as indices. So we capture any strings
+      # in a special PropertyMap called 'id' -- modify as needed!
+      gtG.vertex_properties['id'] = gtG.new_vertex_property('string')
+
+      # Add the edge properties second
+      eprops = set() # cache keys to only add properties once
+      for src, dst, data in nxG.edges(data=True):
+
+          # Go through all the edge properties if not seen and add them.
+          for key, val in data.items():
+              if key in eprops: continue # Skip properties already added
+
+              # Convert the value and key into a type for graph-tool
+              tname, _, key = get_prop_type(val, key)
+
+              prop = gtG.new_edge_property(tname) # Create the PropertyMap
+              gtG.edge_properties[key] = prop     # Set the PropertyMap
+
+              # Add the key to the already seen properties
+              eprops.add(key)
+
+      # Phase 2: Actually add all the nodes and vertices with their properties
+      # Add the nodes
+      vertices = {} # vertex mapping for tracking edges later
+      for node, data in nxG.nodes(data=True):
+
+          # Create the vertex and annotate for our edges later
+          v = gtG.add_vertex()
+          vertices[node] = v
+
+          # Set the vertex properties, not forgetting the id property
+          data['id'] = str(node)
+          for key, value in data.items():
+              gtG.vp[key][v] = value # vp is short for vertex_properties
+
+      # Add the edges
+      for src, dst, data in nxG.edges(data=True):
+
+          # Look up the vertex structs from our vertices mapping and add edge.
+          e = gtG.add_edge(vertices[src], vertices[dst])
+
+          # Add the edge properties
+          for key, value in data.items():
+              gtG.ep[key][e] = value # ep is short for edge_properties
+
+      # Done, finally!
+      return gtG
+#+END_SRC
+
+
+#+BEGIN_SRC python :noweb yes :var choose_graph=flatten(choose_graph) :var graph_path=flatten(graph_path) :var dummy_graph_path=flatten(dummy_graph_path) :var model_params=model_params :tangle scripts/aachen_net/15_heuristic.py :results silent
+  import csv
+  import json
+  import logging
+  import math
+  from math import sqrt
+  from pathlib import Path
+
+  import networkx as nx
+  from networkx.readwrite import json_graph
+
+  <<networkx_to_graph_tool>>
+
+  from graph_tool.all import *
+
+  from graph_tool import topology
+
+  if choose_graph == "dummy":
+      path = dummy_graph_path
+  else:
+      path = graph_path + "_complete.json"
+
+  # load graph and convert to graph_tool format (Floyd-Warshall is way faster)
+  with open(path) as f:
+      G_nx = json_graph.node_link_graph(json.load(f))
+
+  G = nx2gt(G_nx)
+
+  # compute pair-wise distances for all nodes
+  vertex_distances = shortest_distance(G, weights=G.edge_properties['length'])
+
+  # starting point: all terminals are sub-root nodes
+  terminals = [v for v in G.vertices() if G.vertex_properties['n_lines'][v] > 0]
+
+  class Cluster:
+      def __init__(self, elements, n_lines=0):
+          self._elements = set(elements)
+          self.n_lines = n_lines
+
+      @property
+      def index(self):
+          return min(self._elements)
+
+      def __eq__(self, other):
+          if isinstance(other, Cluster):
+              return self.index == other.index
+          else:
+              return False
+
+      def __ne__(self, other):
+          if isinstance(other, self.__class__):
+              return self.index != other.index
+          else:
+              return False
+
+      def __gt__(self, other):
+          if isinstance(other, self.__class__):
+              return self.index > other.index
+          else:
+              return False
+
+      def __lt__(self, other):
+          if isinstance(other, self.__class__):
+              return self.index < other.index
+          else:
+              return False
+
+      def __repr__(self):
+          return "<Cluster(index={}, elements={})>"\
+              .format(self.index, set(self._elements))
+
+      def __sum__(self, other):
+          return Cluster(
+              elements=self._elements.union(other._elements),
+              n_lines=self.n_lines + other.n_lines
+          )
+
+      def __hash__(self):
+          return self.index
+
+      def __iter__(self):
+          return iter(self._elements)
+
+  clusters = { Cluster({ int(t) }) for t in terminals }
+  node_cluster_map = {c.index: c for c in clusters}
+
+  min_cluster_distances = vertex_distances.copy()
+  max_cluster_distances = vertex_distances.copy()
+
+  def order(a, b):
+      if a < b:
+          return a, b
+      else:
+          return b, a
+
+  # update other cluster distances from new one, created merging c1 and c2
+  def update_distances(min_cluster_distances, max_cluster_distances, c1, c2):
+      for c in clusters:
+          if c != c1 and c != c2:
+              min_cluster_distances[order(c.index, c_new.index)] = min(
+                  min_cluster_distances[order(c, c1)],
+                  min_cluster_distances[order(c, c2)]
+              )
+              max_cluster_distances[order(c.index, c_new.index)] = max(
+                  max_cluster_distances[order(c, c1)],
+                  max_cluster_distances[order(c, c2)]
+              )
+
+  def mergeable(max_cluster_distances, c1, c2, n_M=50, d_M=1500):
+      if max_cluster_distances[order(c1.index, c2.index)] <= d_M:
+          if c1.n_lines + c2.n_lines <= n_M:
+              return True
+
+      return False
+
+  edges = ( order(int(edge.source()), int(edge.target())) for edge in G.edges() )
+  edges = sorted(edges, key=lambda edge: G.edge_properties['length'][edge])
+
+  while edges:
+      # pick and edge
+      source, target = edges.pop(0)
+
+      c1 = node_cluster_map[source]
+      c2 = node_cluster_map[target]
+
+      if mergeable(max_cluster_distances, c1, c2):
+          clusters.remove(c1)
+          clusters.remove(c2)
+
+          c_new = c1 + c2
+          clusters.add(c_new)
+
+          for vertex in max(c1, c2):
+#+END_SRC
+
 * COMMENT Local variables
 # Local Variables:
 # org-confirm-babel-evaluate: nil
