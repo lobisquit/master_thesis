@@ -239,6 +239,10 @@ Convert ~networkz~ graphs into ~graph_tool~ ones. Adapted from [[https://gist.gi
       for key, property_map in G.edge_properties.items():
           edges_df[key] = list(G.edge_properties[key])
 
+      # save which source and target node_id
+      edges_ids = ( (int(edge.source()), int(edge.target())) for edge in G.edges() )
+      edges_df['source'], edges_df['target'] = list(zip(*edges_ids))
+
       # create line, using also node information
       def get_segment(G, edge, lon_label, lat_label):
           source_id = int(edge.source())
