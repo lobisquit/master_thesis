@@ -1055,20 +1055,11 @@ Plot graph resulting from optimization.
 * Heuristic approach
 
 #+BEGIN_SRC python :noweb yes :var choose_graph=flatten(choose_graph) :var graph_path=flatten(graph_path) :var dummy_graph_path=flatten(dummy_graph_path) :var model_params=model_params :tangle scripts/aachen_net/15_heuristic.py :results silent
-  import csv
-  import json
-  import logging
-  import math
-  from math import sqrt
-  from pathlib import Path
-
-  import networkx as nx
-  from networkx.readwrite import json_graph
-
-  <<networkx_to_graph_tool>>
+  <<imports_&_defaults>>
+  <<projection>>
+  <<graph_utils>>
 
   from graph_tool.all import *
-
   from graph_tool import topology
 
   class Cluster:
@@ -1087,7 +1078,7 @@ Plot graph resulting from optimization.
       def __str__(self):
           return str(self._elements)
 
-      def __sum__(self, other):
+      def __add__(self, other):
           return Cluster(
               elements=self._elements.union(other._elements),
               n_lines=self.n_lines + other.n_lines
@@ -1095,12 +1086,6 @@ Plot graph resulting from optimization.
 
       def __iter__(self):
           return iter(self._elements)
-
-  def order(a, b, ascending=True):
-      if (a < b) ^ ascending:
-          return b, a
-      else:
-          return a, b
 
   #####
   debug_ = True
@@ -1122,55 +1107,66 @@ Plot graph resulting from optimization.
 
   # starting point: all terminals are sub-root nodes (head of their cluster)
   clusters = {
-      int(t): Cluster({ int(t) }) for t in terminals
-      if G.vertex_properties['n_lines'][t] > 0
+      int(t): Cluster({ int(t) }) for t in G.vertices()
+      # if G.vertex_properties['n_lines'][t] > 0
   }
   node_cluster_map = { c_id: c_id for c_id in clusters }
 
   # track the diameter of the cluster that would be obtained merging each couple
   max_cluster_distances = vertex_distances.copy()
 
-  edges = ( int(edge.source()), int(edge.target()) for edge in G.edges() )
+  edges = ( (int(edge.source()), int(edge.target())) for edge in G.edges() )
   edges = sorted(edges, key=lambda edge: G.edge_properties['length'][edge])
 
   # primitive operations
 
   def compute_max_distance(clusters, vertex_distances, c1_id, c2_id):
       max_dist = 0
-      for vertex1 in clusters(c1_id):
-          for vertex2 in clusters(c2_id):
+      for vertex1 in clusters[c1_id]:
+          for vertex2 in clusters[c2_id]:
               dist = vertex_distances[vertex1][vertex2]
               if dist > max_dist:
                   max_dist = dist
 
       return max_dist
 
-  def update_distances(max_cluster_distances, clusters, c1_id, c2_id):
+  def update_distances(max_cluster_distances, clusters, c1, c2, debug=1):
       ''' Update other cluster distances from new one, the sum of c1 and c2 '''
-      c_new_id = min(c1_id, c2_id)
+      c_new = min(c1, c2)
 
-      for c_id in clusters:
+      for c in clusters:
           if c != c1 and c != c2:
-              max_cluster_distances[order(c_id, c_new_id)] = max(
-                  max_cluster_distances[order(c, c1)],
-                  max_cluster_distances[order(c, c2)]
-              )
+              dist_c1 = max_cluster_distances[min(c, c1)][max(c, c1)]
+              dist_c2 = max_cluster_distances[min(c, c2)][max(c, c2)]
 
-              if debug_:
-                  # just to be sure, make other NaN
-                  max_cluster_distances[order(c_id, c_new_id, False)] = float('nan')
+              a, b = sorted( (c, c_new) )
+              max_cluster_distances[a][b] = max(dist_c1, dist_c2)
 
-              if debug_:
-                  max_dist = compute_max_distance(clusters, vertex_distances, c_id, c_new_id)
-                  assert max_dist == max_cluster_distances[order(c_id, c_new_id)], \
-                      'Invariant on max_cluster_distances not guaranteed'
+              if debug > 0:
+                  assert not math.isnan(max_cluster_distances[a][b])
 
-  def mergeable(max_cluster_distances, c1_id, c2_id, n_M=50, d_M=1500):
-      if max_cluster_distances[order(c1_id, c2_id)] <= d_M:
-          if c1.n_lines + c2.n_lines <= n_M:
+                  if debug > 1:
+                      # just to be sure, make other value NaN
+                      max_cluster_distances[b][a] = float('nan')
+
+                      max_dist = compute_max_distance(clusters,
+                                                      vertex_distances,
+                                                      c,
+                                                      c_new)
+                      assert max_dist - max_cluster_distances[a][b] < 1e-6, \
+                          'Invariant on max_cluster_distances not guaranteed'
+
+  def mergeable(max_cluster_distances, clusters, c1, c2, n_M=50, d_M=1500):
+      a, b = sorted( (c1, c2) )
+      if max_cluster_distances[a][b] <= d_M:
+          if clusters[c1].n_lines + clusters[c2].n_lines <= n_M:
               return True
 
       return False
+
+  nodes_df, edges_df = graph_to_geopandas(G, projection=projection)
+
+  edges_df['connection'] = False
 
   while edges:
       print("{} remaining".format(len(edges)))
@@ -1178,31 +1174,59 @@ Plot graph resulting from optimization.
       # pick and edge
       source, target = edges.pop(0)
 
-      c1_id = node_cluster_map[source]
-      c2_id = node_cluster_map[target]
+      c1 = node_cluster_map[source]
+      c2 = node_cluster_map[target]
 
       # not process if they are already part of the same cluster
-      if c1_id == c2_id:
+      if c1 == c2:
           continue
 
       # proceed if operator conditions are met
       # TODO consider making d_M shorter
-      if mergeable(max_cluster_distances, c1_id, c2_id):
-          c_new_id = min(c1_id, c2_id)
-          c_old_id = max(c1_id, c2_id)
+      if mergeable(max_cluster_distances, clusters, c1, c2):
+          c_new = min(c1, c2)
+          c_old = max(c1, c2)
 
           # update map information for all the nodes in the old cluster (the one to delete)
-          for vertex in clusters[c_old_id]:
+          for vertex in clusters[c_old]:
               node_cluster_map[vertex] = c_new
 
           # merge the two candidates
-          clusters[c_new_id] += clusters[c_old_id]
+          clusters[c_new] += clusters[c_old]
 
           # update distance information for all other clusters
-          update_distances(max_cluster_distances, clusters, c_new_id, c_old_id)
+          update_distances(max_cluster_distances, clusters, c_new, c_old, debug=0)
 
           # delete cluster
-          del clusters[c_old_id]
+          del clusters[c_old]
+
+          # plot the whole graph each time a merge happens
+          if debug_ and len(edges) % 100 == 0:
+              edges_df.loc[(edges_df.source == source) &
+                           (edges_df.target == target), 'connection'] = True
+
+              fig = plt.figure(frameon=False)
+              ax = fig.gca()
+
+              nodes_df.plot(ax=ax,
+                            markersize=0.2,
+                            color='black',
+                            zorder=2)
+
+              # edges_df.plot(ax=ax,
+              #               color='grey',
+              #               # column='weight',
+              #               linewidth=0.5,
+              #               zorder=1)
+
+              edges_df[edges_df['connection']].plot(ax=ax,
+                                                    color='red',
+                                                    # column='weight',
+                                                    linewidth=4,
+                                                    zorder=1)
+
+              plt.axis('off')
+              plt.show()
 
   with open("logs/heuristic_output.txt", "w") as f:
       for id_, cluster in clusters.items():
