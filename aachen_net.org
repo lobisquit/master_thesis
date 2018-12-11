@@ -1059,37 +1059,7 @@ Plot graph resulting from optimization.
   <<projection>>
   <<graph_utils>>
 
-  from graph_tool.all import *
-  from graph_tool import topology
-
-  class Cluster:
-      def __init__(self, elements, n_lines=0):
-          self._elements = set(elements)
-          self.n_lines = n_lines
-
-      @property
-      def index(self):
-          return min(self._elements)
-
-      def __repr__(self):
-          return "<Cluster(index={}, elements={})>"\
-              .format(self.index, self._elements)
-
-      def __str__(self):
-          return str(self._elements)
-
-      def __add__(self, other):
-          return Cluster(
-              elements=self._elements.union(other._elements),
-              n_lines=self.n_lines + other.n_lines
-          )
-
-      def __iter__(self):
-          return iter(self._elements)
-
-  #####
-  debug_ = True
-  #####
+  from ortools.graph import pywrapgraph
 
   # load graph and convert to graph_tool format (Floyd-Warshall is waaaay faster)
   if choose_graph == "dummy":
@@ -1098,142 +1068,60 @@ Plot graph resulting from optimization.
       path = graph_path + "_complete.json"
 
   with open(path) as f:
-      G_nx = json_graph.node_link_graph(json.load(f))
+      G = json_graph.node_link_graph(json.load(f))
 
-  G = nx2gt(G_nx)
+  ## model parameters
+  params = { param[1:4]: value
+             for param, value in model_params
+             if param != "Parameter" }
 
-  # compute pair-wise distances for all nodes
-  vertex_distances = shortest_distance(G, weights=G.edge_properties['length'])
+  # add artificial root node: only supplier!
+  R = max(G) + 1
 
-  # starting point: all terminals are sub-root nodes (head of their cluster)
-  clusters = {
-      int(t): Cluster({ int(t) }) for t in G.vertices()
-      # if G.vertex_properties['n_lines'][t] > 0
-  }
-  node_cluster_map = { c_id: c_id for c_id in clusters }
+  total_n_lines = sum(data['n_lines'] for _, data in G.nodes(data=True))
+  for source, target in G.edges():
+      # set only capacity limit at the subroot nodes
+      G[source][target]['capacity'] = total_n_lines
 
-  # track the diameter of the cluster that would be obtained merging each couple
-  max_cluster_distances = vertex_distances.copy()
+  G.add_node(R)
+  for node_id in G.nodes():
+      G.add_edge(R, node_id, capacity=params['n_M'])
 
-  edges = ( (int(edge.source()), int(edge.target())) for edge in G.edges() )
-  edges = sorted(edges, key=lambda edge: G.edge_properties['length'][edge])
+  def get_edge_info(G):
+      for source, target, data in G.edges(data=True):
+          if source == R or target == R:
+              cost = params['c_r']
+          else:
+              cost = data['length'] * params['c_e']
 
-  # primitive operations
+          yield source, target, data['capacity'], int(cost)
 
-  def compute_max_distance(clusters, vertex_distances, c1_id, c2_id):
-      max_dist = 0
-      for vertex1 in clusters[c1_id]:
-          for vertex2 in clusters[c2_id]:
-              dist = vertex_distances[vertex1][vertex2]
-              if dist > max_dist:
-                  max_dist = dist
+  def get_node_info(G):
+      for node_id, data in G.nodes(data=True):
+          if node_id == R:
+              yield total_n_lines
+          else:
+              yield - data['n_lines']
 
-      return max_dist
+  start_nodes, end_nodes, capacities, unit_costs = zip(*get_edge_info(G))
 
-  def update_distances(max_cluster_distances, clusters, c1, c2, debug=1):
-      ''' Update other cluster distances from new one, the sum of c1 and c2 '''
-      c_new = min(c1, c2)
+  # Define an array of supplies at each node.
 
-      for c in clusters:
-          if c != c1 and c != c2:
-              dist_c1 = max_cluster_distances[min(c, c1)][max(c, c1)]
-              dist_c2 = max_cluster_distances[min(c, c2)][max(c, c2)]
+  supplies = list(get_node_info(G))
 
-              a, b = sorted( (c, c_new) )
-              max_cluster_distances[a][b] = max(dist_c1, dist_c2)
+  min_cost_flow = pywrapgraph.SimpleMinCostFlow()
 
-              if debug > 0:
-                  assert not math.isnan(max_cluster_distances[a][b])
+  # Add each arc.
+  for i in range(0, len(start_nodes)):
+      min_cost_flow.AddArcWithCapacityAndUnitCost(start_nodes[i], end_nodes[i],
+                                                  capacities[i], unit_costs[i])
 
-                  if debug > 1:
-                      # just to be sure, make other value NaN
-                      max_cluster_distances[b][a] = float('nan')
+  # Add node supplies.
+  for i in range(0, len(supplies)):
+      min_cost_flow.SetNodeSupply(i, supplies[i])
 
-                      max_dist = compute_max_distance(clusters,
-                                                      vertex_distances,
-                                                      c,
-                                                      c_new)
-                      assert max_dist - max_cluster_distances[a][b] < 1e-6, \
-                          'Invariant on max_cluster_distances not guaranteed'
-
-  def mergeable(max_cluster_distances, clusters, c1, c2, n_M=50, d_M=1500):
-      a, b = sorted( (c1, c2) )
-      if max_cluster_distances[a][b] <= d_M:
-          if clusters[c1].n_lines + clusters[c2].n_lines <= n_M:
-              return True
-
-      return False
-
-  nodes_df, edges_df = graph_to_geopandas(G, projection=projection)
-
-  edges_df['connection'] = False
-
-  while edges:
-      print("{} remaining".format(len(edges)))
-
-      # pick and edge
-      source, target = edges.pop(0)
-
-      c1 = node_cluster_map[source]
-      c2 = node_cluster_map[target]
-
-      # not process if they are already part of the same cluster
-      if c1 == c2:
-          continue
-
-      # proceed if operator conditions are met
-      # TODO consider making d_M shorter
-      if mergeable(max_cluster_distances, clusters, c1, c2):
-          c_new = min(c1, c2)
-          c_old = max(c1, c2)
-
-          # update map information for all the nodes in the old cluster (the one to delete)
-          for vertex in clusters[c_old]:
-              node_cluster_map[vertex] = c_new
-
-          # merge the two candidates
-          clusters[c_new] += clusters[c_old]
-
-          # update distance information for all other clusters
-          update_distances(max_cluster_distances, clusters, c_new, c_old, debug=0)
-
-          # delete cluster
-          del clusters[c_old]
-
-          # plot the whole graph each time a merge happens
-          if debug_ and len(edges) % 100 == 0:
-              edges_df.loc[(edges_df.source == source) &
-                           (edges_df.target == target), 'connection'] = True
-
-              fig = plt.figure(frameon=False)
-              ax = fig.gca()
-
-              nodes_df.plot(ax=ax,
-                            markersize=0.2,
-                            color='black',
-                            zorder=2)
-
-              # edges_df.plot(ax=ax,
-              #               color='grey',
-              #               # column='weight',
-              #               linewidth=0.5,
-              #               zorder=1)
-
-              edges_df[edges_df['connection']].plot(ax=ax,
-                                                    color='red',
-                                                    # column='weight',
-                                                    linewidth=4,
-                                                    zorder=1)
-
-              plt.axis('off')
-              plt.show()
-
-  with open("logs/heuristic_output.txt", "w") as f:
-      for id_, cluster in clusters.items():
-          f.write(str(cluster) + "\n")
-
-
-  ## IDEA for debug, measure distance *every* time: checking max_cluster_distances by hand
+  print(min_cost_flow.SolveMaxFlowWithMinCost() == min_cost_flow.OPTIMAL)
+  print('Minimum cost:', min_cost_flow.OptimalCost())
 #+END_SRC
 
 * COMMENT Local variables
