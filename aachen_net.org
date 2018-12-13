@@ -1108,7 +1108,6 @@ Plot graph resulting from optimization.
       # keep track of distance among vertices
       terminal_dist = np.array(f['terminal_dist'])
 
-
   ## initialize clusters: at the beginning they are singletons of terminals
   clusters = terminals.copy()
   cluster_lines = terminal_lines.copy()
@@ -1195,7 +1194,7 @@ Plot graph resulting from optimization.
 
   total_couples = np.count_nonzero( np.isfinite(min_cluster_dist)) / 2
 
-  print("Pruning: left", total_couples, "out of", T**2)
+  print("Pruning: left", int(total_couples), "out of", T**2)
 
   n_rejected = 0
   counter = 0
@@ -1241,7 +1240,7 @@ Plot graph resulting from optimization.
       counter += 1
       if counter % 50 == 0:
           total_cost = objective_function(G, clusters, terminals, terminal_dist)
-          print("Money {:.6E}€ {} {}".format(total_cost, " " * 45, n_rejected))
+          print("Money {:.4f}M€ {} n_rejected {}".format(total_cost/1e6, " " * 50, n_rejected))
           n_rejected = 0
 
           if __debug__:
