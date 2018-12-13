@@ -1111,7 +1111,7 @@ Plot graph resulting from optimization.
       # keep track of distance among vertices
       terminal_dist = np.array(f['terminal_dist'])
 
-  ## initialize clusters: at the beginning they are singletons of terminals
+  # initialize clusters: at the beginning they are singletons of terminals
   clusters = terminals.copy()
   cluster_lines = terminal_lines.copy()
 
@@ -1185,6 +1185,7 @@ Plot graph resulting from optimization.
       for cluster_id in set(clusters):
           cluster_nodes = clusters[clusters == cluster_id]
 
+          # deal with simplest cases, avoiding MST computation
           if len(cluster_nodes) == 1:
               continue
 
@@ -1216,28 +1217,30 @@ Plot graph resulting from optimization.
 
       return sub_root_cost + cable_cost + excavation_cost
 
-  # plotter = plot_clusters(G)
-  # plotter.send(None)
-
-  plt.ion()
-  fig_lines = plt.figure("n° lines per cluster histogram")
-  fig_nodes = plt.figure("n° nodes per cluster histogram")
-
   # measure if the connection is more expensive than a DSLAM:
   # in this cases don't even consider evaluating the merge
   critical_length = params['c_r'] / params['c_e']
 
   logger.info("critical_length = {}".format(critical_length))
 
+  # prune the nodes that even at the beginning are further from each other more
+  # than the critical length
   min_cluster_dist[min_cluster_dist > critical_length] = np.nan
   max_cluster_dist[min_cluster_dist > critical_length] = np.nan
 
   total_couples = np.count_nonzero( np.isfinite(min_cluster_dist)) / 2
-
   logger.info("Pruning: left {:.0f} out of {}".format(total_couples, T * (T-1) // 2))
 
+  # counters
   n_rejected = 0
-  counter = 0
+  n_iter = 0
+
+  # prepare plots if in debug mode
+  if __debug__:
+      plt.ion()
+      fig_lines = plt.figure("n° lines per cluster histogram")
+      fig_nodes = plt.figure("n° nodes per cluster histogram")
+
   while True:
       # get two closest clusters (heuristic measure)
       # TODO check if a condition on diameter (max_dist) gives better results
@@ -1269,32 +1272,28 @@ Plot graph resulting from optimization.
           clusters[clusters == clusters[j]] = new_idx
       else:
           n_rejected += 1
-          # print("n_cluster", len(set(clusters)), "total_n_lines", total_n_lines, 'diam', joint_diameter)
 
       # since it has been evaluated, remove couple (i, j) from the possibilities:
       # setting their distance to nan
       disable_link(clusters, min_cluster_dist, i, j)
 
-      # plotter.send(clusters)
+      if __debug__:
+          if n_iter % 50 == 0:
+              total_cost = objective_function(G, clusters, terminals, terminal_dist)
+              print("Money {:.4f}M€ {} n_rejected {}".format(total_cost/1e6, " " * 50, n_rejected))
+              n_rejected = 0
 
-      counter += 1
-      if counter % 50 == 0:
-          total_cost = objective_function(G, clusters, terminals, terminal_dist)
-          print("Money {:.4f}M€ {} n_rejected {}".format(total_cost/1e6, " " * 50, n_rejected))
-          n_rejected = 0
-
-          if __debug__:
               # check each cluster members have all same rows and same columns in matrix
               check_consistency(clusters, min_cluster_dist)
 
-          fig_lines.clf()
-          fig_lines.gca().hist(cluster_lines, bins=100)
+              fig_lines.clf()
+              fig_lines.gca().hist(cluster_lines, bins=100)
 
-          fig_nodes.clf()
-          fig_nodes.gca().hist([np.count_nonzero(clusters == element) for element in set(clusters)], bins=100)
+              fig_nodes.clf()
+              fig_nodes.gca().hist([np.count_nonzero(clusters == element) for element in set(clusters)], bins=100)
 
-          plt.pause(0.1)
-          plt.draw()
+              plt.pause(0.1)
+              plt.draw()
 
       # assess if is time to stop
       if np.all(np.isnan(min_cluster_dist)):
