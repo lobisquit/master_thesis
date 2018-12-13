@@ -1163,17 +1163,53 @@ Plot graph resulting from optimization.
       # of the clusters
       total_cable_length = 0
       for element in set(clusters):
+          # compute the total length of cable to each j from i, given its number
+          # of requested lines
           cluster_vertex = np.where(clusters == element)[0]
           inter_cluster_dist = terminal_dist[cluster_vertex, cluster_vertex]
+          cluster_cable_length = inter_cluster_dist.dot(terminal_lines[cluster_vertex])
 
           # choose the node with minimum cumulative distance from the others
           # to be the center of its group
-          cluster_cable_length = np.min(np.sum(inter_cluster_dist, axis=0))
+          cluster_cable_length = np.min(np.sum(cluster_cable_length, axis=0))
           total_cable_length += cluster_cable_length
 
       cable_cost = total_cable_length * params['c_f']
 
-      excavation_cost = params['c_e'] * total_cable_length
+      # excavation cost
+      # get the MST for each cluster, then sum their edges length
+      total_road_length = 0
+      for cluster_id in set(clusters):
+          cluster_nodes = clusters[clusters == cluster_id]
+
+          if len(cluster_nodes) == 1:
+              continue
+
+          if len(cluster_nodes) == 2:
+              i, j = np.where(clusters == cluster_id)[0]
+              total_road_length += terminal_dist[i][j]
+              continue
+
+          if len(cluster_nodes) == 3:
+              i, j, k = np.where(clusters == cluster_id)[0]
+              A = terminal_dist[i][j]
+              B = terminal_dist[j][k]
+              C = terminal_dist[k][i]
+
+              total_road_length += A + B + C - min(A, B, C)
+              continue
+
+          # create a mask to select this cluster vertices
+          mask = np.zeros(N, dtype=bool)
+          mask[cluster_nodes] = True
+
+          subgraph = GraphView(G, vfilt=mask)
+
+          # compute the minimum spanning tree
+          MST_edges = min_spanning_tree(subgraph, weights=subgraph.ep['length'])
+          total_road_length += subgraph.ep['length'].a.dot(MST_edges.a)
+
+      excavation_cost = params['c_e'] * total_road_length
 
       return sub_root_cost + cable_cost + excavation_cost
 
