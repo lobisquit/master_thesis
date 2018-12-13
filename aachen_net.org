@@ -1264,6 +1264,45 @@ Plot graph resulting from optimization.
 
           plt.pause(0.1)
           plt.draw()
+
+      # assess if is time to stop
+      if np.all(np.isnan(min_cluster_dist)):
+          break
+
+
+  # N = 6
+  # X = np.random.random((N, N))
+  # X = X + X.T
+
+  # X[X > 1] = np.nan
+
+  # clusters = np.array(list(range(N)))
+  # np.fill_diagonal(X, np.nan)
+
+  # n_nan = np.count_nonzero(np.isnan(X))
+
+  # print("\n", X)
+  # i = 0
+  # j = 1
+
+  # i_idx = np.where(clusters == clusters[i])[0]
+  # j_idx = np.where(clusters == clusters[j])[0]
+
+  # X[i_idx, :] = np.nanmax( (X[i, :], X[j, :]), axis=0 )
+  # X[j_idx, :] = X[i, :]
+
+  # X[:, i_idx] = X[i_idx, :].T
+  # X[:, j_idx] = X[j_idx, :].T
+
+  # cmn_idx = np.hstack((i_idx, j_idx))
+  # X[np.ix_(cmn_idx, cmn_idx)] = np.nan
+
+  # clusters[1] = 0
+
+  # delta = np.count_nonzero(np.isnan(X)) - n_nan
+  # assert delta >= 0, "delta={}, i_idx={}, j_idx={}".format(delta, 0, 0)
+
+  # print("\n", X)
 #+END_SRC
 
 * COMMENT Local variables
