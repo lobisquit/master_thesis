@@ -1185,22 +1185,23 @@ Plot graph resulting from optimization.
   fig_lines = plt.figure("n° lines per cluster histogram")
   fig_nodes = plt.figure("n° nodes per cluster histogram")
 
-  counter = 0
   # measure if the connection is more expensive than a DSLAM:
   # in this cases don't even consider evaluating the merge
   critical_length = params['c_r'] / params['c_e']
   print("critical_length", critical_length)
 
   min_cluster_dist[min_cluster_dist > critical_length] = np.nan
+  max_cluster_dist[min_cluster_dist > critical_length] = np.nan
 
   total_couples = np.count_nonzero( np.isfinite(min_cluster_dist)) / 2
 
   print("Pruning: left", total_couples, "out of", T**2)
 
   n_rejected = 0
-
+  counter = 0
   while True:
       # get two closest clusters (heuristic measure)
+      # TODO check if a condition on diameter (max_dist) gives better results
       min_rows, min_cols = np.where(min_cluster_dist == np.nanmin(min_cluster_dist))
 
       # i, j are the i-th, j-th cluster
@@ -1213,7 +1214,7 @@ Plot graph resulting from optimization.
       if total_n_lines <= params['n_M'] and \
          joint_diameter <= 2 * params['d_M']:
 
-          print("                      n_cluster", len(set(clusters)), end='\r')
+          print("{}n_cluster {}".format(" "*25, len(set(clusters))), end='\r')
 
           # update merging conditions
           cluster_lines[i] = total_n_lines
@@ -1239,7 +1240,8 @@ Plot graph resulting from optimization.
 
       counter += 1
       if counter % 50 == 0:
-          print("Money", objective_function(G, clusters, terminals, terminal_dist), "€                                           ", n_rejected)
+          total_cost = objective_function(G, clusters, terminals, terminal_dist)
+          print("Money {:.6E}€ {} {}".format(total_cost, " " * 45, n_rejected))
           n_rejected = 0
 
           if __debug__:
