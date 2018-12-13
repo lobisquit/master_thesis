@@ -311,7 +311,6 @@ Plot a ~networkx~ graph in a geographical map, plus various utilities.
   <<graph_plot>>
 #+END_SRC
 
-
 * Datasets reading routines
 Read district map and its projection details.
 
