@@ -1174,21 +1174,7 @@ Plot graph resulting from optimization.
 
       cable_cost = total_cable_length * params['c_f']
 
-      # excavation cost
-      # get the MST for each cluster, then sum their edges length
-      total_road_length = 0
-      for cluster_id in set(clusters):
-          # print(cluster_id, end='\r')
-          cluster_nodes = clusters[clusters == cluster_id]
-          subgraph = GraphView(G, vfilt=lambda v: v in cluster_nodes)
-
-          MST_edges = min_spanning_tree(subgraph,
-                                        weights=subgraph.edge_properties['length'])
-          total_road_length += sum( subgraph.ep['length'][e]
-                                    for e in subgraph.edges()
-                                    if MST_edges[e] )
-
-      excavation_cost = params['c_e'] * total_road_length
+      excavation_cost = params['c_e'] * total_cable_length
 
       return sub_root_cost + cable_cost + excavation_cost
 
@@ -1211,9 +1197,9 @@ Plot graph resulting from optimization.
 
   print("Pruning: left", total_couples, "out of", T**2)
 
-  while True:
-      print("Money", objective_function(G, clusters, terminals, terminal_dist), "€")
+  n_rejected = 0
 
+  while True:
       # get two closest clusters (heuristic measure)
       min_rows, min_cols = np.where(min_cluster_dist == np.nanmin(min_cluster_dist))
 
@@ -1227,7 +1213,7 @@ Plot graph resulting from optimization.
       if total_n_lines <= params['n_M'] and \
          joint_diameter <= 2 * params['d_M']:
 
-          print("Joined! n_cluster", len(set(clusters)), end='\r')
+          print("                      n_cluster", len(set(clusters)), end='\r')
 
           # update merging conditions
           cluster_lines[i] = total_n_lines
@@ -1242,7 +1228,8 @@ Plot graph resulting from optimization.
           clusters[clusters == clusters[i]] = new_idx
           clusters[clusters == clusters[j]] = new_idx
       else:
-          print("n_cluster", len(set(clusters)), "total_n_lines", total_n_lines, 'diam', joint_diameter)
+          n_rejected += 1
+          # print("n_cluster", len(set(clusters)), "total_n_lines", total_n_lines, 'diam', joint_diameter)
 
       # since it has been evaluated, remove couple (i, j) from the possibilities:
       # setting their distance to nan
@@ -1252,6 +1239,9 @@ Plot graph resulting from optimization.
 
       counter += 1
       if counter % 50 == 0:
+          print("Money", objective_function(G, clusters, terminals, terminal_dist), "€                                           ", n_rejected)
+          n_rejected = 0
+
           if __debug__:
               # check each cluster members have all same rows and same columns in matrix
               check_consistency(clusters, min_cluster_dist)
