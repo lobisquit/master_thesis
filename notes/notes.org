@@ -54,7 +54,7 @@ Sum of N independent ON-OFF sources
 - [ ] design the network, based on Aachen population and topology
   - check optimal and heuristic results
   - choose the nicer configuration
-  - provide costs and stuff: check parameters are feasible
+  - provide costs and stuff: check if parameters are feasible
 - [ ] write a simulator: ns-3 or custom? (at the end we won't be 100% realistic, so ...)
 - [ ] design user profiles $f_i(x)$, the $X$ set of quantities plus their limitations
   - cite aggregated statistics, just for fun
