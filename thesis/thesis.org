@@ -233,9 +233,8 @@ We have to take this strong hypothesis because of the level of details the
 OpenStreetMap dataset provides: information about the building use and its
 height is lacking in most entries.
 
-I consider these two suppositions acceptable in our case, since we want to
-analyze how the access network of a city like Aachen behaves, not to replicate
-it precisely.
+I consider these two suppositions acceptable, since we want to analyze how the
+access network of a city like Aachen behaves, not to replicate it precisely.
 
 ** Network design
 #+BEGIN_SRC org :exports none
@@ -254,12 +253,19 @@ it precisely.
   - problem complexity: number of variables, constraints (in theory)
 #+END_SRC
 
-Previous pre-processing on Aachen city map allowed us to summarize in an undirected graph $G=(V, \,E)$ all relevant information about the streets topology, buildings and estimated number of users.
+Previous pre-processing on Aachen city map allowed us to summarize in an
+undirected graph $G=(V, \,E)$ all relevant information about the streets
+topology, buildings and estimated number of users.
 
-As specified earlier, each node $i$ is assigned a number of users $u_i$ to serve, which is zero if the node is just a street intersection.
-Given that they represent a physical line, edges are given instead a length value $l_e$, that will be used later to evaluate the access network building cost.
+As specified earlier, each node $i$ is assigned a number of users $u_i$ to
+serve, which is zero if the node is just a street intersection. \\
+Given that they represent a physical line, edges are given instead a length
+value $l_e$, that will be used later to evaluate the access network building
+cost.
 
-In this chapter we will exploit this information to find the optimal network configuration, given some assumptions and requirements derived from best practices in access network design.
+In this chapter we will exploit this information to find the optimal network
+configuration, given some assumptions and requirements derived from best
+practices in access network design.
 
 TODO cite CISCO
 *** Topology considerations
@@ -427,7 +433,7 @@ autoref:quantities_constraints.
 | $c_r$           | Cost of a single subtree root node           |
 | $c_f$           | Cost of a fiber optic cable per meter              |
 | $c_c$           | Cost of copper cable per meter                     |
-| $c_{e}$         | Cost of roadwork excavation per meter              |
+| $c_e$           | Cost of roadwork excavation per meter              |
 
 In order to express the optimization problem in a convenient way, we arrange our
 data as follows.
