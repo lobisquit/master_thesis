@@ -279,12 +279,9 @@ Plot a ~networkx~ graph in a geographical map, plus various utilities.
 #+BEGIN_SRC python
   def plot_graph(G, lon_label='lon', lat_label='lat', ax=None, figsize=(6, 6), title=None, projection=None):
       nodes_df, edges_df = graph_to_geopandas(G, lon_label, lat_label, projection)
-
       plot_geopandas_graph(nodes_df, edges_df, ax, figsize, title)
 
   def plot_geopandas_graph(nodes_df, edges_df, ax=None, figsize=(6, 6), title=None, projection=None):
-      edges_df = graph_to_geopandas(G, lon_label, lat_label, projection)
-
       ## plot everything
       if ax is None:
           fig = plt.figure(figsize=figsize, frameon=False)
@@ -462,13 +459,13 @@ Just replace the script with the one you want to run.
   ### Request the time you need for execution in minutes
   ### The format for the parameter is: [hour:]minute,
   ### that means for 80 minutes you could also use this: 1:20
-  #BSUB -W 100:23
+  #BSUB -W 10:00
 
   ### Request the number of compute slots you want to use
   #BSUB -n 32
 
   ### Request memory you need for your job in TOTAL in MB
-  #BSUB -M 64000
+  #BSUB -M 128000
 
   ### Use esub for OpenMP/shared memeory jobs
   #BSUB -a openmp
