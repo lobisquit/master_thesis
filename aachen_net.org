@@ -1338,12 +1338,9 @@ Plot graph resulting from optimization.
   import h5py
 
   G = load_graph(graph_path + "_heuristic_clusters.gt")
-
   clusters = G.vp['cluster_id'].a
 
-  fig = plt.figure()
-  ax = fig.gca()
-
+  # collect nodes and edges shapes here
   nodes_dfs = []
   edges_dfs = []
 
@@ -1366,12 +1363,24 @@ Plot graph resulting from optimization.
       nodes_dfs.append(nodes_df)
       edges_dfs.append(edges_df)
 
-  global_nodes_df = pd.concat(nodes_dfs)
-  global_edges_df = pd.concat(edges_dfs)
+  active_nodes_df = pd.concat(nodes_dfs)
+  active_edges_df = pd.concat(edges_dfs)
 
-  plot_geopandas_graph(global_nodes_df, global_edges_df)
+  fig = plt.figure(figsize=(6, 6), frameon=False)
+  ax = fig.gca()
+  plot_geopandas_graph(active_nodes_df, active_edges_df, title="Detail of heuristic solution", ax=ax)
 
-  plt.show()
+  _, all_edges_df = graph_tool_to_geopandas(G, projection=projection)
+  all_edges_df.plot(color='#b2b2b2', zorder=-1, ax=ax)
+
+  ax.set_xlim(293117, 295351)
+  ax.set_ylim(5627800, 5629570)
+  plt.tight_layout(rect=[-0.08, 0, 1, 1])
+
+  # plt.show()
+
+  plt.savefig('figures/aachen_heuristic_DSLAMs.png', dpi=250)
+  plt.close('all')
 #+END_SRC
 
 
