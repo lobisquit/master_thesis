@@ -1256,6 +1256,8 @@ Plot graph resulting from optimization.
       fig_nodes = plt.figure("n° nodes per cluster histogram")
 
   while True:
+      n_iter += 1
+
       # get two closest clusters (heuristic measure)
       # TODO check if a condition on diameter (max_dist) gives better results
       min_rows, min_cols = np.where(min_cluster_dist == np.nanmin(min_cluster_dist))
@@ -1291,8 +1293,11 @@ Plot graph resulting from optimization.
       # setting their distance to nan
       disable_link(clusters, min_cluster_dist, i, j)
 
-      if __debug__:
-          if n_iter % 50 == 0:
+      if n_iter % 50 == 0:
+          total_cost = objective_function(G, clusters, terminals, terminal_dist)
+          print("Money {:.4f}M€ {} n_rejected".format(total_cost/1e6, " " * 50))
+
+          if __debug__:
               total_cost = objective_function(G, clusters, terminals, terminal_dist)
               print("Money {:.4f}M€ {} n_rejected {}".format(total_cost/1e6, " " * 50, n_rejected))
               n_rejected = 0
