@@ -240,8 +240,9 @@ Convert ~networkz~ graphs into ~graph_tool~ ones. Adapted from [[https://gist.gi
           edges_df[key] = list(G.edge_properties[key])
 
       # save which source and target node_id
-      edges_ids = ( (int(edge.source()), int(edge.target())) for edge in G.edges() )
-      edges_df['source'], edges_df['target'] = list(zip(*edges_ids))
+      if len(edges_df) > 0:
+          edges_ids = ( (int(edge.source()), int(edge.target())) for edge in G.edges() )
+          edges_df['source'], edges_df['target'] = list(zip(*edges_ids))
 
       # create line, using also node information
       def get_segment(G, edge, lon_label, lat_label):
@@ -278,6 +279,11 @@ Plot a ~networkx~ graph in a geographical map, plus various utilities.
 #+BEGIN_SRC python
   def plot_graph(G, lon_label='lon', lat_label='lat', ax=None, figsize=(6, 6), title=None, projection=None):
       nodes_df, edges_df = graph_to_geopandas(G, lon_label, lat_label, projection)
+
+      plot_geopandas_graph(nodes_df, edges_df, ax, figsize, title)
+
+  def plot_geopandas_graph(nodes_df, edges_df, ax=None, figsize=(6, 6), title=None, projection=None):
+      edges_df = graph_to_geopandas(G, lon_label, lat_label, projection)
 
       ## plot everything
       if ax is None:
