@@ -1314,6 +1314,53 @@ Plot graph resulting from optimization.
           break
 #+END_SRC
 
+
+#+BEGIN_SRC python :noweb yes :var choose_graph=flatten(choose_graph) :var graph_path=flatten(graph_path) :var dummy_graph_path=flatten(dummy_graph_path) :var model_params=model_params :tangle scripts/aachen_net/16_plot_heuristic.py :results silent
+  <<imports_&_defaults>>
+  <<projection>>
+  <<graph_utils>>
+
+  from graph_tool.all import *
+  import h5py
+
+  G = load_graph(graph_path + "_heuristic_clusters.gt")
+
+  clusters = G.vp['cluster_id'].a
+
+  fig = plt.figure()
+  ax = fig.gca()
+
+  nodes_dfs = []
+  edges_dfs = []
+
+  for index, cluster_id in enumerate(set(clusters)):
+      print(index, "/", len(clusters), end='\r')
+
+      # ignore non-assigned nodes
+      if cluster_id == -1:
+          continue
+
+      # compute the minimum spanning tree
+      # NOTE this is just for visualization: final configuration will be similar,
+      # but not actually the same to this one, since cable cost is not considered
+      # here
+      subgraph = GraphView(G, vfilt=(clusters == cluster_id))
+      MST_edges = min_spanning_tree(subgraph, weights=subgraph.ep['length'])
+
+      nodes_df, edges_df = graph_tool_to_geopandas(subgraph, projection=projection)
+
+      nodes_dfs.append(nodes_df)
+      edges_dfs.append(edges_df)
+
+  global_nodes_df = pd.concat(nodes_dfs)
+  global_edges_df = pd.concat(edges_dfs)
+
+  plot_geopandas_graph(global_nodes_df, global_edges_df)
+
+  plt.show()
+#+END_SRC
+
+
 * COMMENT Local variables
 # Local Variables:
 # org-confirm-babel-evaluate: nil
