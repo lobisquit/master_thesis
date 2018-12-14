@@ -812,8 +812,8 @@ See [[https://www.itscosts.its.dot.gov][here]] for pricing. TODO cite as a sourc
   obj_func = 0
 
   # A), B) ~> suppose full-fiber for now
-  for node_id in G.nodes():
-      obj_func += D[node_id] * params['c_f']
+  for node_id, data in G.nodes(data=True):
+      obj_func += D[node_id] * data['n_lines'] * params['c_f']
 
   # C)
   for source, target, data in G.edges(data=True):
