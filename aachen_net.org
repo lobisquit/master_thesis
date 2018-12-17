@@ -1172,6 +1172,20 @@ Plot graph resulting from optimization.
           assert np.allclose(min_cluster_dist[cluster_idx, :], min_cluster_dist[:, cluster_idx].T, equal_nan=True), \
               "Distance matrix not symmetric"
 
+  paths = {}
+  def compute_path(G, i, j):
+      if (i, j) in paths:
+          return paths[(i, j)]
+
+      sp_edges = shortest_path(G, i, j)[1]
+      ids = [G.edge_index[e] for e in sp_edges]
+
+      mask = np.zeros(G.num_edges(), dtype=bool)
+      mask[ids] = True
+      paths[i, j] = mask
+
+      return mask
+
   def objective_function(G, clusters, terminals, terminal_dist):
       # DSLAMs cost
       sub_root_cost = len(set(clusters)) * params['c_r']
@@ -1192,7 +1206,36 @@ Plot graph resulting from optimization.
           total_cable_length += cluster_cable_length
 
       cable_cost = total_cable_length * params['c_f']
-      excavation_cost = params['c_e'] * total_cable_length
+
+      # use minimum path tree also for excavation (remove duplicate edges)
+      total_road_length = 0
+      for index, cluster_id in enumerate(set(clusters)):
+          cluster_nodes = terminals[clusters == cluster_id]
+
+          # deal with simplest cases, avoiding MST computation
+          if len(cluster_nodes) == 1:
+              continue
+
+          # compute pairwise path for each couple of nodes in the cluster
+          # and remove duplicate edges
+          tree_edges = np.zeros(G.num_edges(), dtype=bool)
+
+          best_road_length = float('inf')
+          for root in cluster_nodes:
+              # compute edges of tree with root node1
+              for node in cluster_nodes:
+                  tree_edges = np.logical_or(tree_edges,
+                                             compute_path(G,
+                                                          G.vertex(root),
+                                                          G.vertex(node)))
+              current_road_length = G.ep['length'].a.dot(tree_edges)
+
+              if current_road_length < best_road_length:
+                  best_road_length = current_road_length
+
+          total_road_length += best_road_length
+
+      excavation_cost = params['c_e'] * total_road_length
 
       return sub_root_cost + cable_cost + excavation_cost
 
@@ -1349,7 +1392,6 @@ Plot graph resulting from optimization.
   plt.savefig('figures/aachen_heuristic_DSLAMs.png', dpi=250)
   plt.close('all')
 #+END_SRC
-
 
 * COMMENT Local variables
 # Local Variables:
