@@ -1192,42 +1192,7 @@ Plot graph resulting from optimization.
           total_cable_length += cluster_cable_length
 
       cable_cost = total_cable_length * params['c_f']
-
-      # excavation cost
-      # get the MST for each cluster, then sum their edges length
-      total_road_length = 0
-      for cluster_id in set(clusters):
-          cluster_nodes = clusters[clusters == cluster_id]
-
-          # deal with simplest cases, avoiding MST computation
-          if len(cluster_nodes) == 1:
-              continue
-
-          if len(cluster_nodes) == 2:
-              i, j = np.where(clusters == cluster_id)[0]
-              total_road_length += terminal_dist[i][j]
-              continue
-
-          if len(cluster_nodes) == 3:
-              i, j, k = np.where(clusters == cluster_id)[0]
-              A = terminal_dist[i][j]
-              B = terminal_dist[j][k]
-              C = terminal_dist[k][i]
-
-              total_road_length += A + B + C - min(A, B, C)
-              continue
-
-          # create a mask to select this cluster vertices
-          mask = np.zeros(N, dtype=bool)
-          mask[cluster_nodes] = True
-
-          subgraph = GraphView(G, vfilt=mask)
-
-          # compute the minimum spanning tree
-          MST_edges = min_spanning_tree(subgraph, weights=subgraph.ep['length'])
-          total_road_length += subgraph.ep['length'].a.dot(MST_edges.a)
-
-      excavation_cost = params['c_e'] * total_road_length
+      excavation_cost = params['c_e'] * total_cable_length
 
       return sub_root_cost + cable_cost + excavation_cost
 
@@ -1295,7 +1260,7 @@ Plot graph resulting from optimization.
 
       if n_iter % 50 == 0:
           total_cost = objective_function(G, clusters, terminals, terminal_dist)
-          print("Money {:.4f}M€ {} n_rejected".format(total_cost/1e6, " " * 50))
+          print("Money {:.2f}M€ {} n_rejected".format(total_cost/1e6, " " * 50))
 
           if __debug__:
               total_cost = objective_function(G, clusters, terminals, terminal_dist)
@@ -1350,16 +1315,13 @@ Plot graph resulting from optimization.
   edges_dfs = []
 
   for index, cluster_id in enumerate(set(clusters)):
-      print(index, "/", len(clusters), end='\r')
+      print("Loaded cluster", index, "/", len(clusters), end='\r')
 
       # ignore non-assigned nodes
       if cluster_id == -1:
           continue
 
       # compute the minimum spanning tree
-      # NOTE this is just for visualization: final configuration will be similar,
-      # but not actually the same to this one, since cable cost is not considered
-      # here
       subgraph = GraphView(G, vfilt=(clusters == cluster_id))
       MST_edges = min_spanning_tree(subgraph, weights=subgraph.ep['length'])
 
