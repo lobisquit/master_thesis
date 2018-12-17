@@ -1088,11 +1088,58 @@ Plot graph resulting from optimization.
       return terminal_dist
 #+END_SRC
 
+#+NAME: min_path_tree
+#+BEGIN_SRC python
+  paths = {}
+  def compute_path(G, i, j):
+      if (i, j) in paths:
+          return paths[(i, j)]
+
+      sp_edges = shortest_path(G, i, j)[1]
+      ids = [G.edge_index[e] for e in sp_edges]
+
+      mask = np.zeros(G.num_edges(), dtype=bool)
+      mask[ids] = True
+      paths[i, j] = mask
+
+      return mask
+
+  def get_min_path_tree(G, cluster_nodes):
+      # compute pairwise path for each couple of nodes in the cluster
+      # and remove duplicate edges
+      tree_edges = np.zeros(G.num_edges(), dtype=bool)
+
+      best_road_length = float('inf')
+      best_root = None
+      for root in cluster_nodes:
+          # compute edges of tree with root node1
+          for node in cluster_nodes:
+              tree_edges = np.logical_or(tree_edges,
+                                         compute_path(G,
+                                                      G.vertex(root),
+                                                      G.vertex(node)))
+
+          current_road_lengths = G.ep['length'].a * tree_edges
+          current_road_length = np.sum(current_road_lengths)
+
+          if np.all(current_road_lengths) < params['d_M'] and \
+             current_road_length < best_road_length:
+              best_road_length = current_road_length
+              best_root = root
+
+      if best_root is None:
+          print("Error, root is None")
+          exit(1)
+
+      return best_road_length, best_root, tree_edges
+#+END_SRC
+
 #+BEGIN_SRC python :noweb yes :var choose_graph=flatten(choose_graph) :var graph_path=flatten(graph_path) :var dummy_graph_path=flatten(dummy_graph_path) :var model_params=model_params :tangle scripts/aachen_net/15_heuristic.py :results silent
   <<imports_&_defaults>>
   <<projection>>
   <<graph_utils>>
   <<terminal_dist_cache>>
+  <<min_path_tree>>
 
   from graph_tool.all import *
   import h5py
@@ -1172,20 +1219,6 @@ Plot graph resulting from optimization.
           assert np.allclose(min_cluster_dist[cluster_idx, :], min_cluster_dist[:, cluster_idx].T, equal_nan=True), \
               "Distance matrix not symmetric"
 
-  paths = {}
-  def compute_path(G, i, j):
-      if (i, j) in paths:
-          return paths[(i, j)]
-
-      sp_edges = shortest_path(G, i, j)[1]
-      ids = [G.edge_index[e] for e in sp_edges]
-
-      mask = np.zeros(G.num_edges(), dtype=bool)
-      mask[ids] = True
-      paths[i, j] = mask
-
-      return mask
-
   def objective_function(G, clusters, terminals, terminal_dist):
       # DSLAMs cost
       sub_root_cost = len(set(clusters)) * params['c_r']
@@ -1216,31 +1249,15 @@ Plot graph resulting from optimization.
           if len(cluster_nodes) == 1:
               continue
 
-          # compute pairwise path for each couple of nodes in the cluster
-          # and remove duplicate edges
-          tree_edges = np.zeros(G.num_edges(), dtype=bool)
-
-          best_road_length = float('inf')
-          for root in cluster_nodes:
-              # compute edges of tree with root node1
-              for node in cluster_nodes:
-                  tree_edges = np.logical_or(tree_edges,
-                                             compute_path(G,
-                                                          G.vertex(root),
-                                                          G.vertex(node)))
-              current_road_length = G.ep['length'].a.dot(tree_edges)
-
-              if current_road_length < best_road_length:
-                  best_road_length = current_road_length
-
+          best_road_length, _, _  = get_min_path_tree(G, cluster_nodes)
           total_road_length += best_road_length
 
       excavation_cost = params['c_e'] * total_road_length
 
       return sub_root_cost + cable_cost + excavation_cost
 
-  # measure if the connection is more expensive than a DSLAM:
-  # in this cases don't even consider evaluating the merge
+  # measure if the connection is more expensive than a DSLAM: in this cases don't
+  # even consider evaluating the merge
   critical_length = params['c_r'] / params['c_e']
 
   logger.info("critical_length = {}".format(critical_length))
@@ -1254,16 +1271,13 @@ Plot graph resulting from optimization.
   logger.info("Pruning: left {:.0f} out of {}".format(total_couples, T * (T-1) // 2))
 
   # counters
-  n_rejected = 0
   n_iter = 0
 
-  # prepare plots if in debug mode
-  if __debug__:
-      plt.ion()
-      fig_lines = plt.figure("n° lines per cluster histogram")
-      fig_nodes = plt.figure("n° nodes per cluster histogram")
-
   while True:
+      if n_iter % 50 == 0:
+          total_cost = objective_function(G, clusters, terminals, terminal_dist)
+          print("Money {:.2f}M€ {} n_rejected".format(total_cost/1e6, " " * 50))
+
       n_iter += 1
 
       # get two closest clusters (heuristic measure)
@@ -1294,33 +1308,10 @@ Plot graph resulting from optimization.
 
           clusters[clusters == clusters[i]] = new_idx
           clusters[clusters == clusters[j]] = new_idx
-      else:
-          n_rejected += 1
 
       # since it has been evaluated, remove couple (i, j) from the possibilities:
       # setting their distance to nan
       disable_link(clusters, min_cluster_dist, i, j)
-
-      if n_iter % 50 == 0:
-          total_cost = objective_function(G, clusters, terminals, terminal_dist)
-          print("Money {:.2f}M€ {} n_rejected".format(total_cost/1e6, " " * 50))
-
-          if __debug__:
-              total_cost = objective_function(G, clusters, terminals, terminal_dist)
-              print("Money {:.4f}M€ {} n_rejected {}".format(total_cost/1e6, " " * 50, n_rejected))
-              n_rejected = 0
-
-              # check each cluster members have all same rows and same columns in matrix
-              check_consistency(clusters, min_cluster_dist)
-
-              fig_lines.clf()
-              fig_lines.gca().hist(cluster_lines, bins=100)
-
-              fig_nodes.clf()
-              fig_nodes.gca().hist([np.count_nonzero(clusters == element) for element in set(clusters)], bins=100)
-
-              plt.pause(0.1)
-              plt.draw()
 
       # assess if is time to stop
       if np.all(np.isnan(min_cluster_dist)):
@@ -1346,11 +1337,13 @@ Plot graph resulting from optimization.
   <<projection>>
   <<graph_utils>>
   <<terminal_dist_cache>>
+  <<min_path_tree>>
 
   from graph_tool.all import *
   import h5py
 
   G = load_graph(graph_path + "_heuristic_clusters.gt")
+  vertices = G.vertices().a
   clusters = G.vp['cluster_id'].a
 
   # collect nodes and edges shapes here
@@ -1366,7 +1359,9 @@ Plot graph resulting from optimization.
 
       # compute the minimum spanning tree
       subgraph = GraphView(G, vfilt=(clusters == cluster_id))
-      MST_edges = min_spanning_tree(subgraph, weights=subgraph.ep['length'])
+
+      cluster_nodes = [int(v) for v in vertices[clusters == cluster_id]]
+      _, root, tree_edges = get_min_path_tree(G, cluster_nodes)
 
       nodes_df, edges_df = graph_tool_to_geopandas(subgraph, projection=projection)
 
