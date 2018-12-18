@@ -1,5 +1,5 @@
 #+PROPERTY: header-args :mkdirp yes
-#+PROPERTY: header-args:python :shebang "#!/usr/bin/python \n# -*- coding: utf-8 -*-\nfrom __future__ import print_function"
+#+PROPERTY: header-args:python :shebang "#!/usr/bin/python3 \n# -*- coding: utf-8 -*-\nfrom __future__ import print_function"
 #+STARTUP: indent
 
 * Retrieve datasets
@@ -615,95 +615,18 @@ Plot final graph on top of district map.
   plt.close('all')
 #+END_SRC
 
-* Solve associated ILP problem
+* Solve optimization problem
+Solve the optimization problem in two ways, exactly with ILP and through an
+heuristic algorithm.
 
-#+NAME: dummy_graph_path
-- data/aachen_net/dummy_graph.json
+** Exact solution with ILP
+See notes file for mathematical model implemented here.
 
-#+NAME: number_of_nodes
-- 40
+Since the very same procedure has to be applied at the various levels of the
+tree, the model definition is wrapped in a function.
 
-#+BEGIN_SRC python :results silent :var dummy_graph_path=flatten(dummy_graph_path) :var number_of_nodes=flatten(number_of_nodes) :tangle scripts/aachen_net/12_dummy_graph_generator.py
-  import json
-  from math import sqrt
-  import random
-  import networkx as nx
-  from networkx.readwrite import json_graph
-
-  nodes = []
-
-  G = nx.Graph()
-
-  random.seed(13)
-
-  N = int(number_of_nodes)
-
-  def distance(i, j):
-      delta_lat = G.node[i]['lat'] - G.node[j]['lat']
-      delta_lon = G.node[i]['lon'] - G.node[j]['lon']
-
-      return sqrt(delta_lat**2 + delta_lon**2)
-
-  for i in range(N):
-      if random.random() < 0.2:
-          n_lines = 0
-      else:
-          n_lines = int(random.gauss(10, 3))
-
-      G.add_node(i,
-                 n_lines=n_lines,
-                 lat=random.random() * sqrt(N),
-                 lon=random.random() * sqrt(N))
-
-  for i in range(N):
-      for j in range(N):
-          if distance(i, j) < 2:
-              G.add_edge(i, j)
-
-  # randomly connect two components at a time
-  while not nx.is_connected(G):
-      comps = list(nx.connected_components(G))
-
-      for _ in range(N//10):
-          comp1, comp2 = random.sample(comps, 2)
-          node1 = random.choice(list(comp1))
-          node2 = random.choice(list(comp2))
-
-          G.add_edge(node1, node2)
-
-  assert nx.is_connected(G)
-
-  for node_id, pos in nx.spring_layout(G).items():
-      G.node[node_id]['lat'] = pos[0]
-      G.node[node_id]['lon'] = pos[1]
-
-  for i, j in G.edges():
-      G[i][j]['length'] = distance(i, j)
-
-  nx.draw_kamada_kawai(G)
-  plt.show()
-
-  with open(dummy_graph_path, 'w') as output:
-      output.write(json.dumps(json_graph.node_link_data(G)))
-#+END_SRC
-
-$c_r$, cost per sub-root node has to consider also the cable to reach the first level router.
-We estimate 1000€ for the DSLAM and 4000€ for the mentioned connection.
-
-See [[https://www.itscosts.its.dot.gov][here]] for pricing. TODO cite as a source
-
-#+NAME: model_params
-| $n_M$ [unit]   |    50 |
-| $d_M$ [m]      |  1500 |
-| $c_r$ [€/unit] | 16000 |
-| $c_f$ [€/m]    |     3 |
-| $c_c$ [€/m]    |     1 |
-| $c_e$ [€/m]    |    50 |
-
-#+NAME: choose_graph
-- non-dummy
-
-#+BEGIN_SRC python :noweb yes :var choose_graph=flatten(choose_graph) :var graph_path=flatten(graph_path) :var dummy_graph_path=flatten(dummy_graph_path) :var model_params=model_params :tangle scripts/aachen_net/13_ILP.py :results silent
+#+NAME: solver_ILP
+#+BEGIN_SRC python
   import csv
   import json
   import logging
@@ -731,293 +654,178 @@ See [[https://www.itscosts.its.dot.gov][here]] for pricing. TODO cite as a sourc
 
   logger.info('import ok')
 
-  cplex_engine = cplex.Cplex()
-  cplex_engine.parameters.mip.display.set(5)
-  cplex_engine.parameters.mip.interval.set(-1)
-  cplex_engine.parameters.workmem.set(2048)
+  def ILP_solve(G, params):
+      # intialize CPLEX
+      cplex_engine = cplex.Cplex()
+      cplex_engine.parameters.mip.display.set(5)
+      cplex_engine.parameters.mip.interval.set(-1)
+      cplex_engine.parameters.workmem.set(2048)
 
-  ##############################
-  # Load and pre-process graph #
-  ##############################
-  if choose_graph == "dummy":
-      path = dummy_graph_path
-  else:
-      path = graph_path + "_complete.json"
+      #####################
+      # Pre-process graph #
+      #####################
+      G = G.to_directed()
 
-  with open(path) as f:
-      G = json_graph.node_link_graph(json.load(f))
+      # add artificial root node to G, with a zero-length arc for all the nodes
+      G.add_node('r', n_lines=0, lat=-1, lon=0)
 
-  G = G.to_directed()
-  # add artificial root node to G, with a zero-length arc for all the nodes
+      for node_id in G.nodes:
+          # TODO check if node is in R (candidate sub-roots)
+          G.add_edge('r', node_id, length=0)
 
-  G.add_node('r', n_lines=0, lat=-1, lon=0)
+      ###################
+      # Setup variables #
+      ###################
 
-  for node_id in G.nodes:
-      # TODO check if node is in R (candidate sub-roots)
-      G.add_edge('r', node_id, length=0)
+      m = Model(log_output=True)
 
-  ####################
-  # Model parameters #
-  ####################
-  params = { param[1:4]: value
-             for param, value in model_params
-             if param != "Parameter" }
+      def name(source, target=None, var='x'):
+          if target:
+              return "{}_{}~{}".format(var, source, target)
+          else:
+              return "{}_{}".format(var, source)
 
-  ###################
-  # Setup variables #
-  ###################
+      X = {}
+      N = {}
+      for i, (source, target) in enumerate(G.edges):
+          if i % 10000 == 0:
+              print("Initializing edge {}/{}".format(i, len(G.edges)), end='\r')
 
-  m = Model(log_output=True)
+          if source not in X:
+              X[source] = {}
 
-  def name(source, target=None, var='x'):
-      if target:
-          return "{}_{}~{}".format(var, source, target)
+          if source not in N:
+              N[source] = {}
+
+          ## active edge indicator
+          X[source][target] = m.binary_var(name=name(source, target, var='x'))
+          N[source][target] = m.integer_var(name=name(source, target, var='n'))
+          m.add_constraint(ct=N[source][target] >= 0,
+                           ctname="{} >= 0".format(name(source, target, var='n')))
+
+      D = {}
+      for i, (node_id, data) in enumerate(G.nodes(data=True)):
+          if i % 10000 == 0:
+              print("Initializing node {}/{}".format(i, len(G.nodes)), end='\r')
+
+          ## set distance counter
+          D[node_id] = m.continuous_var(name=name(node_id, var='d'))
+          m.add_constraint(ct=D[node_id] >= 0,
+                           ctname="{} >= 0".format(name(source, target, var='d')))
+
+      logger.info('Initialized variables')
+
+      ######################
+      # Objective function #
+      ######################
+
+      obj_func = 0
+
+      # A), B) ~> suppose full-fiber for now
+      for node_id, data in G.nodes(data=True):
+          obj_func += D[node_id] * data['n_lines'] * params['c_f']
+
+      # C)
+      for source, target, data in G.edges(data=True):
+          obj_func += X[source][target] * data['length'] * params['c_e']
+
+      # D)
+      for source, target in G.out_edges('r'):
+          obj_func += X[source][target] * params['c_r']
+
+      m.set_objective('min', obj_func)
+
+      logger.info('Initialized objective function')
+
+      ###############
+      # Constraints #
+      ###############
+
+      for i, (node_id, data) in enumerate(G.nodes(data=True)):
+          if i % 1000 == 0:
+              print("Constraints on node {}/{}".format(i, len(G.nodes)), end='\r')
+
+          in_count_X = 0
+          in_count_N = 0
+          for source, target in G.in_edges(node_id):
+              in_count_X += X[source][target]
+              in_count_N += N[source][target]
+
+          out_count_X = 0
+          out_count_N = 0
+          for source, target in G.out_edges(node_id):
+              out_count_X += X[source][target]
+              out_count_N += N[source][target]
+
+          # 2)
+          if node_id == 'r':
+              m.add_constraint(ct=in_count_X == 0,
+                               ctname=name(node_id, var='in_count_X'))
+              # terminal node
+          elif data['n_lines'] > 0:
+              m.add_constraint(ct=in_count_X == 1,
+                               ctname=name(node_id, var='in_count_X'))
+          else:
+              m.add_constraint(ct=in_count_X <= 1,
+                               ctname=name(node_id, var='in_count_X'))
+
+          # 3)
+          if node_id == 'r':
+              m.add_constraint(ct=out_count_X >= 1,
+                               ctname=name(node_id, var='out_count_X_lower'))
+
+          # 4)
+          m.add_constraint(ct=D[node_id] <= in_count_X * params['d_M'],
+                           ctname="{}".format(name(node_id, var='distance_domain')))
+
+          # 7), 8)
+          if node_id != 'r':
+              m.add_constraint(ct=in_count_N - out_count_N == data['n_lines'],
+                               ctname="{}".format(name(node_id, var='flow_balance')))
+          else:
+              total_population = sum(data_['n_lines'] for _, data_ in G.nodes(data=True))
+              m.add_constraint(ct=out_count_N == total_population,
+                               ctname="{}".format(name(node_id, var='flow_balance')))
+
+      logger.info('Set constraints 2, 3, 4, 7, 8')
+
+      for i, (source, target, data) in enumerate(G.edges(data=True)):
+          if i % 1000 == 0:
+              print("Constraints on edge {}/{}".format(i, len(G.edges)), end='\r')
+
+          edge_length = data['length']
+
+          # 5)
+          m.add_constraint(ct=D[target] - D[source] >= edge_length * X[source][target] - params['d_M'] * (1 - X[source][target]),
+                           ctname="{}".format(name(source, target, var='distance_upper')))
+
+          m.add_constraint(ct=D[target] - D[source] <= edge_length * X[source][target] + params['d_M'] * (1 - X[source][target]),
+                           ctname="{}".format(name(source, target, var='distance_lower')))
+
+          # 6)
+          m.add_constraint(ct=N[source][target] <= params["n_M"] * X[source][target],
+                           ctname="{}".format(name(source, target, var='n_max')))
+
+      logger.info('Set constraints 5, 6')
+
+      if m.solve() is None:
+          logger.error("Unable to solve ILP")
+          exit(1)
       else:
-          return "{}_{}".format(var, source)
+          # m.print_solution()
+          pass
 
-  X = {}
-  N = {}
-  for i, (source, target) in enumerate(G.edges):
-      if i % 10000 == 0:
-          print("Initializing edge {}/{}".format(i, len(G.edges)), end='\r')
+      for source, target in G.edges:
+          G[source][target]['x'] = X[source][target].solution_value
+          G[source][target]['n'] = N[source][target].solution_value
 
-      if source not in X:
-          X[source] = {}
+      for node_id in G.nodes:
+          G.node[node_id]['d'] = D[node_id].solution_value
 
-      if source not in N:
-          N[source] = {}
-
-      ## active edge indicator
-      X[source][target] = m.binary_var(name=name(source, target, var='x'))
-      N[source][target] = m.integer_var(name=name(source, target, var='n'))
-      m.add_constraint(ct=N[source][target] >= 0,
-                       ctname="{} >= 0".format(name(source, target, var='n')))
-
-  D = {}
-  for i, (node_id, data) in enumerate(G.nodes(data=True)):
-      if i % 10000 == 0:
-          print("Initializing node {}/{}".format(i, len(G.nodes)), end='\r')
-
-      ## set distance counter
-      D[node_id] = m.continuous_var(name=name(node_id, var='d'))
-      m.add_constraint(ct=D[node_id] >= 0,
-                       ctname="{} >= 0".format(name(source, target, var='d')))
-
-  logger.info('Initialized variables')
-
-  ######################
-  # Objective function #
-  ######################
-
-  obj_func = 0
-
-  # A), B) ~> suppose full-fiber for now
-  for node_id, data in G.nodes(data=True):
-      obj_func += D[node_id] * data['n_lines'] * params['c_f']
-
-  # C)
-  for source, target, data in G.edges(data=True):
-      obj_func += X[source][target] * data['length'] * params['c_e']
-
-  # D)
-  for source, target in G.out_edges('r'):
-      obj_func += X[source][target] * params['c_r']
-
-  m.set_objective('min', obj_func)
-
-  logger.info('Initialized objective function')
-
-  ###############
-  # Constraints #
-  ###############
-
-  for i, (node_id, data) in enumerate(G.nodes(data=True)):
-      if i % 1000 == 0:
-          print("Constraints on node {}/{}".format(i, len(G.nodes)), end='\r')
-
-      in_count_X = 0
-      in_count_N = 0
-      for source, target in G.in_edges(node_id):
-          in_count_X += X[source][target]
-          in_count_N += N[source][target]
-
-      out_count_X = 0
-      out_count_N = 0
-      for source, target in G.out_edges(node_id):
-          out_count_X += X[source][target]
-          out_count_N += N[source][target]
-
-      # 2)
-      if node_id == 'r':
-          m.add_constraint(ct=in_count_X == 0,
-                           ctname=name(node_id, var='in_count_X'))
-          # terminal node
-      elif data['n_lines'] > 0:
-          m.add_constraint(ct=in_count_X == 1,
-                           ctname=name(node_id, var='in_count_X'))
-      else:
-          m.add_constraint(ct=in_count_X <= 1,
-                           ctname=name(node_id, var='in_count_X'))
-
-      # 3)
-      if node_id == 'r':
-          m.add_constraint(ct=out_count_X >= 1,
-                           ctname=name(node_id, var='out_count_X_lower'))
-
-      # 4)
-      m.add_constraint(ct=D[node_id] <= in_count_X * params['d_M'],
-                       ctname="{}".format(name(node_id, var='distance_domain')))
-
-      # 7), 8)
-      if node_id != 'r':
-          m.add_constraint(ct=in_count_N - out_count_N == data['n_lines'],
-                           ctname="{}".format(name(node_id, var='flow_balance')))
-      else:
-          total_population = sum(data_['n_lines'] for _, data_ in G.nodes(data=True))
-          m.add_constraint(ct=out_count_N == total_population,
-                           ctname="{}".format(name(node_id, var='flow_balance')))
-
-  logger.info('Set constraints 2, 3, 4, 7, 8')
-
-  for i, (source, target, data) in enumerate(G.edges(data=True)):
-      if i % 1000 == 0:
-          print("Constraints on edge {}/{}".format(i, len(G.edges)), end='\r')
-
-      edge_length = data['length']
-
-      # 5)
-      m.add_constraint(ct=D[target] - D[source] >= edge_length * X[source][target] - params['d_M'] * (1 - X[source][target]),
-                       ctname="{}".format(name(source, target, var='distance_upper')))
-
-      m.add_constraint(ct=D[target] - D[source] <= edge_length * X[source][target] + params['d_M'] * (1 - X[source][target]),
-                       ctname="{}".format(name(source, target, var='distance_lower')))
-
-      # 6)
-      m.add_constraint(ct=N[source][target] <= params["n_M"] * X[source][target],
-                       ctname="{}".format(name(source, target, var='n_max')))
-
-      # 7)
-      if source != 'r' and source < target:
-          m.add_constraint(ct=X[source][target] + X[target][source] <= 1,
-                           ctname="{}".format(name(source, target, var='simple_loops')))
-
-
-  logger.info('Set constraints 5, 6')
-
-  if m.solve() is None:
-      print("Unable to solve")
-      exit(1)
-  else:
-      # m.print_solution()
-      pass
-
-  for source, target in G.edges:
-      G[source][target]['x'] = X[source][target].solution_value
-      G[source][target]['n'] = N[source][target].solution_value
-
-  for node_id in G.nodes:
-      G.node[node_id]['d'] = D[node_id].solution_value
-
-  with open(graph_path + "_ILP.json", 'w') as output:
-      output.write(json.dumps(json_graph.node_link_data(G)))
+      return G
 #+END_SRC
 
-Plot graph resulting from optimization.
-
-#+BEGIN_SRC python :noweb yes :var graph_path=flatten(graph_path) :tangle scripts/aachen_net/14_plot_ILP_result.py
-  <<imports_&_defaults>>
-  <<projection>>
-  <<graph_utils>>
-
-  with open(graph_path + "_ILP.json") as f:
-      js_graph = json.load(f)
-
-  G = json_graph.node_link_graph(js_graph)
-
-  # get graph information
-  nodes = G.nodes(data=True)
-
-  nodes_info = []
-  for id_, data in nodes:
-      point = Point(data['lon'], data['lat'])
-
-      data_ = data.copy()
-      data_['geometry'] = point
-      data_['id'] = id_
-      data_['is_subroot'] = G['r'][id_]['x'] == 1
-
-      nodes_info.append(data_)
-
-  edges_info = []
-  for node_id1, node_id2, data in G.edges(data=True):
-      edge = LineString((
-          (nodes[node_id1]['lon'], nodes[node_id1]['lat']),
-          (nodes[node_id2]['lon'], nodes[node_id2]['lat'])
-      ))
-
-      data_ = data.copy()
-      data_['geometry'] = edge
-      data_['source'] = node_id1
-      data_['target'] = node_id2
-
-      edges_info.append(data_)
-
-  ## provide GeoDataFrames
-  nodes_df = gpd.GeoDataFrame(nodes_info)
-  nodes_df.crs = {'init' :'epsg:4326'} # long-lat projection
-  nodes_df = nodes_df.to_crs(projection.srs)
-
-  edges_df = gpd.GeoDataFrame(edges_info)
-  edges_df.crs = {'init' :'epsg:4326'} # long-lat projection
-  edges_df = edges_df.to_crs(projection.srs)
-
-  ## plot
-
-  edges_df = edges_df[edges_df['source'] != 'r']
-  nodes_df = nodes_df[nodes_df['id'] != 'r']
-
-  nodes_df['active'] = nodes_df["n_lines"] >= 1
-  edges_df['active'] = edges_df['x'] == 1
-
-  fig = plt.figure(figsize=(6, 6), frameon=False)
-  ax = fig.gca()
-  plot_geopandas_graph(nodes_df[nodes_df['active']],
-                       edges_df[edges_df['active']],
-                       title="Detail of ILP solution",
-                       ax=ax)
-
-  edges_df.plot(color='#b2b2b2', zorder=-1, ax=ax)
-
-  # for _, row in edges_df.iterrows():
-  #     if row.source == 'r':
-  #         color = 'green'
-  #     else:
-  #         color = 'black'
-
-  #     if row.x == 0:
-  #         continue
-
-  #     if row.length != 0:
-  #         ax.annotate(s="{0:.0f} - {0:.2f}".format(row.n, row.length),
-  #                     xy=row.geometry.centroid.coords[0],
-  #                     color=color,
-  #                     zorder=5)
-
-  # for _, row in nodes_df[(nodes_df['d'] > 0)].iterrows():
-  #     ax.annotate(s="{0:.2f}".format(row.d),
-  #                 xy=row.geometry.centroid.coords[0],
-  #                 color="blue",
-  #                 zorder=5)
-
-
-  ax.set_xlim(293117, 295351)
-  ax.set_ylim(5627800, 5629570)
-  plt.tight_layout(rect=[-0.08, 0, 1, 1])
-
-  plt.show()
-#+END_SRC
-
-* Heuristic approach
+** Heuristic approach
 My own devised heuristic approach requires, in order to run properly some
 utility functions, listed here.
 
@@ -1077,7 +885,7 @@ measuring its cost for each node of the cluster as root.
 
       return mask
 
-  def get_min_path_tree(G, cluster_nodes):
+  def get_min_path_tree(G, cluster_nodes, params):
       # compute pairwise path for each couple of nodes in the cluster
       # and remove duplicate edges
       best_road_length = float('inf')
@@ -1119,61 +927,8 @@ Merge has to guarantee that
 - diamater limit $d_M$ is not exceeded for the new group
 - number of lines is less than $n_M$
 
-#+BEGIN_SRC python :noweb yes :var choose_graph=flatten(choose_graph) :var graph_path=flatten(graph_path) :var dummy_graph_path=flatten(dummy_graph_path) :var model_params=model_params :tangle scripts/aachen_net/15_heuristic.py :results silent
-  <<imports_&_defaults>>
-  <<projection>>
-  <<graph_utils>>
-  <<terminal_dist_cache>>
-  <<min_path_tree>>
-
-  from graph_tool.all import *
-  import h5py
-
-  if not __debug__:
-      np.warnings.filterwarnings('ignore')
-
-  # load graph and convert to graph_tool format (Floyd-Warshall is waaaay faster)
-  if choose_graph == "dummy":
-      path = dummy_graph_path
-  else:
-      path = graph_path + "_complete.json"
-
-  with open(path) as f:
-      G = json_graph.node_link_graph(json.load(f))
-
-  ## model parameters
-  params = { param[1:4]: value
-             for param, value in model_params
-             if param != "Parameter" }
-
-  G = nx2gt(G)
-
-  vertices = np.array([int(v) for v in G.vertices()])
-  N = len(vertices)
-
-  ## save information about terminals
-  n_lines = np.array([G.vp['n_lines'][v] for v in G.vertices()], dtype=np.int)
-  is_terminal = n_lines > 0
-
-  terminals = vertices[is_terminal]
-  terminal_lines = n_lines[is_terminal]
-
-  T = len(terminals)
-
-  # initialize clusters: at the beginning they are singletons of terminals
-  clusters = terminals.copy()
-  cluster_lines = terminal_lines.copy()
-
-  terminal_dist = get_terminal_distance(G, is_terminal)
-  min_cluster_dist = terminal_dist.copy()
-
-  # fill diagonal with nans (values we want to ignore)
-  np.fill_diagonal(min_cluster_dist, np.nan)
-
-  # create a matrix for the max distance between nodes in two different clusters
-  # bij = diameter of cluster obtained joining i-th and j-th ones
-  max_cluster_dist = min_cluster_dist.copy()
-
+#+NAME: solver_heuristic
+#+BEGIN_SRC python
   def update_metric(clusters, X, i, j, func=np.nanmax):
       i_idx = np.where(clusters == clusters[i])[0]
       j_idx = np.where(clusters == clusters[j])[0]
@@ -1204,7 +959,7 @@ Merge has to guarantee that
           assert np.allclose(min_cluster_dist[cluster_idx, :], min_cluster_dist[:, cluster_idx].T, equal_nan=True), \
               "Distance matrix not symmetric"
 
-  def objective_function(G, clusters, terminals, terminal_dist):
+  def objective_function(G, clusters, terminals, terminal_dist, terminal_lines, params):
       # DSLAMs cost
       sub_root_cost = len(set(clusters)) * params['c_r']
 
@@ -1234,164 +989,264 @@ Merge has to guarantee that
           if len(cluster_nodes) == 1:
               continue
 
-          best_road_length, _, _  = get_min_path_tree(G, cluster_nodes)
+          best_road_length, _, _  = get_min_path_tree(G, cluster_nodes, params)
           total_road_length += best_road_length
 
       excavation_cost = params['c_e'] * total_road_length
 
       return sub_root_cost + cable_cost + excavation_cost
 
-  # measure if the connection is more expensive than a DSLAM: in this cases don't
-  # even consider evaluating the merge
-  critical_length = params['c_r'] / params['c_e']
+  def heuristic_solve(G, params):
+      if isinstance(G, nx.DiGraph) or isinstance(G, nx.Graph):
+          G = nx2gt(G)
 
-  # logger.info("critical_length = {}".format(critical_length))
+      vertices = np.array([int(v) for v in G.vertices()])
+      N = len(vertices)
 
-  # # prune the nodes that even at the beginning are further from each other more
-  # # than the critical length
-  min_cluster_dist[min_cluster_dist > params['d_M']] = np.nan
-  max_cluster_dist[min_cluster_dist > params['d_M']] = np.nan
+      ## save information about terminals
+      n_lines = np.array([G.vp['n_lines'][v] for v in G.vertices()], dtype=np.int)
+      is_terminal = n_lines > 0
 
-  total_couples = np.count_nonzero( np.isfinite(min_cluster_dist)) / 2
-  logger.info("Pruning: left {:.0f} out of {}".format(total_couples, T * (T-1) // 2))
+      terminals = vertices[is_terminal]
+      terminal_lines = n_lines[is_terminal]
 
-  # counters
-  n_iter = 0
-  previous_total_cost = float('inf')
-  best_clusters = None
+      T = len(terminals)
 
-  while True:
-      n_iter += 1
+      # initialize clusters: at the beginning they are singletons of terminals
+      clusters = terminals.copy()
+      cluster_lines = terminal_lines.copy()
 
-      # stop if all couples have been checked
-      if np.all(np.isnan(min_cluster_dist)):
-          logger.info("Checked all possible couples")
-          break
+      terminal_dist = get_terminal_distance(G, is_terminal)
+      min_cluster_dist = terminal_dist.copy()
 
-      if n_iter % 50 == 0:
-          total_cost = objective_function(G, clusters, terminals, terminal_dist)
-          logger.info("Money {:.2f}M€ n_cluster {}".format(total_cost/1e6,
-                                                           len(set(clusters))))
+      # fill diagonal with nans (values we want to ignore)
+      np.fill_diagonal(min_cluster_dist, np.nan)
 
-          # stop if the found solution is no better than the previous one
-          if total_cost > previous_total_cost:
-              logger.info("Minimum exceeded")
-              clusters = best_clusters
+      # create a matrix for the max distance between nodes in two different clusters
+      # bij = diameter of cluster obtained joining i-th and j-th ones
+      max_cluster_dist = min_cluster_dist.copy()
+
+      # measure if the connection is more expensive than a DSLAM: in this cases don't
+      # even consider evaluating the merge
+      critical_length = params['c_r'] / params['c_e']
+
+      # logger.info("critical_length = {}".format(critical_length))
+
+      # # prune the nodes that even at the beginning are further from each other more
+      # # than the critical length
+      min_cluster_dist[min_cluster_dist > params['d_M']] = np.nan
+      max_cluster_dist[min_cluster_dist > params['d_M']] = np.nan
+
+      total_couples = np.count_nonzero( np.isfinite(min_cluster_dist)) / 2
+      logger.info("Pruning: left {:.0f} out of {}".format(total_couples, T * (T-1) // 2))
+
+      # counters
+      n_iter = 0
+      previous_total_cost = float('inf')
+      best_clusters = None
+
+      while True:
+          n_iter += 1
+
+          # stop if all couples have been checked
+          if np.all(np.isnan(min_cluster_dist)):
+              logger.info("Checked all possible couples")
               break
 
-          else:
-              # update best solution with current one
-              best_clusters = clusters.copy()
-              previous_total_cost = total_cost
+          if n_iter % 50 == 0:
+              total_cost = objective_function(G, clusters, terminals, terminal_dist, terminal_lines, params)
+              logger.info("Money {:.2f}M€ n_cluster {}".format(total_cost/1e6,
+                                                               len(set(clusters))))
 
-      # get two closest clusters (heuristic measure)
-      # TODO check if a condition on diameter (max_dist) gives better results
-      min_rows, min_cols = np.where(min_cluster_dist == np.nanmin(min_cluster_dist))
+              # stop if the found solution is no better than the previous one
+              if total_cost > previous_total_cost:
+                  logger.info("Minimum exceeded")
+                  clusters = best_clusters
+                  break
 
-      # i, j are the i-th, j-th cluster
-      i, j = min_rows[0], min_cols[0]
+              else:
+                  # update best solution with current one
+                  best_clusters = clusters.copy()
+                  previous_total_cost = total_cost
 
-      # ensure number of lines and diameter are not exceeded
-      total_n_lines = cluster_lines[i] + cluster_lines[j]
-      joint_diameter = max_cluster_dist[i][j]
+          # get two closest clusters (heuristic measure)
+          # TODO check if a condition on diameter (max_dist) gives better results
+          min_rows, min_cols = np.where(min_cluster_dist == np.nanmin(min_cluster_dist))
 
-      if total_n_lines <= params['n_M'] and \
-         joint_diameter <= 2 * params['d_M']:
-          # update merging conditions
-          cluster_lines[i] = total_n_lines
-          cluster_lines[j] = total_n_lines
+          # i, j are the i-th, j-th cluster
+          i, j = min_rows[0], min_cols[0]
 
-          update_metric(clusters, min_cluster_dist, i, j, np.nanmin)
-          update_metric(clusters, max_cluster_dist, i, j, np.nanmax)
+          # ensure number of lines and diameter are not exceeded
+          total_n_lines = cluster_lines[i] + cluster_lines[j]
+          joint_diameter = max_cluster_dist[i][j]
 
-          # set the same label for the two clusters (minimum given np.where convention)
-          new_idx = min(clusters[i], clusters[j])
+          if total_n_lines <= params['n_M'] and \
+             joint_diameter <= 2 * params['d_M']:
+              # update merging conditions
+              cluster_lines[i] = total_n_lines
+              cluster_lines[j] = total_n_lines
 
-          clusters[clusters == clusters[i]] = new_idx
-          clusters[clusters == clusters[j]] = new_idx
+              update_metric(clusters, min_cluster_dist, i, j, np.nanmin)
+              update_metric(clusters, max_cluster_dist, i, j, np.nanmax)
 
-      # since it has been evaluated, remove couple (i, j) from the possibilities:
-      # setting their distance to nan
-      disable_link(clusters, min_cluster_dist, i, j)
+              # set the same label for the two clusters (minimum given np.where convention)
+              new_idx = min(clusters[i], clusters[j])
 
+              clusters[clusters == clusters[i]] = new_idx
+              clusters[clusters == clusters[j]] = new_idx
 
-  logger.info("Saving cluster to file")
+          # since it has been evaluated, remove couple (i, j) from the possibilities:
+          # setting their distance to nan
+          disable_link(clusters, min_cluster_dist, i, j)
 
-  # vertices not in a cluster are assigned to cluster -1
-  cluster_ids = - np.ones(N)
-  cluster_ids[is_terminal] = clusters
+      # vertices not in a cluster are assigned to cluster -1
+      cluster_ids = - np.ones(N)
+      cluster_ids[is_terminal] = clusters
 
-  # save information in the graph
-  cluster_property = G.new_vertex_property("int")
-  cluster_property.a = cluster_ids
+      # save information in the graph
+      cluster_property = G.new_vertex_property("int")
+      cluster_property.a = cluster_ids
 
-  G.vp['cluster_id'] = cluster_property
+      G.vp['cluster_id'] = cluster_property
 
-  G.save(graph_path + "_heuristic_clusters.gt")
+      return G
 #+END_SRC
 
-Plot the resulting graph and highlight a portion of the map, to make it printable.
+** Plot results
+Nice utility for plotting results.
+Adaptable to both ILP and heuristic results.
 
-#+BEGIN_SRC python :noweb yes :var choose_graph=flatten(choose_graph) :var graph_path=flatten(graph_path) :var dummy_graph_path=flatten(dummy_graph_path) :var model_params=model_params :tangle scripts/aachen_net/16_plot_heuristic.py :results silent
+#+NAME: plot_solution
+#+BEGIN_SRC python
+  def plot_optimization_result(G, method=None, projection=None):
+      # convert to graph_tool if necessary
+      if isinstance(G, nx.DiGraph) or isinstance(G, nx.Graph):
+          G = nx2gt(G)
+
+      # get geopandas elements to plot
+      nodes_df, edges_df = graph_to_geopandas(G, projection=projection)
+
+      if method == "ILP":
+          # remove the (fake) root
+          r_id = int(find_vertex(G, G.vp['id'], 'r')[0])
+
+          edges_df = edges_df[edges_df['gt_source'] != r_id]
+          nodes_df = nodes_df[nodes_df['id'] != r_id]
+
+          # find active nodes
+          nodes_df['active'] = nodes_df["n_lines"] >= 1
+          edges_df['active'] = edges_df['x'] == 1
+
+          # set convenient index
+          nodes_df.set_index('gt_id', inplace=True)
+          edges_df.set_index(['gt_source', 'gt_target'], inplace=True)
+
+          # mark sub-root nodes
+          nodes_df['is_subroot'] = False
+          for _, sub_root, _ in G.get_out_edges(r_id):
+              nodes_df.loc[sub_root, 'is_subroot'] = True
+
+      elif method == "heuristic":
+          nodes_df.set_index('gt_id', inplace=True)
+          edges_df.set_index(['gt_source', 'gt_target'], inplace=True)
+
+          nodes_df['active'] = False
+          nodes_df['is_subroot'] = False
+          edges_df['active'] = False
+
+          for index, cluster_id in enumerate(set(clusters)):
+              print("Loaded cluster", index, "/", len(set(clusters)), end='\r')
+
+          # ignore non-assigned nodes
+          if cluster_id == -1:
+              continue
+
+          cluster_nodes = vertices[clusters == cluster_id]
+          _, root, tree_edges = get_min_path_tree(G, cluster_nodes)
+
+          nodes_df.loc[root, 'is_subroot'] = True
+          nodes_df.loc[cluster_nodes, 'active'] = True
+          edges_df['active'] = np.logical_or(edges_df['active'], tree_edges)
+      else:
+          raise ValueError('Invalid method {}'.format(method))
+
+      fig = plt.figure(figsize=(6, 6), frameon=False)
+      ax = fig.gca()
+      plot_geopandas_graph(nodes_df[nodes_df['active']],
+                           edges_df[edges_df['active']],
+                           title="Detail of ILP solution",
+                           ax=ax)
+
+      edges_df.plot(color='#b2b2b2', zorder=-1, ax=ax)
+#+END_SRC
+
+* Apply algorithms to the datasets
+Problem parameters are of course the same for each level, and are listed in the
+proper sections.
+
+** DSLAM positioning
+$c_r$, cost per DSLAM has to consider also the cable to reach the first level router.
+We estimate 1000€ for the DSLAM and 15000€ for the mentioned connection.
+
+See [[https://www.itscosts.its.dot.gov][here]] for pricing. TODO cite as a source
+
+#+NAME: DSLAM_params
+| $n_M$ [unit]   |    50 |
+| $d_M$ [m]      |  1500 |
+| $c_r$ [€/unit] | 16000 |
+| $c_f$ [€/m]    |     3 |
+| $c_c$ [€/m]    |     1 |
+| $c_e$ [€/m]    |    50 |
+
+A handy ~org~ function is here provided to ease parameters extraction.
+
+#+NAME: extract
+#+BEGIN_SRC python :var model_params=DSLAM_params
+  return [(param[1:4], value) for param, value in model_params
+           if param != "Parameter"]
+#+END_SRC
+
+Try using the ILP solver to the initial dataset.
+
+#+BEGIN_SRC python :noweb yes :var params=extract(DSLAM_params) :var graph_path=flatten(graph_path) :tangle scripts/aachen_net/12_solver_ILP.py
+  <<solver_ILP>>
+
+  # load graph
+  with open(graph_path + "_complete.json") as f:
+      js_graph = json.load(f)
+
+  G = json_graph.node_link_graph(js_graph)
+
+  # find optimal configuration
+  G_prime = ILP_solve(G, dict(params))
+
+  # output to graphml file
+  nx.write_graphml(G, graph_path + "_DSLAM_ILP.graphml")
+#+END_SRC
+
+Run the heuristic and save its results as well.
+
+#+BEGIN_SRC python :noweb yes :var params=extract(DSLAM_params) :var graph_path=flatten(graph_path) :tangle scripts/aachen_net/13_solver_heuristic.py
   <<imports_&_defaults>>
   <<projection>>
   <<graph_utils>>
   <<terminal_dist_cache>>
   <<min_path_tree>>
+  <<solver_heuristic>>
 
-  params = { param[1:4]: value
-             for param, value in model_params
-             if param != "Parameter" }
+  np.warnings.filterwarnings('ignore')
 
-  from graph_tool.all import *
-  import h5py
+  # load graph
+  with open(graph_path + "_complete.json") as f:
+      js_graph = json.load(f)
 
-  G = load_graph(graph_path + "_heuristic_clusters.gt")
-  vertices = np.array([int(v) for v in G.vertices()])
-  clusters = G.vp['cluster_id'].a
+  G = json_graph.node_link_graph(js_graph)
 
-  is_terminal = clusters != -1
-  terminals = vertices[is_terminal]
+  # find optimal configuration
+  G_prime = heuristic_solve(G, dict(params))
 
-  nodes_df, edges_df = graph_tool_to_geopandas(G, projection=projection)
-  nodes_df.set_index('gt_id', inplace=True)
-  edges_df.set_index(['gt_source', 'gt_target'], inplace=True)
-
-  nodes_df['active'] = False
-  nodes_df['is_subroot'] = False
-  edges_df['active'] = False
-
-  for index, cluster_id in enumerate(set(clusters)):
-      print("Loaded cluster", index, "/", len(set(clusters)), end='\r')
-
-      # ignore non-assigned nodes
-      if cluster_id == -1:
-          continue
-
-      cluster_nodes = vertices[clusters == cluster_id]
-      _, root, tree_edges = get_min_path_tree(G, cluster_nodes)
-
-      nodes_df.loc[root, 'is_subroot'] = True
-      nodes_df.loc[cluster_nodes, 'active'] = True
-      edges_df['active'] = np.logical_or(edges_df['active'], tree_edges)
-
-  fig = plt.figure(figsize=(6, 6), frameon=False)
-  ax = fig.gca()
-  plot_geopandas_graph(nodes_df[nodes_df['active']],
-                       edges_df[edges_df['active']],
-                       title="Detail of heuristic solution",
-                       ax=ax)
-
-  edges_df.plot(color='#b2b2b2', zorder=-1, ax=ax)
-
-  ax.set_xlim(293117, 295351)
-  ax.set_ylim(5627800, 5629570)
-  plt.tight_layout(rect=[-0.08, 0, 1, 1])
-
-  plt.show()
-
-  # plt.savefig('figures/aachen_heuristic_DSLAMs.png', dpi=250)
-  # plt.close('all')
+  # output to graphml file
+  G.save(graph_path + "_DSLAM_heuristic.graphml")
 #+END_SRC
 
 * COMMENT Local variables

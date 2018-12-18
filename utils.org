@@ -9,16 +9,18 @@ All imports should be gathered here.
   import json
   import logging
   import math
-  from math import sqrt, ceil
+  from math import ceil, sqrt
   from pathlib import Path
 
   import fiona
   import geopandas as gpd
+  import h5py
   import matplotlib.pyplot as plt
   import networkx as nx
   import numpy as np
   import pandas as pd
   from geographiclib.geodesic import Geodesic
+  from graph_tool.all import *
   from matplotlib import rcParams
   from networkx.readwrite import json_graph
   from pyproj import Proj
