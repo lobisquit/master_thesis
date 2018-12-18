@@ -230,6 +230,8 @@ Convert ~networkz~ graphs into ~graph_tool~ ones. Adapted from [[https://gist.gi
       nodes_df['geometry'] = nodes_df.apply(
           lambda row: Point(row[lon_label], row[lat_label]), axis=1
       )
+      nodes_df['gt_id'] = [int(v) for v in G.vertices()]
+
       nodes_df.crs = {'init' :'epsg:4326'} # long-lat projection
       if projection:
           nodes_df = nodes_df.to_crs(projection.srs)
@@ -242,7 +244,7 @@ Convert ~networkz~ graphs into ~graph_tool~ ones. Adapted from [[https://gist.gi
       # save which source and target node_id
       if len(edges_df) > 0:
           edges_ids = ( (int(edge.source()), int(edge.target())) for edge in G.edges() )
-          edges_df['source'], edges_df['target'] = list(zip(*edges_ids))
+          edges_df['gt_source'], edges_df['gt_target'] = list(zip(*edges_ids))
 
       # create line, using also node information
       def get_segment(G, edge, lon_label, lat_label):
@@ -279,7 +281,7 @@ Plot a ~networkx~ graph in a geographical map, plus various utilities.
 #+BEGIN_SRC python
   def plot_graph(G, lon_label='lon', lat_label='lat', ax=None, figsize=(6, 6), title=None, projection=None):
       nodes_df, edges_df = graph_to_geopandas(G, lon_label, lat_label, projection)
-      plot_geopandas_graph(nodes_df, edges_df, ax, figsize, title)
+      plot_geopandas_graph(nodes_df, edges_df, ax, figsize, title, centroid_mask)
 
   def plot_geopandas_graph(nodes_df, edges_df, ax=None, figsize=(6, 6), title=None, projection=None):
       ## plot everything
@@ -296,6 +298,12 @@ Plot a ~networkx~ graph in a geographical map, plus various utilities.
                     markersize=1,
                     color='black',
                     zorder=2)
+
+      if 'is_subroot' in nodes_df.columns:
+          nodes_df[nodes_df['is_subroot']].plot(ax=ax,
+                                                markersize=2,
+                                                color='red',
+                                                zorder=3)
 
       edges_df.plot(ax=ax,
                     color='black',
