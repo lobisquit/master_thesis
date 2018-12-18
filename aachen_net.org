@@ -1272,13 +1272,32 @@ Plot graph resulting from optimization.
 
   # counters
   n_iter = 0
+  previous_total_cost = float('inf')
+  best_clusters = None
 
   while True:
+      n_iter += 1
+
+      # stop if all couples have been checked
+      if np.all(np.isnan(min_cluster_dist)):
+          logger.info("Checked all possible couples")
+          break
+
       if n_iter % 50 == 0:
           total_cost = objective_function(G, clusters, terminals, terminal_dist)
-          print("Money {:.2f}M€ {} n_rejected".format(total_cost/1e6, " " * 50))
+          logger.info("Money {:.2f}M€ n_cluster {}".format(total_cost/1e6,
+                                                           len(set(clusters))))
 
-      n_iter += 1
+          # stop if the found solution is no better than the previous one
+          if total_cost > previous_total_cost:
+              logger.info("Minimum exceeded")
+              clusters = best_clusters
+              break
+
+          else:
+              # update best solution with current one
+              best_clusters = clusters.copy()
+              previous_total_cost = total_cost
 
       # get two closest clusters (heuristic measure)
       # TODO check if a condition on diameter (max_dist) gives better results
@@ -1293,9 +1312,6 @@ Plot graph resulting from optimization.
 
       if total_n_lines <= params['n_M'] and \
          joint_diameter <= 2 * params['d_M']:
-
-          print("{}n_cluster {}".format(" "*25, len(set(clusters))), end='\r')
-
           # update merging conditions
           cluster_lines[i] = total_n_lines
           cluster_lines[j] = total_n_lines
@@ -1313,23 +1329,20 @@ Plot graph resulting from optimization.
       # setting their distance to nan
       disable_link(clusters, min_cluster_dist, i, j)
 
-      # assess if is time to stop
-      if np.all(np.isnan(min_cluster_dist)):
-          logger.info("Checked all possible couples: finishing")
 
-          # vertices not in a cluster are assigned to cluster -1
-          cluster_ids = - np.ones(N)
-          cluster_ids[is_terminal] = clusters
+  logger.info("Saving cluster to file")
 
-          # save information in the graph
-          cluster_property = G.new_vertex_property("int")
-          cluster_property.a = cluster_ids
+  # vertices not in a cluster are assigned to cluster -1
+  cluster_ids = - np.ones(N)
+  cluster_ids[is_terminal] = clusters
 
-          G.vp['cluster_id'] = cluster_property
+  # save information in the graph
+  cluster_property = G.new_vertex_property("int")
+  cluster_property.a = cluster_ids
 
-          G.save(graph_path + "_heuristic_clusters.gt")
+  G.vp['cluster_id'] = cluster_property
 
-          break
+  G.save(graph_path + "_heuristic_clusters.gt")
 #+END_SRC
 
 #+BEGIN_SRC python :noweb yes :var choose_graph=flatten(choose_graph) :var graph_path=flatten(graph_path) :var dummy_graph_path=flatten(dummy_graph_path) :var model_params=model_params :tangle scripts/aachen_net/16_plot_heuristic.py :results silent
