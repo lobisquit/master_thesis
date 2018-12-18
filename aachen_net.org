@@ -1018,6 +1018,11 @@ Plot graph resulting from optimization.
 #+END_SRC
 
 * Heuristic approach
+My own devised heuristic approach requires, in order to run properly some
+utility functions, listed here.
+
+This one creates and stores in cache the pairwise distance matrix for all
+terminal (or active) nodes.
 
 #+NAME: terminal_dist_cache
 #+BEGIN_SRC python
@@ -1052,6 +1057,9 @@ Plot graph resulting from optimization.
 
       return terminal_dist
 #+END_SRC
+
+The function ~get_min_path_tree~ finds the cheapest minimum path tree,
+measuring its cost for each node of the cluster as root.
 
 #+NAME: min_path_tree
 #+BEGIN_SRC python
@@ -1093,13 +1101,23 @@ Plot graph resulting from optimization.
              current_road_length < best_road_length:
               best_road_length = current_road_length
               best_root = root
+              best_tree_edges = tree_edges
 
       if best_root is None:
           print("Error, root is None")
           exit(1)
 
-      return best_road_length, best_root, tree_edges
+      return best_road_length, best_root, best_tree_edges
 #+END_SRC
+
+Heuristics simply tries to merge groups of nodes together until it is no longer
+economically viable. Starting with singleton clusters of terminals, each round
+the two closest ones are merged, if possible, and otherwise removed from the
+search.
+
+Merge has to guarantee that
+- diamater limit $d_M$ is not exceeded for the new group
+- number of lines is less than $n_M$
 
 #+BEGIN_SRC python :noweb yes :var choose_graph=flatten(choose_graph) :var graph_path=flatten(graph_path) :var dummy_graph_path=flatten(dummy_graph_path) :var model_params=model_params :tangle scripts/aachen_net/15_heuristic.py :results silent
   <<imports_&_defaults>>
@@ -1311,6 +1329,8 @@ Plot graph resulting from optimization.
 
   G.save(graph_path + "_heuristic_clusters.gt")
 #+END_SRC
+
+Plot the resulting graph and highlight a portion of the map, to make it printable.
 
 #+BEGIN_SRC python :noweb yes :var choose_graph=flatten(choose_graph) :var graph_path=flatten(graph_path) :var dummy_graph_path=flatten(dummy_graph_path) :var model_params=model_params :tangle scripts/aachen_net/16_plot_heuristic.py :results silent
   <<imports_&_defaults>>
