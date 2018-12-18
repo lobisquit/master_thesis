@@ -1107,12 +1107,13 @@ Plot graph resulting from optimization.
   def get_min_path_tree(G, cluster_nodes):
       # compute pairwise path for each couple of nodes in the cluster
       # and remove duplicate edges
-      tree_edges = np.zeros(G.num_edges(), dtype=bool)
-
       best_road_length = float('inf')
       best_root = None
+
       for root in cluster_nodes:
-          # compute edges of tree with root node1
+          # compute edges of tree with root node
+          tree_edges = np.zeros(G.num_edges(), dtype=bool)
+
           for node in cluster_nodes:
               tree_edges = np.logical_or(tree_edges,
                                          compute_path(G,
