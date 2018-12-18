@@ -1339,11 +1339,15 @@ Plot graph resulting from optimization.
   <<terminal_dist_cache>>
   <<min_path_tree>>
 
+  params = { param[1:4]: value
+             for param, value in model_params
+             if param != "Parameter" }
+
   from graph_tool.all import *
   import h5py
 
   G = load_graph(graph_path + "_heuristic_clusters.gt")
-  vertices = G.vertices().a
+  vertices = np.array(list(G.vertices()))
   clusters = G.vp['cluster_id'].a
 
   # collect nodes and edges shapes here
