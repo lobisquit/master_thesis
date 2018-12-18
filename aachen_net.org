@@ -823,6 +823,24 @@ tree, the model definition is wrapped in a function.
       for node_id in G.nodes:
           G.node[node_id]['d'] = D[node_id].solution_value
 
+      # allow painless conversion to GraphML format
+      for _, data in G.nodes(data=True):
+          data_copy = data.copy()
+          data.clear()
+
+          data['d'] = float(data_copy['d'])
+          data['lon'] = float(data_copy['lon'])
+          data['lat'] = float(data_copy['lat'])
+          data['n_lines'] = int(data_copy['n_lines'])
+
+      for _, _, data in G.edges(data=True):
+          data_copy = data.copy()
+          data.clear()
+
+          data['length'] = float(data_copy['length'])
+          data['x'] = int(data_copy['x'])
+          data['n'] = int(data_copy['n'])
+
       return G
 #+END_SRC
 
