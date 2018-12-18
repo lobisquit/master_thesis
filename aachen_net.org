@@ -654,7 +654,7 @@ tree, the model definition is wrapped in a function.
 
   logger.info('import ok')
 
-  def ILP_solve(G, params):
+  def ILP_solve(G, params, minimum_gap):
       # intialize CPLEX
       cplex_engine = cplex.Cplex()
       cplex_engine.parameters.mip.display.set(5)
@@ -678,6 +678,7 @@ tree, the model definition is wrapped in a function.
       ###################
 
       m = Model(log_output=True)
+      m.parameters.mip.tolerances.mipgap = minimum_gap
 
       def name(source, target=None, var='x'):
           if target:
@@ -1206,9 +1207,10 @@ A handy ~org~ function is here provided to ease parameters extraction.
            if param != "Parameter"]
 #+END_SRC
 
+*** ILP
 Try using the ILP solver to the initial dataset.
 
-#+BEGIN_SRC python :noweb yes :var params=extract(DSLAM_params) :var graph_path=flatten(graph_path) :tangle scripts/aachen_net/12_solver_ILP.py
+#+BEGIN_SRC python :noweb yes :var params=extract(DSLAM_params) :var graph_path=flatten(graph_path) :tangle scripts/aachen_net/12_solver_ILP_DSLAM.py
   <<solver_ILP>>
 
   # load graph
@@ -1218,12 +1220,13 @@ Try using the ILP solver to the initial dataset.
   G = json_graph.node_link_graph(js_graph)
 
   # find optimal configuration
-  G_prime = ILP_solve(G, dict(params))
+  G_prime = ILP_solve(G, dict(params), 0.98)
 
   # output to graphml file
   nx.write_graphml(G, graph_path + "_DSLAM_ILP.graphml")
 #+END_SRC
 
+*** Heuristic
 Run the heuristic and save its results as well.
 
 #+BEGIN_SRC python :noweb yes :var params=extract(DSLAM_params) :var graph_path=flatten(graph_path) :tangle scripts/aachen_net/13_solver_heuristic.py
