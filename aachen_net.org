@@ -1360,49 +1360,51 @@ Plot graph resulting from optimization.
   import h5py
 
   G = load_graph(graph_path + "_heuristic_clusters.gt")
-  vertices = np.array(list(G.vertices()))
+  vertices = np.array([int(v) for v in G.vertices()])
   clusters = G.vp['cluster_id'].a
 
-  # collect nodes and edges shapes here
-  nodes_dfs = []
-  edges_dfs = []
+  is_terminal = clusters != -1
+  terminals = vertices[is_terminal]
+
+  nodes_df, edges_df = graph_tool_to_geopandas(G, projection=projection)
+  nodes_df.set_index('gt_id', inplace=True)
+  edges_df.set_index(['gt_source', 'gt_target'], inplace=True)
+
+  nodes_df['active'] = False
+  nodes_df['is_subroot'] = False
+  edges_df['active'] = False
 
   for index, cluster_id in enumerate(set(clusters)):
-      print("Loaded cluster", index, "/", len(clusters), end='\r')
+      print("Loaded cluster", index, "/", len(set(clusters)), end='\r')
 
       # ignore non-assigned nodes
       if cluster_id == -1:
           continue
 
-      # compute the minimum spanning tree
-      subgraph = GraphView(G, vfilt=(clusters == cluster_id))
-
-      cluster_nodes = [int(v) for v in vertices[clusters == cluster_id]]
+      cluster_nodes = vertices[clusters == cluster_id]
       _, root, tree_edges = get_min_path_tree(G, cluster_nodes)
 
-      nodes_df, edges_df = graph_tool_to_geopandas(subgraph, projection=projection)
-
-      nodes_dfs.append(nodes_df)
-      edges_dfs.append(edges_df)
-
-  active_nodes_df = pd.concat(nodes_dfs)
-  active_edges_df = pd.concat(edges_dfs)
+      nodes_df.loc[root, 'is_subroot'] = True
+      nodes_df.loc[cluster_nodes, 'active'] = True
+      edges_df['active'] = np.logical_or(edges_df['active'], tree_edges)
 
   fig = plt.figure(figsize=(6, 6), frameon=False)
   ax = fig.gca()
-  plot_geopandas_graph(active_nodes_df, active_edges_df, title="Detail of heuristic solution", ax=ax)
+  plot_geopandas_graph(nodes_df[nodes_df['active']],
+                       edges_df[edges_df['active']],
+                       title="Detail of heuristic solution",
+                       ax=ax)
 
-  _, all_edges_df = graph_tool_to_geopandas(G, projection=projection)
-  all_edges_df.plot(color='#b2b2b2', zorder=-1, ax=ax)
+  edges_df.plot(color='#b2b2b2', zorder=-1, ax=ax)
 
   ax.set_xlim(293117, 295351)
   ax.set_ylim(5627800, 5629570)
   plt.tight_layout(rect=[-0.08, 0, 1, 1])
 
-  # plt.show()
+  plt.show()
 
-  plt.savefig('figures/aachen_heuristic_DSLAMs.png', dpi=250)
-  plt.close('all')
+  # plt.savefig('figures/aachen_heuristic_DSLAMs.png', dpi=250)
+  # plt.close('all')
 #+END_SRC
 
 * COMMENT Local variables
