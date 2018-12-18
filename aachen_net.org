@@ -926,6 +926,8 @@ Plot graph resulting from optimization.
 
 #+BEGIN_SRC python :noweb yes :var graph_path=flatten(graph_path) :tangle scripts/aachen_net/14_plot_ILP_result.py
   <<imports_&_defaults>>
+  <<projection>>
+  <<graph_utils>>
 
   with open(graph_path + "_ILP.json") as f:
       js_graph = json.load(f)
@@ -971,60 +973,20 @@ Plot graph resulting from optimization.
 
   ## plot
 
-  # plot params
-  showroot = False
+  edges_df = edges_df[edges_df['source'] != 'r']
+  nodes_df = nodes_df[nodes_df['id'] != 'r']
+
+  nodes_df['active'] = nodes_df["n_lines"] >= 1
+  edges_df['active'] = edges_df['x'] == 1
 
   fig = plt.figure(figsize=(6, 6), frameon=False)
   ax = fig.gca()
+  plot_geopandas_graph(nodes_df[nodes_df['active']],
+                       edges_df[edges_df['active']],
+                       title="Detail of ILP solution",
+                       ax=ax)
 
-  # terminals
-  nodes_df[(nodes_df["id"] != 'r') &
-           (nodes_df["n_lines"] >= 1)].plot(ax=ax,
-                                            markersize=10,
-                                            color='black',
-                                            zorder=1)
-
-
-  nodes_df[(nodes_df["id"] != 'r') &
-           (nodes_df["n_lines"] < 1)].plot(ax=ax,
-                                           markersize=5,
-                                           color='#a0a0a0',
-                                           zorder=1)
-
-  print("G contains", sum(nodes_df['is_subroot']), "subroots nodes")
-
-  # highlight DSLAMS
-  nodes_df[(nodes_df["id"] != 'r') &
-           (nodes_df['is_subroot'])].plot(ax=ax,
-                                          markersize=50,
-                                          color='red',
-                                          zorder=2)
-
-  edges_df[(edges_df['x'] == 0) &
-           (edges_df['source'] != 'r')].plot(ax=ax,
-                                             color="#a0a0a0",
-                                             linewidth=0.5,
-                                             zorder=0)
-
-  if showroot:
-      nodes_df[(nodes_df["id"] == 'r')].plot(ax=ax,
-                                             markersize=100,
-                                             color='green',
-                                             zorder=2)
-
-      edges_df[(edges_df['source'] == 'r') &
-               (edges_df['n'] >= 1)].plot(ax=ax,
-                                          column='n',
-                                          color="green",
-                                          linewidth=0.5,
-                                          zorder=0)
-
-  edges_df[(edges_df['x'] == 1) &
-           (edges_df['source'] != 'r')].plot(ax=ax,
-                                             column='n',
-                                             color="black",
-                                             linewidth=0.5,
-                                             zorder=0)
+  edges_df.plot(color='#b2b2b2', zorder=-1, ax=ax)
 
   # for _, row in edges_df.iterrows():
   #     if row.source == 'r':
@@ -1047,8 +1009,11 @@ Plot graph resulting from optimization.
   #                 color="blue",
   #                 zorder=5)
 
-  plt.axis('off')
-  plt.tight_layout(rect=[-0.1, -0.05, 1.1, 1])
+
+  ax.set_xlim(293117, 295351)
+  ax.set_ylim(5627800, 5629570)
+  plt.tight_layout(rect=[-0.08, 0, 1, 1])
+
   plt.show()
 #+END_SRC
 
