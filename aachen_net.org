@@ -1260,12 +1260,12 @@ Plot graph resulting from optimization.
   # even consider evaluating the merge
   critical_length = params['c_r'] / params['c_e']
 
-  logger.info("critical_length = {}".format(critical_length))
+  # logger.info("critical_length = {}".format(critical_length))
 
-  # prune the nodes that even at the beginning are further from each other more
-  # than the critical length
-  min_cluster_dist[min_cluster_dist > critical_length] = np.nan
-  max_cluster_dist[min_cluster_dist > critical_length] = np.nan
+  # # prune the nodes that even at the beginning are further from each other more
+  # # than the critical length
+  min_cluster_dist[min_cluster_dist > params['d_M']] = np.nan
+  max_cluster_dist[min_cluster_dist > params['d_M']] = np.nan
 
   total_couples = np.count_nonzero( np.isfinite(min_cluster_dist)) / 2
   logger.info("Pruning: left {:.0f} out of {}".format(total_couples, T * (T-1) // 2))
