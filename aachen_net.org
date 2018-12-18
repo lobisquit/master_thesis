@@ -1074,6 +1074,7 @@ Plot graph resulting from optimization.
       # and remove duplicate edges
       best_road_length = float('inf')
       best_root = None
+      best_tree_edges = None
 
       for root in cluster_nodes:
           # compute edges of tree with root node
