@@ -1171,12 +1171,13 @@ Adaptable to both ILP and heuristic results.
 
           # mark sub-root nodes
           nodes_df['is_subroot'] = False
-          for _, sub_root, _ in G.get_out_edges(r_id):
+          for _, sub_root, edge_idx in G.get_out_edges(r_id):
               # avoid root self-loops
               if sub_root == r_id:
                   continue
 
-              nodes_df.loc[sub_root, 'is_subroot'] = True
+              if G.ep['x'].a[edge_idx] == 1:
+                  nodes_df.loc[sub_root, 'is_subroot'] = True
 
       elif method == "heuristic":
           nodes_df.set_index('gt_id', inplace=True)
