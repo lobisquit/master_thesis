@@ -832,7 +832,7 @@ tree, the model definition is wrapped in a function.
           G.node[node_id]['d'] = D[node_id].solution_value
 
       # allow painless conversion to GraphML format
-      for _, data in G.nodes(data=True):
+      for node_id, data in G.nodes(data=True):
           data_copy = data.copy()
           data.clear()
 
@@ -840,6 +840,7 @@ tree, the model definition is wrapped in a function.
           data['lon'] = float(data_copy['lon'])
           data['lat'] = float(data_copy['lat'])
           data['n_lines'] = int(data_copy['n_lines'])
+          data['node_name'] = str(node_id)
 
       for _, _, data in G.edges(data=True):
           data_copy = data.copy()
@@ -1155,10 +1156,10 @@ Adaptable to both ILP and heuristic results.
 
       if method == "ILP":
           # remove the (fake) root
-          r_id = int(find_vertex(G, G.vp['id'], 'r')[0])
+          r_id = int(find_vertex(G, G.vp['node_name'], 'r')[0])
 
           edges_df = edges_df[edges_df['gt_source'] != r_id]
-          nodes_df = nodes_df[nodes_df['id'] != r_id]
+          nodes_df = nodes_df[nodes_df['gt_id'] != r_id]
 
           # find active nodes
           nodes_df['active'] = nodes_df["n_lines"] >= 1
@@ -1171,6 +1172,10 @@ Adaptable to both ILP and heuristic results.
           # mark sub-root nodes
           nodes_df['is_subroot'] = False
           for _, sub_root, _ in G.get_out_edges(r_id):
+              # avoid root self-loops
+              if sub_root == r_id:
+                  continue
+
               nodes_df.loc[sub_root, 'is_subroot'] = True
 
       elif method == "heuristic":
@@ -1243,10 +1248,10 @@ Try using the ILP solver to the initial dataset.
   G = nx.read_graphml(graph_path + "_complete.graphml")
 
   # find optimal configuration
-  G_prime = ILP_solve(G, dict(params), 0.2)
+  G_prime = ILP_solve(G, dict(params), 1)
 
   # output to graphml file
-  nx.write_graphml(G, graph_path + "_DSLAM_ILP.graphml")
+  nx.write_graphml(G_prime, graph_path + "_DSLAM_ILP.graphml")
 #+END_SRC
 
 Plot detail of obtained graph.
@@ -1261,9 +1266,6 @@ Plot detail of obtained graph.
   plot_optimization_result(G, method="ILP", projection=projection)
   plt.show()
 #+END_SRC
-
-#+RESULTS:
-
 
 *** Heuristic
 Run the heuristic and save its results as well.
