@@ -1210,6 +1210,10 @@ Adaptable to both ILP and heuristic results.
                            ax=ax)
 
       edges_df.plot(color='#b2b2b2', zorder=-1, ax=ax)
+
+      ax.set_xlim(293117, 295351)
+      ax.set_ylim(5627800, 5629570)
+      plt.tight_layout(rect=[-0.08, 0, 1, 1])
 #+END_SRC
 
 * Apply algorithms to the datasets
