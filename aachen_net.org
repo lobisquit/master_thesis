@@ -665,7 +665,7 @@ tree, the model definition is wrapped in a function.
 
   logger.info('import ok')
 
-  def ILP_solve(G, params, minimum_gap):
+  def ILP_solve(G, params, minimum_gap=1e-4):
       #####################
       # Pre-process graph #
       #####################
@@ -1252,7 +1252,7 @@ Try using the ILP solver to the initial dataset.
   G = nx.read_graphml(graph_path + "_complete.graphml")
 
   # find optimal configuration
-  G_prime = ILP_solve(G, dict(params), 1)
+  G_prime = ILP_solve(G, dict(params))
 
   # output to graphml file
   nx.write_graphml(G_prime, graph_path + "_DSLAM_ILP.graphml")
