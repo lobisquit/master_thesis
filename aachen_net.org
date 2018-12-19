@@ -1253,10 +1253,11 @@ Try using the ILP solver to the initial dataset.
   G = nx.read_graphml(graph_path + "_complete.graphml")
 
   # find optimal configuration
-  G_prime = ILP_solve(G, dict(params))
+  G_prime = ILP_solve(G, dict(params), 0.2)
 
   # output to graphml file
   nx.write_graphml(G_prime, graph_path + "_DSLAM_ILP.graphml")
+  logger.info("Graph saved to file")
 #+END_SRC
 
 Plot detail of obtained graph.
