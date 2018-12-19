@@ -1146,7 +1146,7 @@ Adaptable to both ILP and heuristic results.
 
 #+NAME: plot_solution
 #+BEGIN_SRC python
-  def plot_optimization_result(G, method=None, projection=None):
+  def plot_optimization_result(G, method=None, projection=None, params=None, cut=True):
       # convert to graph_tool if necessary
       if isinstance(G, nx.DiGraph) or isinstance(G, nx.Graph):
           G = nx2gt(G)
@@ -1187,15 +1187,16 @@ Adaptable to both ILP and heuristic results.
           nodes_df['is_subroot'] = False
           edges_df['active'] = False
 
-          for index, cluster_id in enumerate(set(clusters)):
-              print("Loaded cluster", index, "/", len(set(clusters)), end='\r')
+          for index, cluster_id in enumerate(set(nodes_df['cluster_id'])):
+              print("Loaded cluster", index, "/", len(set(nodes_df['cluster_id'])), end='\r')
 
               # ignore non-assigned nodes
               if cluster_id == -1:
                   continue
 
-              cluster_nodes = vertices[clusters == cluster_id]
-              _, root, tree_edges = get_min_path_tree(G, cluster_nodes)
+              vertices = nodes_df.index
+              cluster_nodes = vertices[nodes_df['cluster_id'] == cluster_id]
+              _, root, tree_edges = get_min_path_tree(G, cluster_nodes, params)
 
               nodes_df.loc[root, 'is_subroot'] = True
               nodes_df.loc[cluster_nodes, 'active'] = True
@@ -1212,9 +1213,10 @@ Adaptable to both ILP and heuristic results.
 
       edges_df.plot(color='#b2b2b2', zorder=-1, ax=ax)
 
-      ax.set_xlim(293117, 295351)
-      ax.set_ylim(5627800, 5629570)
-      plt.tight_layout(rect=[-0.08, 0, 1, 1])
+      if cut:
+          ax.set_xlim(293117, 295351)
+          ax.set_ylim(5627800, 5629570)
+          plt.tight_layout(rect=[-0.08, 0, 1, 1])
 #+END_SRC
 
 * Apply algorithms to the datasets
@@ -1261,6 +1263,7 @@ Try using the ILP solver to the initial dataset.
 #+END_SRC
 
 Plot detail of obtained graph.
+
 #+BEGIN_SRC python :noweb yes :var params=extract(DSLAM_params) :var graph_path=flatten(graph_path) :tangle scripts/aachen_net/14_plot_ILP_DSLAM.py
   <<imports_&_defaults>>
   <<projection>>
@@ -1296,6 +1299,23 @@ Run the heuristic and save its results as well.
   G.save(graph_path + "_DSLAM_heuristic.graphml")
 #+END_SRC
 
+Plot detail of obtained graph.
+
+#+BEGIN_SRC python :noweb yes :var params=extract(DSLAM_params) :var graph_path=flatten(graph_path) :tangle scripts/aachen_net/15_plot_heuristic_DSLAM.py
+  <<imports_&_defaults>>
+  <<projection>>
+  <<graph_utils>>
+  <<plot_solution>>
+  <<min_path_tree>>
+
+  G = load_graph(graph_path + "_DSLAM_heuristic.graphml")
+
+  plot_optimization_result(G,
+                           method="heuristic",
+                           projection=projection,
+                           params=dict(params), cut=False)
+  plt.show()
+#+END_SRC
 * COMMENT Local variables
 # Local Variables:
 # org-confirm-babel-evaluate: nil
