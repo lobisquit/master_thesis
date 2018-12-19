@@ -1184,16 +1184,16 @@ Adaptable to both ILP and heuristic results.
           for index, cluster_id in enumerate(set(clusters)):
               print("Loaded cluster", index, "/", len(set(clusters)), end='\r')
 
-          # ignore non-assigned nodes
-          if cluster_id == -1:
-              continue
+              # ignore non-assigned nodes
+              if cluster_id == -1:
+                  continue
 
-          cluster_nodes = vertices[clusters == cluster_id]
-          _, root, tree_edges = get_min_path_tree(G, cluster_nodes)
+              cluster_nodes = vertices[clusters == cluster_id]
+              _, root, tree_edges = get_min_path_tree(G, cluster_nodes)
 
-          nodes_df.loc[root, 'is_subroot'] = True
-          nodes_df.loc[cluster_nodes, 'active'] = True
-          edges_df['active'] = np.logical_or(edges_df['active'], tree_edges)
+              nodes_df.loc[root, 'is_subroot'] = True
+              nodes_df.loc[cluster_nodes, 'active'] = True
+              edges_df['active'] = np.logical_or(edges_df['active'], tree_edges)
       else:
           raise ValueError('Invalid method {}'.format(method))
 
@@ -1201,7 +1201,7 @@ Adaptable to both ILP and heuristic results.
       ax = fig.gca()
       plot_geopandas_graph(nodes_df[nodes_df['active']],
                            edges_df[edges_df['active']],
-                           title="Detail of ILP solution",
+                           title="Detail of {} solution".format(method),
                            ax=ax)
 
       edges_df.plot(color='#b2b2b2', zorder=-1, ax=ax)
@@ -1248,6 +1248,22 @@ Try using the ILP solver to the initial dataset.
   # output to graphml file
   nx.write_graphml(G, graph_path + "_DSLAM_ILP.graphml")
 #+END_SRC
+
+Plot detail of obtained graph.
+#+BEGIN_SRC python :noweb yes :var params=extract(DSLAM_params) :var graph_path=flatten(graph_path) :tangle scripts/aachen_net/14_plot_ILP_DSLAM.py
+  <<imports_&_defaults>>
+  <<projection>>
+  <<graph_utils>>
+  <<plot_solution>>
+
+  G = load_graph(graph_path + "_DSLAM_ILP.graphml")
+
+  plot_optimization_result(G, method="ILP", projection=projection)
+  plt.show()
+#+END_SRC
+
+#+RESULTS:
+
 
 *** Heuristic
 Run the heuristic and save its results as well.
