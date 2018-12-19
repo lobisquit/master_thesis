@@ -864,8 +864,8 @@ terminal (or active) nodes.
 
 #+NAME: terminal_dist_cache
 #+BEGIN_SRC python
-  def get_terminal_distance(G, is_terminal, path=None, clear_cache=False):
-      if not path:
+  def get_terminal_distance(G, is_terminal, distance_path=None, clear_cache=False):
+      if not distance_path:
           distance_path = Path('data/aachen_net/distance_matrix_temp.h5')
 
       # this takes some time: use cache file
@@ -874,7 +874,7 @@ terminal (or active) nodes.
 
           with h5py.File(distance_path, 'w') as f:
               # obtain which and how many nodes have to be considered terminals
-              terminals = list(G.vertices())[is_terminal]
+              terminals = np.array(list(G.vertices()))[is_terminal]
               T = len(terminals)
 
               # fill matrix with their pairwise distances
