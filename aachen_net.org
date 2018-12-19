@@ -666,12 +666,6 @@ tree, the model definition is wrapped in a function.
   logger.info('import ok')
 
   def ILP_solve(G, params, minimum_gap):
-      # intialize CPLEX
-      cplex_engine = cplex.Cplex()
-      cplex_engine.parameters.mip.display.set(5)
-      cplex_engine.parameters.mip.interval.set(-1)
-      cplex_engine.parameters.workmem.set(2048)
-
       #####################
       # Pre-process graph #
       #####################
@@ -690,6 +684,9 @@ tree, the model definition is wrapped in a function.
 
       m = Model(log_output=True)
       m.parameters.mip.tolerances.mipgap = minimum_gap
+      m.parameters.workmem = 2048
+      m.parameters.mip.display = 2
+      m.parameters.mip.interval = -1
 
       def name(source, target=None, var='x'):
           if target:
