@@ -1217,7 +1217,8 @@ Problem parameters are of course the same for each level, and are listed in the
 proper sections.
 
 ** DSLAM positioning
-$c_r$, cost per DSLAM has to consider also the cable to reach the first level router.
+$c_r$, cost per DSLAM has to consider also the cable to reach its corresponding
+second level router.
 We estimate 1000€ for the DSLAM and 15000€ for the mentioned connection.
 
 See [[https://www.itscosts.its.dot.gov][here]] for pricing. TODO cite as a source
@@ -1247,7 +1248,7 @@ Try using the ILP solver to the initial dataset.
   G = nx.read_graphml(graph_path + "_complete.graphml")
 
   # find optimal configuration
-  G_prime = ILP_solve(G, dict(params), 0.5)
+  G_prime = ILP_solve(G, dict(params), 0.02)
 
   # output to graphml file
   nx.write_graphml(G_prime, graph_path + "_DSLAM_ILP.graphml")
@@ -1256,7 +1257,7 @@ Try using the ILP solver to the initial dataset.
 
 Plot detail of obtained graph.
 
-#+BEGIN_SRC python :noweb yes :var params=extract(DSLAM_params) :var graph_path=flatten(graph_path) :tangle scripts/aachen_net/14_plot_ILP_DSLAM.py
+#+BEGIN_SRC python :noweb yes :var graph_path=flatten(graph_path) :tangle scripts/aachen_net/13_plot_ILP_DSLAM.py
   <<imports_&_defaults>>
   <<projection>>
   <<graph_utils>>
@@ -1273,7 +1274,7 @@ Plot detail of obtained graph.
 *** Heuristic
 Run the heuristic and save its results as well.
 
-#+BEGIN_SRC python :noweb yes :var params=extract(DSLAM_params) :var graph_path=flatten(graph_path) :tangle scripts/aachen_net/13_solver_heuristic.py
+#+BEGIN_SRC python :noweb yes :var params=extract(DSLAM_params) :var graph_path=flatten(graph_path) :tangle scripts/aachen_net/14_solver_heuristic_DSLAM.py
   <<imports_&_defaults>>
   <<projection>>
   <<graph_utils>>
