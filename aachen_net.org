@@ -491,6 +491,7 @@ Based on area and district metric, assign each node a number of internet custome
 #+BEGIN_SRC python :noweb yes :tangle scripts/aachen_net/10_compute_n_lines.py :var closest_nodes_path=flatten(closest_nodes_path) :var graph_path=flatten(graph_path)
   <<imports_&_defaults>>
   <<districts>>
+  <<graph_utils>>
   <<population>>
 
   with open(graph_path + "_2_temp.json") as f:
@@ -586,6 +587,7 @@ Based on area and district metric, assign each node a number of internet custome
       # compatibility data for plot
       data['active'] = True
 
+  convert_properties(G, str)
   nx.write_graphml(G, graph_path + "_complete.graphml")
 #+END_SRC
 
@@ -601,6 +603,7 @@ Plot final graph on top of district map.
 
   # read graph G
   G = nx.read_graphml(graph_path + "_complete.graphml")
+  convert_properties(G, float)
 
   ## plot everything
   fig = plt.figure(figsize=(6, 6), frameon=False)
@@ -1247,14 +1250,17 @@ Try using the ILP solver to the initial dataset.
 
 #+BEGIN_SRC python :noweb yes :var params=extract(DSLAM_params) :var graph_path=flatten(graph_path) :tangle scripts/aachen_net/12_solver_ILP_DSLAM.py
   <<solver_ILP>>
+  <<convert_properties_nx>>
 
   # load graph
   G = nx.read_graphml(graph_path + "_complete.graphml")
+  convert_properties_nx(G, float)
 
   # find optimal configuration
   G_prime = ILP_solve(G, dict(params), "logs/DSLAM_ILP.log", 0.02)
 
   # output to graphml file
+  convert_properties_nx(G_prime, str)
   nx.write_graphml(G_prime, graph_path + "_DSLAM_ILP.graphml")
   logger.info("Graph saved to file")
 #+END_SRC
@@ -1297,6 +1303,7 @@ Run the heuristic and save its results as well.
 
   # load graph
   G = load_graph(graph_path + "_complete.graphml")
+  convert_properties(G, float)
 
   for key, value in params:
       logger.info("{}={}".format(key, value))
@@ -1306,6 +1313,7 @@ Run the heuristic and save its results as well.
   G_prime = heuristic_solve(G, dict(params), cache_path)
 
   # output to graphml file
+  convert_properties(G_prime, str)
   G_prime.save(graph_path + "_DSLAM_heuristic.graphml")
 #+END_SRC
 
@@ -1319,6 +1327,7 @@ Plot detail of obtained graph.
   <<min_path_tree>>
 
   G = load_graph(graph_path + "_DSLAM_heuristic.graphml")
+  convert_properties(G, float)
 
   plot_result(G,
               projection=projection,
@@ -1341,14 +1350,17 @@ Distance $d_M$ is set to a very high value, since in this case it is not relevan
 *** ILP
 #+BEGIN_SRC python :noweb yes :var params=extract(2router_params) :var graph_path=flatten(graph_path) :tangle scripts/aachen_net/16_solver_ILP_2router.py
   <<solver_ILP>>
+  <<convert_properties_nx>>
 
   # load graph
   G = nx.read_graphml(graph_path + "_DSLAM_heuristic.graphml")
+  convert_properties_nx(G, float)
 
   # find optimal configuration
   G_prime = ILP_solve(G, dict(params), "logs/2router_ILP.log", 0.02)
 
   # output to graphml file
+  convert_properties_nx(G_prime, str)
   nx.write_graphml(G_prime, graph_path + "_2router_ILP.graphml")
   logger.info("Graph saved to file")
 #+END_SRC
@@ -1362,6 +1374,7 @@ Plot detail of obtained graph.
   <<plot_result>>
 
   G = load_graph(graph_path + "_2router_ILP.graphml")
+  convert_properties(G, float)
 
   plot_result(G,
               projection=projection,
@@ -1391,6 +1404,7 @@ Run the heuristic and save its results as well.
 
   # load graph
   G = load_graph(graph_path + "_DSLAM_heuristic.graphml")
+  convert_properties(G, float)
 
   for key, value in params:
       logger.info("{}={}".format(key, value))
@@ -1400,6 +1414,7 @@ Run the heuristic and save its results as well.
   G_prime = heuristic_solve(G, dict(params))
 
   # output to graphml file
+  convert_properties(G_prime, str)
   G_prime.save(graph_path + "_2router_heuristic.graphml")
 #+END_SRC
 
@@ -1413,6 +1428,7 @@ Plot detail of obtained graph.
   <<min_path_tree>>
 
   G = load_graph(graph_path + "_2router_heuristic.graphml")
+  convert_properties(G, float)
 
   plot_result(G,
               projection=projection,

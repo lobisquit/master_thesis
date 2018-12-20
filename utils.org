@@ -320,12 +320,61 @@ Plot a ~networkx~ graph in a geographical map, plus various utilities.
       plt.axis('off')
 #+END_SRC
 
+#+NAME: convert_properties_nx
+#+BEGIN_SRC python
+  def convert_properties_nx(G, out_format, vp=['lon', 'lat'], ep=['length']):
+      for _, data in G.nodes(data=True):
+          for prop in vp:
+              data[prop] = out_format(data[prop])
+
+      for _, _, data in G.edges(data=True):
+          for prop in ep:
+              data[prop] = out_format(data[prop])
+#+END_SRC
+
+#+NAME: convert_properties
+#+BEGIN_SRC python
+  def convert_properties(G, out_format, vp=['lon', 'lat'], ep=['length']):
+      if isinstance(G, nx.DiGraph) or isinstance(G, nx.Graph):
+          convert_properties_nx(G, out_format, vp, ep)
+
+      if out_format == str:
+          gt_format = 'string'
+      elif out_format == float:
+          gt_format = 'double'
+      else:
+          raise ValueError("Invalid format")
+
+      if isinstance(G, gt.Graph):
+          for prop in vp:
+              # create new map
+              new_prop = G.new_vertex_property(gt_format)
+
+              for v in G.vertices():
+                  new_prop[v] = out_format(G.vp[prop][v])
+
+              del G.vp[prop]
+              G.vp[prop] = new_prop
+
+          for prop in ep:
+              # create new map
+              new_prop = G.new_edge_property(gt_format)
+
+              for e in G.edges():
+                  new_prop[e] = out_format(G.ep[prop][e])
+
+              del G.ep[prop]
+              G.ep[prop] = new_prop
+#+END_SRC
+
 #+NAME: graph_utils
 #+BEGIN_SRC python :noweb yes
   <<distance_utilities>>
   <<networkx_to_graph_tool>>
   <<graph_to_geopandas>>
   <<graph_plot>>
+  <<convert_properties_nx>>
+  <<convert_properties>>
 #+END_SRC
 
 * Datasets reading routines
