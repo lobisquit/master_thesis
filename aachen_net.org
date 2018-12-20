@@ -1342,8 +1342,8 @@ Distance $d_M$ is set to a very high value, since in this case it is not relevan
 
 #+NAME: 2router_params
 | $n_M$ [unit]   |   400 |
-| $d_M$ [m]      | 15000 |
-| $c_r$ [€/unit] | 30000 |
+| $d_M$ [m]      | 150000 |
+| $c_r$ [€/unit] | 75000 |
 | $c_f$ [€/m]    |     3 |
 | $c_e$ [€/m]    |   100 |
 
@@ -1411,7 +1411,7 @@ Run the heuristic and save its results as well.
 
   # find optimal configuration
   cache_path = Path('data/aachen_net/distance_matrix_2router_temp.h5')
-  G_prime = heuristic_solve(G, dict(params))
+  G_prime = heuristic_solve(G, dict(params), cache_path)
 
   # output to graphml file
   convert_properties(G_prime, str)
