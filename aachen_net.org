@@ -1311,6 +1311,93 @@ Plot detail of obtained graph.
   plt.show()
 #+END_SRC
 
+** Second level routers positioning
+Each 2nd level router is estimated to cost roughly 15.000€, and lump cost for
+connecting it to the mainframe doubles its price.
+Distance $d_M$ is set to a very high value, since in this case it is not relevant.
+
+#+NAME: 2router_params
+| $n_M$ [unit]   |   400 |
+| $d_M$ [m]      | 15000 |
+| $c_r$ [€/unit] | 30000 |
+| $c_f$ [€/m]    |     3 |
+| $c_e$ [€/m]    |   100 |
+
+*** ILP
+Try using the ILP solver using the DSLAM map.
+
+#+BEGIN_SRC python :noweb yes :var params=extract(2router_params) :var graph_path=flatten(graph_path) :tangle scripts/aachen_net/16_solver_ILP_2router.py
+  <<solver_ILP>>
+
+  # load graph
+  G = nx.read_graphml(graph_path + "_DSLAM_ILP.graphml")
+
+  # find optimal configuration
+  G_prime = ILP_solve(G, dict(params), 0.02)
+
+  # output to graphml file
+  nx.write_graphml(G_prime, graph_path + "_2routers_ILP.graphml")
+  logger.info("Graph saved to file")
+#+END_SRC
+
+Plot detail of obtained graph.
+
+#+BEGIN_SRC python :noweb yes :var graph_path=flatten(graph_path) :tangle scripts/aachen_net/17_plot_ILP_2router.py
+  <<imports_&_defaults>>
+  <<projection>>
+  <<graph_utils>>
+  <<plot_result>>
+
+  G = load_graph(graph_path + "_2routers_ILP.graphml")
+
+  plot_result(G,
+              projection=projection,
+              title="Detail of ILP solution\n",
+              cut=False)
+  plt.show()
+#+END_SRC
+
+*** Heuristic
+Run the heuristic and save its results as well.
+
+#+BEGIN_SRC python :noweb yes :var params=extract(2router_params) :var graph_path=flatten(graph_path) :tangle scripts/aachen_net/18_solver_heuristic_2router.py
+  <<imports_&_defaults>>
+  <<projection>>
+  <<graph_utils>>
+  <<terminal_dist_cache>>
+  <<min_path_tree>>
+  <<solver_heuristic>>
+
+  np.warnings.filterwarnings('ignore')
+
+  # load graph
+  G = load_graph(graph_path + "_DSLAM_heuristic.graphml")
+
+  # find optimal configuration
+  G_prime = heuristic_solve(G, dict(params))
+
+  # output to graphml file
+  G.save(graph_path + "_2router_heuristic.graphml")
+#+END_SRC
+
+Plot detail of obtained graph.
+
+#+BEGIN_SRC python :noweb yes :var graph_path=flatten(graph_path) :tangle scripts/aachen_net/19_plot_heuristic_2router.py
+  <<imports_&_defaults>>
+  <<projection>>
+  <<graph_utils>>
+  <<plot_result>>
+  <<min_path_tree>>
+
+  G = load_graph(graph_path + "_2router_heuristic.graphml")
+
+  plot_result(G,
+              projection=projection,
+              title="Detail of heuristic solution\n",
+              cut=False)
+  plt.show()
+#+END_SRC
+
 * COMMENT Local variables
 # Local Variables:
 # org-confirm-babel-evaluate: nil
