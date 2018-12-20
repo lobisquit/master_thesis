@@ -573,18 +573,21 @@ Based on area and district metric, assign each node a number of internet custome
       data['lat'] = float(data_copy['lat'])
       data['n_lines'] = int(data_copy['n_lines'])
 
+      # compatibility data for plot
+      data['active'] = True
+      data['is_subroot'] = False
+
   for _, _, data in G.edges(data=True):
       data_copy = data.copy()
       data.clear()
 
       data['length'] = float(data_copy['length'])
 
+      # compatibility data for plot
+      data['active'] = True
+
   nx.write_graphml(G, graph_path + "_complete.graphml")
 #+END_SRC
-
-TODO
--[X] assign each node its corresponding n_lines, based on area, district
--[ ] cleanup unneccesary nodes: non-building leaves and degree-2 non-building nodes
 
 ** Plot obtained graph on the map
 Plot final graph on top of district map.
@@ -594,6 +597,7 @@ Plot final graph on top of district map.
   <<projection>>
   <<districts>>
   <<graph_utils>>
+  <<plot_result>>
 
   # read graph G
   G = nx.read_graphml(graph_path + "_complete.graphml")
@@ -602,10 +606,10 @@ Plot final graph on top of district map.
   fig = plt.figure(figsize=(6, 6), frameon=False)
   ax = fig.gca()
 
-  plot_graph(G,
-             ax=ax,
-             title="Detail of extracted city graph\n",
-             projection=projection)
+  plot_result(G,
+              ax=ax,
+              title="Detail of extracted city graph\n",
+              projection=projection)
 
   # plot just city external border (already projected)
   aachen_border = cascaded_union(district_map.geometry)
@@ -614,11 +618,6 @@ Plot final graph on top of district map.
                                                        linewidth=0.5,
                                                        ax=ax,
                                                        zorder=0)
-
-  # cut a window for better visualization
-  ax.set_xlim(293117, 295351)
-  ax.set_ylim(5627800, 5629570)
-  plt.tight_layout(rect=[-0.08, 0, 1, 1])
 
   # plt.show()
 
@@ -666,6 +665,22 @@ tree, the model definition is wrapped in a function.
   logger.info('import ok')
 
   def ILP_solve(G, params, minimum_gap=1e-4):
+      '''
+      G needs to have this properties
+      - n_lines != 0 only for active nodes
+      - distance for all edges
+
+      Output will provide another graph with
+      - edges
+        - x, n: activity flag and number of lines passing
+        - active: activity boolean (as heuristic)
+        - n_lines: number of lines served of subroot (0 if not subroot)
+      - nodes
+        - d: distance from subroot (if active)
+        - is_subroot: flag for subroots
+        - active: activity boolean
+      '''
+
       #####################
       # Pre-process graph #
       #####################
@@ -824,6 +839,7 @@ tree, the model definition is wrapped in a function.
           # m.print_solution()
           pass
 
+      # save results to graph
       for source, target in G.edges:
           G[source][target]['x'] = X[source][target].solution_value
           G[source][target]['n'] = N[source][target].solution_value
@@ -839,8 +855,22 @@ tree, the model definition is wrapped in a function.
           data['d'] = float(data_copy['d'])
           data['lon'] = float(data_copy['lon'])
           data['lat'] = float(data_copy['lat'])
-          data['n_lines'] = int(data_copy['n_lines'])
-          data['node_name'] = str(node_id)
+
+          # mark active and subroot nodes
+          data['active'] = data_copy['n_lines'] > 0
+
+          ## NOTE that n_lines change meaning, as current terminals will be ignored in further iterations in favour of current sub-roots
+
+          # check subroots
+          if G['r'][node_id]['x'] == 1:
+              data['is_subroot'] = True
+              data['n_lines'] = int(N['r'][node_id])
+          else:
+              data['is_subroot'] = False
+              data['n_lines'] = 0
+
+      # remove artificial root node
+      G.remove_node('r')
 
       for _, _, data in G.edges(data=True):
           data_copy = data.copy()
@@ -849,6 +879,9 @@ tree, the model definition is wrapped in a function.
           data['length'] = float(data_copy['length'])
           data['x'] = int(data_copy['x'])
           data['n'] = int(data_copy['n'])
+
+          # mark active edges
+          data['active'] = data['x'] == 1
 
       return G
 #+END_SRC
@@ -1127,15 +1160,26 @@ Merge has to guarantee that
           # setting their distance to nan
           disable_link(clusters, min_cluster_dist, i, j)
 
-      # vertices not in a cluster are assigned to cluster -1
-      cluster_ids = - np.ones(N)
-      cluster_ids[is_terminal] = clusters
+      # save results in the graph
 
-      # save information in the graph
-      cluster_property = G.new_vertex_property("int")
-      cluster_property.a = cluster_ids
+      # create maps if needed
+      G.vp['is_subroot'] = G.new_vertex_property("bool")
+      G.vp['active']     = G.new_vertex_property("bool")
+      G.ep['active']     = G.new_edge_property("bool")
 
-      G.vp['cluster_id'] = cluster_property
+      G.vp['is_subroot'].a = False
+      G.vp['active'].a     = False
+      G.ep['active'].a     = False
+
+      for index, cluster_id in enumerate(set(clusters)):
+          print("Loaded cluster", index, "/", len(set(clusters)), end='\r')
+
+          cluster_nodes = vertices[clusters == cluster_id]
+          _, root, tree_edges = get_min_path_tree(G, cluster_nodes, params)
+
+          G.vp['is_subroot'].a[root] = True
+          G.vp['active'].a[cluster_nodes] = True
+          G.ep['active'].a = np.logical_or(G.ep['active'].a, tree_edges)
 
       return G
 #+END_SRC
@@ -1144,9 +1188,9 @@ Merge has to guarantee that
 Nice utility for plotting results.
 Adaptable to both ILP and heuristic results.
 
-#+NAME: plot_solution
+#+NAME: plot_result
 #+BEGIN_SRC python
-  def plot_optimization_result(G, method=None, projection=None, params=None, cut=True):
+  def plot_result(G, projection=None, cut=True, title=None, ax=None):
       # convert to graph_tool if necessary
       if isinstance(G, nx.DiGraph) or isinstance(G, nx.Graph):
           G = nx2gt(G)
@@ -1154,61 +1198,13 @@ Adaptable to both ILP and heuristic results.
       # get geopandas elements to plot
       nodes_df, edges_df = graph_to_geopandas(G, projection=projection)
 
-      if method == "ILP":
-          # remove the (fake) root
-          r_id = int(find_vertex(G, G.vp['node_name'], 'r')[0])
+      if ax is None:
+          fig = plt.figure(figsize=(6, 6), frameon=False)
+          ax = fig.gca()
 
-          edges_df = edges_df[edges_df['gt_source'] != r_id]
-          nodes_df = nodes_df[nodes_df['gt_id'] != r_id]
-
-          # find active nodes
-          nodes_df['active'] = nodes_df["n_lines"] >= 1
-          edges_df['active'] = edges_df['x'] == 1
-
-          # set convenient index
-          nodes_df.set_index('gt_id', inplace=True)
-          edges_df.set_index(['gt_source', 'gt_target'], inplace=True)
-
-          # mark sub-root nodes
-          nodes_df['is_subroot'] = False
-          for _, sub_root, edge_idx in G.get_out_edges(r_id):
-              # avoid root self-loops
-              if sub_root == r_id:
-                  continue
-
-              if G.ep['x'].a[edge_idx] == 1:
-                  nodes_df.loc[sub_root, 'is_subroot'] = True
-
-      elif method == "heuristic":
-          nodes_df.set_index('gt_id', inplace=True)
-          edges_df.set_index(['gt_source', 'gt_target'], inplace=True)
-
-          nodes_df['active'] = False
-          nodes_df['is_subroot'] = False
-          edges_df['active'] = False
-
-          for index, cluster_id in enumerate(set(nodes_df['cluster_id'])):
-              print("Loaded cluster", index, "/", len(set(nodes_df['cluster_id'])), end='\r')
-
-              # ignore non-assigned nodes
-              if cluster_id == -1:
-                  continue
-
-              vertices = nodes_df.index
-              cluster_nodes = vertices[nodes_df['cluster_id'] == cluster_id]
-              _, root, tree_edges = get_min_path_tree(G, cluster_nodes, params)
-
-              nodes_df.loc[root, 'is_subroot'] = True
-              nodes_df.loc[cluster_nodes, 'active'] = True
-              edges_df['active'] = np.logical_or(edges_df['active'], tree_edges)
-      else:
-          raise ValueError('Invalid method {}'.format(method))
-
-      fig = plt.figure(figsize=(6, 6), frameon=False)
-      ax = fig.gca()
       plot_geopandas_graph(nodes_df[nodes_df['active']],
                            edges_df[edges_df['active']],
-                           title="Detail of {} solution".format(method),
+                           title=title,
                            ax=ax)
 
       edges_df.plot(color='#b2b2b2', zorder=-1, ax=ax)
@@ -1255,7 +1251,7 @@ Try using the ILP solver to the initial dataset.
   G = nx.read_graphml(graph_path + "_complete.graphml")
 
   # find optimal configuration
-  G_prime = ILP_solve(G, dict(params), 0.2)
+  G_prime = ILP_solve(G, dict(params), 0.5)
 
   # output to graphml file
   nx.write_graphml(G_prime, graph_path + "_DSLAM_ILP.graphml")
@@ -1268,11 +1264,13 @@ Plot detail of obtained graph.
   <<imports_&_defaults>>
   <<projection>>
   <<graph_utils>>
-  <<plot_solution>>
+  <<plot_result>>
 
   G = load_graph(graph_path + "_DSLAM_ILP.graphml")
 
-  plot_optimization_result(G, method="ILP", projection=projection)
+  plot_result(G,
+              projection=projection,
+              title="Detail of ILP solution\n")
   plt.show()
 #+END_SRC
 
@@ -1301,21 +1299,21 @@ Run the heuristic and save its results as well.
 
 Plot detail of obtained graph.
 
-#+BEGIN_SRC python :noweb yes :var params=extract(DSLAM_params) :var graph_path=flatten(graph_path) :tangle scripts/aachen_net/15_plot_heuristic_DSLAM.py
+#+BEGIN_SRC python :noweb yes :var graph_path=flatten(graph_path) :tangle scripts/aachen_net/15_plot_heuristic_DSLAM.py
   <<imports_&_defaults>>
   <<projection>>
   <<graph_utils>>
-  <<plot_solution>>
+  <<plot_result>>
   <<min_path_tree>>
 
   G = load_graph(graph_path + "_DSLAM_heuristic.graphml")
 
-  plot_optimization_result(G,
-                           method="heuristic",
-                           projection=projection,
-                           params=dict(params), cut=False)
+  plot_result(G,
+              projection=projection,
+              title="Detail of heuristic solution\n")
   plt.show()
 #+END_SRC
+
 * COMMENT Local variables
 # Local Variables:
 # org-confirm-babel-evaluate: nil
