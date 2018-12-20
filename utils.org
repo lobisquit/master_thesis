@@ -227,7 +227,9 @@ Convert ~networkz~ graphs into ~graph_tool~ ones. Adapted from [[https://gist.gi
       ## collect nodes info
       nodes_df = gpd.GeoDataFrame()
       for key, property_map in G.vertex_properties.items():
-          nodes_df[key] = list(G.vertex_properties[key])
+          property_map = G.vertex_properties[key]
+          nodes_df[key] = np.asarray(list(property_map),
+                                     dtype=property_map.python_value_type())
 
       nodes_df['geometry'] = nodes_df.apply(
           lambda row: Point(row[lon_label], row[lat_label]), axis=1
@@ -241,7 +243,9 @@ Convert ~networkz~ graphs into ~graph_tool~ ones. Adapted from [[https://gist.gi
       ## collect edges info
       edges_df = gpd.GeoDataFrame()
       for key, property_map in G.edge_properties.items():
-          edges_df[key] = list(G.edge_properties[key])
+          property_map = G.edge_properties[key]
+          edges_df[key] = np.asarray(list(property_map),
+                                     dtype=property_map.python_value_type())
 
       # save which source and target node_id
       if len(edges_df) > 0:
