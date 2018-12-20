@@ -1281,7 +1281,7 @@ Run the heuristic and save its results as well.
   <<imports_&_defaults>>
 
   # send log also to file
-  fh = logging.FileHandler('logs/DSLAM_heuristic.log')
+  fh = logging.FileHandler('logs/DSLAM_heuristic.log', mode='w')
   fh.setLevel(logging.INFO)
   fh.setFormatter(formatter)
   logger.addHandler(fh)
