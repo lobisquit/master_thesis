@@ -664,7 +664,7 @@ tree, the model definition is wrapped in a function.
 
   logger.info('import ok')
 
-  def ILP_solve(G, params, minimum_gap=1e-4):
+  def ILP_solve(G, params, logfile="logs/unnamed.log", minimum_gap=1e-4):
       '''
       G needs to have this properties
       - n_lines != 0 only for active nodes
@@ -829,7 +829,10 @@ tree, the model definition is wrapped in a function.
 
       logger.info('Set constraints 5, 6')
 
-      if m.solve() is None:
+      with open(logfile, "w") as f:
+          solver = m.solve(log_output=f)
+
+      if solver is None:
           logger.error("Unable to solve ILP")
           exit(1)
       else:
@@ -1248,7 +1251,7 @@ Try using the ILP solver to the initial dataset.
   G = nx.read_graphml(graph_path + "_complete.graphml")
 
   # find optimal configuration
-  G_prime = ILP_solve(G, dict(params), 0.02)
+  G_prime = ILP_solve(G, dict(params), "logs/DSLAM_ILP.log", 0.02)
 
   # output to graphml file
   nx.write_graphml(G_prime, graph_path + "_DSLAM_ILP.graphml")
@@ -1276,6 +1279,13 @@ Run the heuristic and save its results as well.
 
 #+BEGIN_SRC python :noweb yes :var params=extract(DSLAM_params) :var graph_path=flatten(graph_path) :tangle scripts/aachen_net/14_solver_heuristic_DSLAM.py
   <<imports_&_defaults>>
+
+  # send log also to file
+  fh = logging.FileHandler('logs/DSLAM_heuristic.log')
+  fh.setLevel(logging.INFO)
+  fh.setFormatter(formatter)
+  logger.addHandler(fh)
+
   <<projection>>
   <<graph_utils>>
   <<terminal_dist_cache>>
