@@ -785,12 +785,9 @@ tree, the model definition is wrapped in a function.
           if node_id == 'r':
               m.add_constraint(ct=in_count_X == 0,
                                ctname=name(node_id, var='in_count_X'))
-              # terminal node
           elif data['n_lines'] > 0:
-              m.add_constraint(ct=in_count_X == 1,
-                               ctname=name(node_id, var='in_count_X'))
-          else:
-              m.add_constraint(ct=in_count_X <= 1,
+              # terminal node
+              m.add_constraint(ct=in_count_X >= 1,
                                ctname=name(node_id, var='in_count_X'))
 
           # 3)
