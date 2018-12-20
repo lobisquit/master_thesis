@@ -1222,14 +1222,14 @@ proper sections.
 ** DSLAM positioning
 $c_r$, cost per DSLAM has to consider also the cable to reach its corresponding
 second level router.
-We estimate 1000€ for the DSLAM and 15000€ for the mentioned connection.
+We estimate 1.000€ for the DSLAM and 20.000€ for the mentioned connection.
 
 See [[https://www.itscosts.its.dot.gov][here]] for pricing. TODO cite as a source
 
 #+NAME: DSLAM_params
 | $n_M$ [unit]   |    50 |
 | $d_M$ [m]      |  1500 |
-| $c_r$ [€/unit] | 16000 |
+| $c_r$ [€/unit] | 21000 |
 | $c_f$ [€/m]    |     3 |
 | $c_e$ [€/m]    |   100 |
 
@@ -1296,6 +1296,9 @@ Run the heuristic and save its results as well.
 
   # load graph
   G = load_graph(graph_path + "_complete.graphml")
+
+  for key, value in params:
+      logger.info("{}={}".format(key, value))
 
   # find optimal configuration
   G_prime = heuristic_solve(G, dict(params))
