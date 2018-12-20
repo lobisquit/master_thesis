@@ -1181,6 +1181,10 @@ Merge has to guarantee that
           G.vp['active'].a[cluster_nodes] = True
           G.ep['active'].a = np.logical_or(G.ep['active'].a, tree_edges)
 
+      # make n_lines != only for subroots (terminals of next iteration)
+      not_subroot_mask = np.logical_not(G.vp['is_subroot'].a)
+      G.vp['n_lines'].a[not_subroot_mask] = 0
+
       return G
 #+END_SRC
 
@@ -1337,44 +1341,48 @@ Distance $d_M$ is set to a very high value, since in this case it is not relevan
 | $c_e$ [€/m]    |   100 |
 
 *** ILP
-Try using the ILP solver using the DSLAM map.
-
-#+BEGIN_SRC python :noweb yes :var params=extract(2router_params) :var graph_path=flatten(graph_path) :tangle scripts/aachen_net/16_solver_ILP_2router.py
+#+BEGIN_SRC python :noweb yes :var params=extract(2router_params) :var graph_path=flatten(graph_path) :tangle scripts/aachen_net/15_solver_ILP_2router.py
   <<solver_ILP>>
 
   # load graph
-  G = nx.read_graphml(graph_path + "_DSLAM_ILP.graphml")
+  G = nx.read_graphml(graph_path + "_DSLAM_heuristic.graphml")
 
   # find optimal configuration
-  G_prime = ILP_solve(G, dict(params), 0.02)
+  G_prime = ILP_solve(G, dict(params), "logs/2router_ILP.log", 0.02)
 
   # output to graphml file
-  nx.write_graphml(G_prime, graph_path + "_2routers_ILP.graphml")
+  nx.write_graphml(G_prime, graph_path + "_2router_ILP.graphml")
   logger.info("Graph saved to file")
 #+END_SRC
 
 Plot detail of obtained graph.
 
-#+BEGIN_SRC python :noweb yes :var graph_path=flatten(graph_path) :tangle scripts/aachen_net/17_plot_ILP_2router.py
+#+BEGIN_SRC python :noweb yes :var graph_path=flatten(graph_path) :tangle scripts/aachen_net/16_plot_ILP_2router.py
   <<imports_&_defaults>>
   <<projection>>
   <<graph_utils>>
   <<plot_result>>
 
-  G = load_graph(graph_path + "_2routers_ILP.graphml")
+  G = load_graph(graph_path + "_2router_ILP.graphml")
 
   plot_result(G,
               projection=projection,
-              title="Detail of ILP solution\n",
-              cut=False)
+              title="Detail of ILP solution\n")
   plt.show()
 #+END_SRC
 
 *** Heuristic
 Run the heuristic and save its results as well.
 
-#+BEGIN_SRC python :noweb yes :var params=extract(2router_params) :var graph_path=flatten(graph_path) :tangle scripts/aachen_net/18_solver_heuristic_2router.py
+#+BEGIN_SRC python :noweb yes :var params=extract(2router_params) :var graph_path=flatten(graph_path) :tangle scripts/aachen_net/17_solver_heuristic_2router.py
   <<imports_&_defaults>>
+
+  # send log also to file
+  fh = logging.FileHandler('logs/2router_heuristic.log', mode='w')
+  fh.setLevel(logging.INFO)
+  fh.setFormatter(formatter)
+  logger.addHandler(fh)
+
   <<projection>>
   <<graph_utils>>
   <<terminal_dist_cache>>
@@ -1386,6 +1394,9 @@ Run the heuristic and save its results as well.
   # load graph
   G = load_graph(graph_path + "_DSLAM_heuristic.graphml")
 
+  for key, value in params:
+      logger.info("{}={}".format(key, value))
+
   # find optimal configuration
   G_prime = heuristic_solve(G, dict(params))
 
@@ -1395,7 +1406,7 @@ Run the heuristic and save its results as well.
 
 Plot detail of obtained graph.
 
-#+BEGIN_SRC python :noweb yes :var graph_path=flatten(graph_path) :tangle scripts/aachen_net/19_plot_heuristic_2router.py
+#+BEGIN_SRC python :noweb yes :var graph_path=flatten(graph_path) :tangle scripts/aachen_net/18_plot_heuristic_2router.py
   <<imports_&_defaults>>
   <<projection>>
   <<graph_utils>>
@@ -1406,8 +1417,7 @@ Plot detail of obtained graph.
 
   plot_result(G,
               projection=projection,
-              title="Detail of heuristic solution\n",
-              cut=False)
+              title="Detail of heuristic solution\n")
   plt.show()
 #+END_SRC
 
