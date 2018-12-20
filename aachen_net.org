@@ -895,10 +895,7 @@ terminal (or active) nodes.
 
 #+NAME: terminal_dist_cache
 #+BEGIN_SRC python
-  def get_terminal_distance(G, is_terminal, distance_path=None, clear_cache=False):
-      if not distance_path:
-          distance_path = Path('data/aachen_net/distance_matrix_temp.h5')
-
+  def get_terminal_distance(G, is_terminal, distance_path, clear_cache=False):
       # this takes some time: use cache file
       if not distance_path.exists() or clear_cache:
           vertex_dist = shortest_distance(G, weights=G.edge_properties['length'])
@@ -1057,7 +1054,7 @@ Merge has to guarantee that
 
       return sub_root_cost + cable_cost + excavation_cost
 
-  def heuristic_solve(G, params):
+  def heuristic_solve(G, params, cache_path):
       if isinstance(G, nx.DiGraph) or isinstance(G, nx.Graph):
           G = nx2gt(G)
 
@@ -1077,7 +1074,7 @@ Merge has to guarantee that
       clusters = terminals.copy()
       cluster_lines = terminal_lines.copy()
 
-      terminal_dist = get_terminal_distance(G, is_terminal)
+      terminal_dist = get_terminal_distance(G, is_terminal, cache_path)
       min_cluster_dist = terminal_dist.copy()
 
       # fill diagonal with nans (values we want to ignore)
@@ -1305,7 +1302,8 @@ Run the heuristic and save its results as well.
       logger.info("{}={}".format(key, value))
 
   # find optimal configuration
-  G_prime = heuristic_solve(G, dict(params))
+  cache_path = Path('data/aachen_net/distance_matrix_DSLAM_temp.h5')
+  G_prime = heuristic_solve(G, dict(params), cache_path)
 
   # output to graphml file
   G_prime.save(graph_path + "_DSLAM_heuristic.graphml")
@@ -1398,6 +1396,7 @@ Run the heuristic and save its results as well.
       logger.info("{}={}".format(key, value))
 
   # find optimal configuration
+  cache_path = Path('data/aachen_net/distance_matrix_2router_temp.h5')
   G_prime = heuristic_solve(G, dict(params))
 
   # output to graphml file
