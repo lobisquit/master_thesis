@@ -1235,7 +1235,7 @@ See [[https://www.itscosts.its.dot.gov][here]] for pricing. TODO cite as a sourc
 | $c_r$ [€/unit] | 16000 |
 | $c_f$ [€/m]    |     3 |
 | $c_c$ [€/m]    |     1 |
-| $c_e$ [€/m]    |    50 |
+| $c_e$ [€/m]    |   100 |
 
 A handy ~org~ function is here provided to ease parameters extraction.
 
