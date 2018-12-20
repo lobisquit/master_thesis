@@ -1171,7 +1171,7 @@ Merge has to guarantee that
       for index, cluster_id in enumerate(set(clusters)):
           print("Loaded cluster", index, "/", len(set(clusters)), end='\r')
 
-          cluster_nodes = vertices[clusters == cluster_id]
+          cluster_nodes = terminals[clusters == cluster_id]
           _, root, tree_edges = get_min_path_tree(G, cluster_nodes, params)
 
           G.vp['is_subroot'].a[root] = True
@@ -1291,7 +1291,7 @@ Run the heuristic and save its results as well.
   G_prime = heuristic_solve(G, dict(params))
 
   # output to graphml file
-  G.save(graph_path + "_DSLAM_heuristic.graphml")
+  G_prime.save(graph_path + "_DSLAM_heuristic.graphml")
 #+END_SRC
 
 Plot detail of obtained graph.
@@ -1377,7 +1377,7 @@ Run the heuristic and save its results as well.
   G_prime = heuristic_solve(G, dict(params))
 
   # output to graphml file
-  G.save(graph_path + "_2router_heuristic.graphml")
+  G_prime.save(graph_path + "_2router_heuristic.graphml")
 #+END_SRC
 
 Plot detail of obtained graph.
