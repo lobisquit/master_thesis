@@ -1378,7 +1378,7 @@ Plot detail of obtained graph.
 
   plot_result(G,
               projection=projection,
-              title="Detail of ILP solution\n")
+              title="Detail of ILP solution\n", cut=False)
   plt.show()
 #+END_SRC
 
@@ -1432,7 +1432,7 @@ Plot detail of obtained graph.
 
   plot_result(G,
               projection=projection,
-              title="Detail of heuristic solution\n")
+              title="Detail of heuristic solution\n", cut=False)
   plt.show()
 #+END_SRC
 
