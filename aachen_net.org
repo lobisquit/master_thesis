@@ -948,9 +948,11 @@ measuring its cost for each node of the cluster as root.
       # mark edges of the path and store the total path length
       mask = np.zeros(G.num_edges(), dtype=bool)
       mask[ids] = True
-      length = G.ep['length'].a.dot(mask)
 
-      paths[i, j] = (mask, length)
+      edge_count = np.zeros(G.num_edges(), dtype=np.int)
+      mask[ids] = 1
+
+      paths[i, j] = (mask, edge_count)
 
       return paths[i, j]
 
@@ -979,17 +981,18 @@ measuring its cost for each node of the cluster as root.
       for root in set(neighbour_nodes):
           # compute edges of tree with root node
           tree_edges = np.zeros(G.num_edges(), dtype=bool)
+          cable_edge_counts = np.zeros(G.num_edges(), dtype=np.int)
+
           current_cable_length = 0
 
           # tree from root has to reach all terminals
           for node in cluster_nodes:
-              path_edges, path_length = compute_path(G,
-                                                     G.vertex(root),
-                                                     G.vertex(node))
+              path_edges, edge_count = compute_path(G,
+                                                    G.vertex(root),
+                                                    G.vertex(node))
 
               # a cable has to be placed per each customer
-              current_cable_length += path_length * G.vp['n_lines'][G.vertex(node)]
-
+              cable_edge_counts += G.vp['n_lines'][G.vertex(node)] * edge_count
               tree_edges = np.logical_or(tree_edges, path_edges)
 
           current_road_lengths = G.ep['length'].a * tree_edges
@@ -998,7 +1001,7 @@ measuring its cost for each node of the cluster as root.
           if np.all(current_road_lengths) < params['d_M'] and \
              current_road_length < best_road_length:
               best_road_length  = current_road_length
-              best_cable_length = current_cable_length
+              best_cable_length = np.sum(cable_edge_counts)
               best_root         = root
               best_tree_edges   = tree_edges
 
