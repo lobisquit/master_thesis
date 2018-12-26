@@ -491,6 +491,7 @@ Based on area and district metric, assign each node a number of internet custome
 #+BEGIN_SRC python :noweb yes :tangle scripts/aachen_net/10_compute_n_lines.py :var closest_nodes_path=flatten(closest_nodes_path) :var graph_path=flatten(graph_path)
   <<imports_&_defaults>>
   <<districts>>
+  <<graph_utils>>
   <<population>>
 
   with open(graph_path + "_2_temp.json") as f:
@@ -573,18 +574,22 @@ Based on area and district metric, assign each node a number of internet custome
       data['lat'] = float(data_copy['lat'])
       data['n_lines'] = int(data_copy['n_lines'])
 
+      # compatibility data for plot
+      data['active'] = True
+      data['is_subroot'] = False
+
   for _, _, data in G.edges(data=True):
       data_copy = data.copy()
       data.clear()
 
       data['length'] = float(data_copy['length'])
 
+      # compatibility data for plot
+      data['active'] = True
+
+  convert_properties(G, str)
   nx.write_graphml(G, graph_path + "_complete.graphml")
 #+END_SRC
-
-TODO
--[X] assign each node its corresponding n_lines, based on area, district
--[ ] cleanup unneccesary nodes: non-building leaves and degree-2 non-building nodes
 
 ** Plot obtained graph on the map
 Plot final graph on top of district map.
@@ -594,18 +599,20 @@ Plot final graph on top of district map.
   <<projection>>
   <<districts>>
   <<graph_utils>>
+  <<plot_result>>
 
   # read graph G
   G = nx.read_graphml(graph_path + "_complete.graphml")
+  convert_properties(G, float)
 
   ## plot everything
   fig = plt.figure(figsize=(6, 6), frameon=False)
   ax = fig.gca()
 
-  plot_graph(G,
-             ax=ax,
-             title="Detail of extracted city graph\n",
-             projection=projection)
+  plot_result(G,
+              ax=ax,
+              title="Detail of extracted city graph\n",
+              projection=projection)
 
   # plot just city external border (already projected)
   aachen_border = cascaded_union(district_map.geometry)
@@ -614,11 +621,6 @@ Plot final graph on top of district map.
                                                        linewidth=0.5,
                                                        ax=ax,
                                                        zorder=0)
-
-  # cut a window for better visualization
-  ax.set_xlim(293117, 295351)
-  ax.set_ylim(5627800, 5629570)
-  plt.tight_layout(rect=[-0.08, 0, 1, 1])
 
   # plt.show()
 
@@ -665,7 +667,23 @@ tree, the model definition is wrapped in a function.
 
   logger.info('import ok')
 
-  def ILP_solve(G, params, minimum_gap=1e-4):
+  def ILP_solve(G, params, logfile="logs/unnamed.log", minimum_gap=1e-4):
+      '''
+      G needs to have this properties
+      - n_lines != 0 only for active nodes
+      - distance for all edges
+
+      Output will provide another graph with
+      - edges
+        - x, n: activity flag and number of lines passing
+        - active: activity boolean (as heuristic)
+        - n_lines: number of lines served of subroot (0 if not subroot)
+      - nodes
+        - d: distance from subroot (if active)
+        - is_subroot: flag for subroots
+        - active: activity boolean
+      '''
+
       #####################
       # Pre-process graph #
       #####################
@@ -817,13 +835,17 @@ tree, the model definition is wrapped in a function.
 
       logger.info('Set constraints 5, 6')
 
-      if m.solve() is None:
+      with open(logfile, "w") as f:
+          solver = m.solve(log_output=f)
+
+      if solver is None:
           logger.error("Unable to solve ILP")
           exit(1)
       else:
           # m.print_solution()
           pass
 
+      # save results to graph
       for source, target in G.edges:
           G[source][target]['x'] = X[source][target].solution_value
           G[source][target]['n'] = N[source][target].solution_value
@@ -839,8 +861,22 @@ tree, the model definition is wrapped in a function.
           data['d'] = float(data_copy['d'])
           data['lon'] = float(data_copy['lon'])
           data['lat'] = float(data_copy['lat'])
-          data['n_lines'] = int(data_copy['n_lines'])
-          data['node_name'] = str(node_id)
+
+          # mark active and subroot nodes
+          data['active'] = data_copy['n_lines'] > 0
+
+          ## NOTE that n_lines change meaning, as current terminals will be ignored in further iterations in favour of current sub-roots
+
+          # check subroots
+          if G['r'][node_id]['x'] == 1:
+              data['is_subroot'] = True
+              data['n_lines'] = int(N['r'][node_id])
+          else:
+              data['is_subroot'] = False
+              data['n_lines'] = 0
+
+      # remove artificial root node
+      G.remove_node('r')
 
       for _, _, data in G.edges(data=True):
           data_copy = data.copy()
@@ -849,6 +885,9 @@ tree, the model definition is wrapped in a function.
           data['length'] = float(data_copy['length'])
           data['x'] = int(data_copy['x'])
           data['n'] = int(data_copy['n'])
+
+          # mark active edges
+          data['active'] = data['x'] == 1
 
       return G
 #+END_SRC
@@ -862,36 +901,35 @@ terminal (or active) nodes.
 
 #+NAME: terminal_dist_cache
 #+BEGIN_SRC python
-  def get_terminal_distance(G, is_terminal, distance_path=None, clear_cache=False):
-      if not distance_path:
-          distance_path = Path('data/aachen_net/distance_matrix_temp.h5')
+  def get_vertex_distance(G, cache_path=None, clear_cache=False):
+      if cache_path is None:
+          cache_path = Path('data/aachen_net/distance_matrix_temp.h5')
 
       # this takes some time: use cache file
-      if not distance_path.exists() or clear_cache:
+      if not cache_path.exists() or clear_cache:
           vertex_dist = shortest_distance(G, weights=G.edge_properties['length'])
 
-          with h5py.File(distance_path, 'w') as f:
+          with h5py.File(cache_path, 'w') as f:
               # obtain which and how many nodes have to be considered terminals
-              terminals = np.array(list(G.vertices()))[is_terminal]
-              T = len(terminals)
+              N = G.num_vertices()
 
               # fill matrix with their pairwise distances
-              matrix = f.create_dataset('terminal_dist', (T, T))
-              for index, vertex_id in enumerate(terminals):
+              matrix = f.create_dataset('vertex_dist', (N, N))
+              for index, vertex_id in enumerate(G.vertices()):
                   if index % 100 == 0:
-                      print("Filling distance matrix", index, "/", T, end='\r')
+                      print("Filling distance matrix", index, "/", N, end='\r')
 
-                  matrix[index, :] = np.array(vertex_dist[vertex_id])[is_terminal]
+                  matrix[index, :] = np.array(vertex_dist[vertex_id])
 
-      with h5py.File(distance_path, 'r') as f:
+      with h5py.File(cache_path, 'r') as f:
           # keep track of distance among vertices
-          terminal_dist = np.array(f['terminal_dist'])
+          vertex_dist = np.array(f['vertex_dist'])
 
       # check simmetry
-      assert np.allclose(terminal_dist, terminal_dist.T, equal_nan=True), \
+      assert np.allclose(vertex_dist, vertex_dist.T, equal_nan=True), \
           "Distance matrix not symmetric"
 
-      return terminal_dist
+      return vertex_dist
 #+END_SRC
 
 The function ~get_min_path_tree~ finds the cheapest minimum path tree,
@@ -907,43 +945,71 @@ measuring its cost for each node of the cluster as root.
       sp_edges = shortest_path(G, i, j)[1]
       ids = [G.edge_index[e] for e in sp_edges]
 
+      # mark edges of the path and store the total path length
       mask = np.zeros(G.num_edges(), dtype=bool)
       mask[ids] = True
-      paths[i, j] = mask
 
-      return mask
+      edge_count = np.zeros(G.num_edges(), dtype=np.int)
+      mask[ids] = 1
 
-  def get_min_path_tree(G, cluster_nodes, params):
+      paths[i, j] = (mask, edge_count)
+
+      return paths[i, j]
+
+  def get_min_path_tree(G, vertex_dist, cluster_nodes, is_terminal, params, fast_mode=False):
       # compute pairwise path for each couple of nodes in the cluster
       # and remove duplicate edges
       best_road_length = float('inf')
       best_root = None
       best_tree_edges = None
 
-      for root in cluster_nodes:
+      # this tracks cable length in the best configuration *for the roads*:
+      # choices had to be made to make computation fast
+      best_cable_length = float('inf')
+
+      # since root can be any node, explore non_terminal nodes also as candidate
+      # in a neighbourhood. Top do so, look at the rows of vertex_dist
+      # corresponding to the cluster, then pick all nodes (column indices) that
+      # are close enough
+      if fast_mode:
+          neighbour_nodes = cluster_nodes
+      else:
+          _, neighbour_nodes = np.where(
+              vertex_dist[cluster_nodes, :] <= params['discovery_dist']
+          )
+
+      for root in set(neighbour_nodes):
           # compute edges of tree with root node
           tree_edges = np.zeros(G.num_edges(), dtype=bool)
+          cable_edge_counts = np.zeros(G.num_edges(), dtype=np.int)
 
+          current_cable_length = 0
+
+          # tree from root has to reach all terminals
           for node in cluster_nodes:
-              tree_edges = np.logical_or(tree_edges,
-                                         compute_path(G,
-                                                      G.vertex(root),
-                                                      G.vertex(node)))
+              path_edges, edge_count = compute_path(G,
+                                                    G.vertex(root),
+                                                    G.vertex(node))
+
+              # a cable has to be placed per each customer
+              cable_edge_counts += G.vp['n_lines'][G.vertex(node)] * edge_count
+              tree_edges = np.logical_or(tree_edges, path_edges)
 
           current_road_lengths = G.ep['length'].a * tree_edges
           current_road_length = np.sum(current_road_lengths)
 
           if np.all(current_road_lengths) < params['d_M'] and \
              current_road_length < best_road_length:
-              best_road_length = current_road_length
-              best_root = root
-              best_tree_edges = tree_edges
+              best_road_length  = current_road_length
+              best_cable_length = np.sum(cable_edge_counts)
+              best_root         = root
+              best_tree_edges   = tree_edges
 
       if best_root is None:
           print("Error, root is None")
           exit(1)
 
-      return best_road_length, best_root, best_tree_edges
+      return best_road_length, best_cable_length, best_root, best_tree_edges
 #+END_SRC
 
 Heuristics simply tries to merge groups of nodes together until it is no longer
@@ -974,41 +1040,15 @@ Merge has to guarantee that
       cmn_idx = np.hstack((i_idx, j_idx))
       X[np.ix_(cmn_idx, cmn_idx)] = np.nan
 
-  def check_consistency(clusters, min_cluster_distance):
-      for element in set(clusters):
-          cluster_idx = np.where(clusters == element)
-          cluster_submatrix = min_cluster_dist[cluster_idx, :]
-
-          # check rows are equal (ignore nan)
-          assert np.isclose(cluster_submatrix, cluster_submatrix[0], equal_nan=True).all(), \
-              "Elements of cluster do not share min distances"
-
-          # check that rows and columns are the same
-          assert np.allclose(min_cluster_dist[cluster_idx, :], min_cluster_dist[:, cluster_idx].T, equal_nan=True), \
-              "Distance matrix not symmetric"
-
-  def objective_function(G, clusters, terminals, terminal_dist, terminal_lines, params):
-      # DSLAMs cost
+  def objective_function(G, vertex_dist, clusters, is_terminal, params):
+      # sub-root cost
       sub_root_cost = len(set(clusters)) * params['c_r']
 
-      # to have fiber cable cost, build the shortest minimum path tree for each
-      # of the clusters
-      total_cable_length = 0
-      for element in set(clusters):
-          # compute the total length of cable to each j from i, given its number
-          # of requested lines
-          cluster_vertex = np.where(clusters == element)[0]
-          inter_cluster_dist = terminal_dist[cluster_vertex, cluster_vertex]
-          cluster_cable_length = inter_cluster_dist.dot(terminal_lines[cluster_vertex])
-
-          # choose the node with minimum cumulative distance from the others
-          # to be the center of its group
-          cluster_cable_length = np.min(np.sum(cluster_cable_length, axis=0))
-          total_cable_length += cluster_cable_length
-
-      cable_cost = total_cable_length * params['c_f']
+      vertices = np.array([int(v) for v in G.vertices()])
+      terminals = vertices[is_terminal]
 
       # use minimum path tree also for excavation (remove duplicate edges)
+      total_cable_length = 0
       total_road_length = 0
       for index, cluster_id in enumerate(set(clusters)):
           cluster_nodes = terminals[clusters == cluster_id]
@@ -1017,10 +1057,18 @@ Merge has to guarantee that
           if len(cluster_nodes) == 1:
               continue
 
-          best_road_length, _, _  = get_min_path_tree(G, cluster_nodes, params)
-          total_road_length += best_road_length
+          road_length, cable_length, _, _  = get_min_path_tree(G,
+                                                               vertex_dist,
+                                                               cluster_nodes,
+                                                               is_terminal,
+                                                               params,
+                                                               fast_mode=True)
 
-      excavation_cost = params['c_e'] * total_road_length
+          total_road_length += road_length
+          total_cable_length += cable_length
+
+      excavation_cost = total_road_length  * params['c_e']
+      cable_cost      = total_cable_length * params['c_f']
 
       return sub_root_cost + cable_cost + excavation_cost
 
@@ -1029,7 +1077,7 @@ Merge has to guarantee that
           G = nx2gt(G)
 
       vertices = np.array([int(v) for v in G.vertices()])
-      N = len(vertices)
+      N = G.num_vertices()
 
       ## save information about terminals
       n_lines = np.array([G.vp['n_lines'][v] for v in G.vertices()], dtype=np.int)
@@ -1044,7 +1092,8 @@ Merge has to guarantee that
       clusters = terminals.copy()
       cluster_lines = terminal_lines.copy()
 
-      terminal_dist = get_terminal_distance(G, is_terminal)
+      vertex_dist = get_vertex_distance(G)
+      terminal_dist = vertex_dist[np.ix_(is_terminal, is_terminal)]
       min_cluster_dist = terminal_dist.copy()
 
       # fill diagonal with nans (values we want to ignore)
@@ -1053,12 +1102,6 @@ Merge has to guarantee that
       # create a matrix for the max distance between nodes in two different clusters
       # bij = diameter of cluster obtained joining i-th and j-th ones
       max_cluster_dist = min_cluster_dist.copy()
-
-      # measure if the connection is more expensive than a DSLAM: in this cases don't
-      # even consider evaluating the merge
-      critical_length = params['c_r'] / params['c_e']
-
-      # logger.info("critical_length = {}".format(critical_length))
 
       # # prune the nodes that even at the beginning are further from each other more
       # # than the critical length
@@ -1082,7 +1125,12 @@ Merge has to guarantee that
               break
 
           if n_iter % 50 == 0:
-              total_cost = objective_function(G, clusters, terminals, terminal_dist, terminal_lines, params)
+              total_cost = objective_function(G,
+                                              vertex_dist,
+                                              clusters,
+                                              is_terminal,
+                                              params)
+
               logger.info("Money {:.2f}M€ n_cluster {}".format(total_cost/1e6,
                                                                len(set(clusters))))
 
@@ -1098,7 +1146,6 @@ Merge has to guarantee that
                   previous_total_cost = total_cost
 
           # get two closest clusters (heuristic measure)
-          # TODO check if a condition on diameter (max_dist) gives better results
           min_rows, min_cols = np.where(min_cluster_dist == np.nanmin(min_cluster_dist))
 
           # i, j are the i-th, j-th cluster
@@ -1127,15 +1174,37 @@ Merge has to guarantee that
           # setting their distance to nan
           disable_link(clusters, min_cluster_dist, i, j)
 
-      # vertices not in a cluster are assigned to cluster -1
-      cluster_ids = - np.ones(N)
-      cluster_ids[is_terminal] = clusters
+      # save results in the graph
 
-      # save information in the graph
-      cluster_property = G.new_vertex_property("int")
-      cluster_property.a = cluster_ids
+      # create maps if needed
+      G.vp['is_subroot'] = G.new_vertex_property("bool")
+      G.vp['active']     = G.new_vertex_property("bool")
+      G.ep['active']     = G.new_edge_property("bool")
 
-      G.vp['cluster_id'] = cluster_property
+      G.vp['is_subroot'].a = False
+      G.vp['active'].a     = False
+      G.ep['active'].a     = False
+
+      for index, cluster_id in enumerate(set(clusters)):
+          print("Loaded cluster", index, "/", len(set(clusters)), end='\r')
+
+          cluster_nodes = terminals[clusters == cluster_id]
+          _, _, root, tree_edges = get_min_path_tree(G,
+                                                     vertex_dist,
+                                                     cluster_nodes,
+                                                     is_terminal, params,
+                                                     fast_mode=False)
+
+          # root may also be (in non-fast mode) a non-terminal, so its n_lines
+          # would be zero: better set it
+          G.vp['n_lines'].a[root] = G.vp['n_lines'].a[cluster_nodes[0]]
+          G.vp['is_subroot'].a[root] = True
+          G.vp['active'].a[cluster_nodes] = True
+          G.ep['active'].a = np.logical_or(G.ep['active'].a, tree_edges)
+
+      # make n_lines != only for subroots (terminals of next iteration)
+      not_subroot_mask = np.logical_not(G.vp['is_subroot'].a)
+      G.vp['n_lines'].a[not_subroot_mask] = 0
 
       return G
 #+END_SRC
@@ -1144,9 +1213,9 @@ Merge has to guarantee that
 Nice utility for plotting results.
 Adaptable to both ILP and heuristic results.
 
-#+NAME: plot_solution
+#+NAME: plot_result
 #+BEGIN_SRC python
-  def plot_optimization_result(G, method=None, projection=None, params=None, cut=True):
+  def plot_result(G, projection=None, cut=True, title=None, ax=None):
       # convert to graph_tool if necessary
       if isinstance(G, nx.DiGraph) or isinstance(G, nx.Graph):
           G = nx2gt(G)
@@ -1154,61 +1223,13 @@ Adaptable to both ILP and heuristic results.
       # get geopandas elements to plot
       nodes_df, edges_df = graph_to_geopandas(G, projection=projection)
 
-      if method == "ILP":
-          # remove the (fake) root
-          r_id = int(find_vertex(G, G.vp['node_name'], 'r')[0])
+      if ax is None:
+          fig = plt.figure(figsize=(6, 6), frameon=False)
+          ax = fig.gca()
 
-          edges_df = edges_df[edges_df['gt_source'] != r_id]
-          nodes_df = nodes_df[nodes_df['gt_id'] != r_id]
-
-          # find active nodes
-          nodes_df['active'] = nodes_df["n_lines"] >= 1
-          edges_df['active'] = edges_df['x'] == 1
-
-          # set convenient index
-          nodes_df.set_index('gt_id', inplace=True)
-          edges_df.set_index(['gt_source', 'gt_target'], inplace=True)
-
-          # mark sub-root nodes
-          nodes_df['is_subroot'] = False
-          for _, sub_root, edge_idx in G.get_out_edges(r_id):
-              # avoid root self-loops
-              if sub_root == r_id:
-                  continue
-
-              if G.ep['x'].a[edge_idx] == 1:
-                  nodes_df.loc[sub_root, 'is_subroot'] = True
-
-      elif method == "heuristic":
-          nodes_df.set_index('gt_id', inplace=True)
-          edges_df.set_index(['gt_source', 'gt_target'], inplace=True)
-
-          nodes_df['active'] = False
-          nodes_df['is_subroot'] = False
-          edges_df['active'] = False
-
-          for index, cluster_id in enumerate(set(nodes_df['cluster_id'])):
-              print("Loaded cluster", index, "/", len(set(nodes_df['cluster_id'])), end='\r')
-
-              # ignore non-assigned nodes
-              if cluster_id == -1:
-                  continue
-
-              vertices = nodes_df.index
-              cluster_nodes = vertices[nodes_df['cluster_id'] == cluster_id]
-              _, root, tree_edges = get_min_path_tree(G, cluster_nodes, params)
-
-              nodes_df.loc[root, 'is_subroot'] = True
-              nodes_df.loc[cluster_nodes, 'active'] = True
-              edges_df['active'] = np.logical_or(edges_df['active'], tree_edges)
-      else:
-          raise ValueError('Invalid method {}'.format(method))
-
-      fig = plt.figure(figsize=(6, 6), frameon=False)
-      ax = fig.gca()
       plot_geopandas_graph(nodes_df[nodes_df['active']],
                            edges_df[edges_df['active']],
-                           title="Detail of {} solution".format(method),
+                           title=title,
                            ax=ax)
 
       edges_df.plot(color='#b2b2b2', zorder=-1, ax=ax)
@@ -1224,18 +1245,18 @@ Problem parameters are of course the same for each level, and are listed in the
 proper sections.
 
 ** DSLAM positioning
-$c_r$, cost per DSLAM has to consider also the cable to reach the first level router.
-We estimate 1000€ for the DSLAM and 15000€ for the mentioned connection.
+$c_r$, cost per DSLAM has to consider also the cable to reach its corresponding
+second level router.
+We estimate 1.000€ for the DSLAM and 20.000€ for the mentioned connection.
 
 See [[https://www.itscosts.its.dot.gov][here]] for pricing. TODO cite as a source
 
 #+NAME: DSLAM_params
 | $n_M$ [unit]   |    50 |
 | $d_M$ [m]      |  1500 |
-| $c_r$ [€/unit] | 16000 |
+| $c_r$ [€/unit] | 21000 |
 | $c_f$ [€/m]    |     3 |
-| $c_c$ [€/m]    |     1 |
-| $c_e$ [€/m]    |    50 |
+| $c_e$ [€/m]    |   100 |
 
 A handy ~org~ function is here provided to ease parameters extraction.
 
@@ -1250,37 +1271,49 @@ Try using the ILP solver to the initial dataset.
 
 #+BEGIN_SRC python :noweb yes :var params=extract(DSLAM_params) :var graph_path=flatten(graph_path) :tangle scripts/aachen_net/12_solver_ILP_DSLAM.py
   <<solver_ILP>>
+  <<convert_properties_nx>>
 
   # load graph
   G = nx.read_graphml(graph_path + "_complete.graphml")
+  convert_properties_nx(G, float)
 
   # find optimal configuration
-  G_prime = ILP_solve(G, dict(params), 0.2)
+  G_prime = ILP_solve(G, dict(params), "logs/DSLAM_ILP.log", 0.02)
 
   # output to graphml file
+  convert_properties_nx(G_prime, str)
   nx.write_graphml(G_prime, graph_path + "_DSLAM_ILP.graphml")
   logger.info("Graph saved to file")
 #+END_SRC
 
 Plot detail of obtained graph.
 
-#+BEGIN_SRC python :noweb yes :var params=extract(DSLAM_params) :var graph_path=flatten(graph_path) :tangle scripts/aachen_net/14_plot_ILP_DSLAM.py
+#+BEGIN_SRC python :noweb yes :var graph_path=flatten(graph_path) :tangle scripts/aachen_net/13_plot_ILP_DSLAM.py
   <<imports_&_defaults>>
   <<projection>>
   <<graph_utils>>
-  <<plot_solution>>
+  <<plot_result>>
 
   G = load_graph(graph_path + "_DSLAM_ILP.graphml")
 
-  plot_optimization_result(G, method="ILP", projection=projection)
+  plot_result(G,
+              projection=projection,
+              title="Detail of ILP solution\n")
   plt.show()
 #+END_SRC
 
 *** Heuristic
 Run the heuristic and save its results as well.
 
-#+BEGIN_SRC python :noweb yes :var params=extract(DSLAM_params) :var graph_path=flatten(graph_path) :tangle scripts/aachen_net/13_solver_heuristic.py
+#+BEGIN_SRC python :noweb yes :var params=extract(DSLAM_params) :var graph_path=flatten(graph_path) :tangle scripts/aachen_net/14_solver_heuristic_DSLAM.py
   <<imports_&_defaults>>
+
+  # send log also to file
+  fh = logging.FileHandler('logs/DSLAM_heuristic.log', mode='w')
+  fh.setLevel(logging.INFO)
+  fh.setFormatter(formatter)
+  logger.addHandler(fh)
+
   <<projection>>
   <<graph_utils>>
   <<terminal_dist_cache>>
@@ -1291,31 +1324,141 @@ Run the heuristic and save its results as well.
 
   # load graph
   G = load_graph(graph_path + "_complete.graphml")
+  convert_properties(G, float)
+
+  for key, value in params:
+      logger.info("{}={}".format(key, value))
 
   # find optimal configuration
-  G_prime = heuristic_solve(G, dict(params))
+  params = dict(params)
+  params['discovery_dist'] = 200
+  G_prime = heuristic_solve(G, params)
 
   # output to graphml file
-  G.save(graph_path + "_DSLAM_heuristic.graphml")
+  convert_properties(G_prime, str)
+  G_prime.save(graph_path + "_DSLAM_heuristic.graphml")
 #+END_SRC
 
 Plot detail of obtained graph.
 
-#+BEGIN_SRC python :noweb yes :var params=extract(DSLAM_params) :var graph_path=flatten(graph_path) :tangle scripts/aachen_net/15_plot_heuristic_DSLAM.py
+#+BEGIN_SRC python :noweb yes :var graph_path=flatten(graph_path) :tangle scripts/aachen_net/15_plot_heuristic_DSLAM.py
   <<imports_&_defaults>>
   <<projection>>
   <<graph_utils>>
-  <<plot_solution>>
+  <<plot_result>>
   <<min_path_tree>>
 
   G = load_graph(graph_path + "_DSLAM_heuristic.graphml")
+  convert_properties(G, float)
 
-  plot_optimization_result(G,
-                           method="heuristic",
-                           projection=projection,
-                           params=dict(params), cut=False)
+  plot_result(G,
+              projection=projection,
+              title="Detail of heuristic solution\n")
   plt.show()
 #+END_SRC
+
+** Second level routers positioning
+Each 2nd level router is estimated to cost roughly 15.000€, and lump cost for
+connecting it to the mainframe doubles its price.
+Distance $d_M$ is set to a very high value, since in this case it is not relevant.
+
+#+NAME: 2router_params
+| $n_M$ [unit]   |   400 |
+| $d_M$ [m]      | 150000 |
+| $c_r$ [€/unit] | 75000 |
+| $c_f$ [€/m]    |     3 |
+| $c_e$ [€/m]    |   100 |
+
+*** ILP
+#+BEGIN_SRC python :noweb yes :var params=extract(2router_params) :var graph_path=flatten(graph_path) :tangle scripts/aachen_net/16_solver_ILP_2router.py
+  <<solver_ILP>>
+  <<convert_properties_nx>>
+
+  # load graph
+  G = nx.read_graphml(graph_path + "_DSLAM_heuristic.graphml")
+  convert_properties_nx(G, float)
+
+  # find optimal configuration
+  G_prime = ILP_solve(G, dict(params), "logs/2router_ILP.log", 0.02)
+
+  # output to graphml file
+  convert_properties_nx(G_prime, str)
+  nx.write_graphml(G_prime, graph_path + "_2router_ILP.graphml")
+  logger.info("Graph saved to file")
+#+END_SRC
+
+Plot detail of obtained graph.
+
+#+BEGIN_SRC python :noweb yes :var graph_path=flatten(graph_path) :tangle scripts/aachen_net/17_plot_ILP_2router.py
+  <<imports_&_defaults>>
+  <<projection>>
+  <<graph_utils>>
+  <<plot_result>>
+
+  G = load_graph(graph_path + "_2router_ILP.graphml")
+  convert_properties(G, float)
+
+  plot_result(G,
+              projection=projection,
+              title="Detail of ILP solution\n", cut=False)
+  plt.show()
+#+END_SRC
+
+*** Heuristic
+Run the heuristic and save its results as well.
+
+#+BEGIN_SRC python :noweb yes :var params=extract(2router_params) :var graph_path=flatten(graph_path) :tangle scripts/aachen_net/18_solver_heuristic_2router.py
+  <<imports_&_defaults>>
+
+  # send log also to file
+  fh = logging.FileHandler('logs/2router_heuristic.log', mode='w')
+  fh.setLevel(logging.INFO)
+  fh.setFormatter(formatter)
+  logger.addHandler(fh)
+
+  <<projection>>
+  <<graph_utils>>
+  <<terminal_dist_cache>>
+  <<min_path_tree>>
+  <<solver_heuristic>>
+
+  np.warnings.filterwarnings('ignore')
+
+  # load graph
+  G = load_graph(graph_path + "_DSLAM_heuristic.graphml")
+  convert_properties(G, float)
+
+  for key, value in params:
+      logger.info("{}={}".format(key, value))
+
+  # find optimal configuration
+  params = dict(params)
+  params['discovery_dist'] = 400
+  G_prime = heuristic_solve(G, params)
+
+  # output to graphml file
+  convert_properties(G_prime, str)
+  G_prime.save(graph_path + "_2router_heuristic.graphml")
+#+END_SRC
+
+Plot detail of obtained graph.
+
+#+BEGIN_SRC python :noweb yes :var graph_path=flatten(graph_path) :tangle scripts/aachen_net/19_plot_heuristic_2router.py
+  <<imports_&_defaults>>
+  <<projection>>
+  <<graph_utils>>
+  <<plot_result>>
+  <<min_path_tree>>
+
+  G = load_graph(graph_path + "_2router_heuristic.graphml")
+  convert_properties(G, float)
+
+  plot_result(G,
+              projection=projection,
+              title="Detail of heuristic solution\n", cut=False)
+  plt.show()
+#+END_SRC
+
 * COMMENT Local variables
 # Local Variables:
 # org-confirm-babel-evaluate: nil

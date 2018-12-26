@@ -227,7 +227,9 @@ Convert ~networkz~ graphs into ~graph_tool~ ones. Adapted from [[https://gist.gi
       ## collect nodes info
       nodes_df = gpd.GeoDataFrame()
       for key, property_map in G.vertex_properties.items():
-          nodes_df[key] = list(G.vertex_properties[key])
+          property_map = G.vertex_properties[key]
+          nodes_df[key] = np.asarray(list(property_map),
+                                     dtype=property_map.python_value_type())
 
       nodes_df['geometry'] = nodes_df.apply(
           lambda row: Point(row[lon_label], row[lat_label]), axis=1
@@ -241,7 +243,9 @@ Convert ~networkz~ graphs into ~graph_tool~ ones. Adapted from [[https://gist.gi
       ## collect edges info
       edges_df = gpd.GeoDataFrame()
       for key, property_map in G.edge_properties.items():
-          edges_df[key] = list(G.edge_properties[key])
+          property_map = G.edge_properties[key]
+          edges_df[key] = np.asarray(list(property_map),
+                                     dtype=property_map.python_value_type())
 
       # save which source and target node_id
       if len(edges_df) > 0:
@@ -316,12 +320,61 @@ Plot a ~networkx~ graph in a geographical map, plus various utilities.
       plt.axis('off')
 #+END_SRC
 
+#+NAME: convert_properties_nx
+#+BEGIN_SRC python
+  def convert_properties_nx(G, out_format, vp=['lon', 'lat'], ep=['length']):
+      for _, data in G.nodes(data=True):
+          for prop in vp:
+              data[prop] = out_format(data[prop])
+
+      for _, _, data in G.edges(data=True):
+          for prop in ep:
+              data[prop] = out_format(data[prop])
+#+END_SRC
+
+#+NAME: convert_properties
+#+BEGIN_SRC python
+  def convert_properties(G, out_format, vp=['lon', 'lat'], ep=['length']):
+      if isinstance(G, nx.DiGraph) or isinstance(G, nx.Graph):
+          convert_properties_nx(G, out_format, vp, ep)
+
+      if out_format == str:
+          gt_format = 'string'
+      elif out_format == float:
+          gt_format = 'double'
+      else:
+          raise ValueError("Invalid format")
+
+      if isinstance(G, gt.Graph):
+          for prop in vp:
+              # create new map
+              new_prop = G.new_vertex_property(gt_format)
+
+              for v in G.vertices():
+                  new_prop[v] = out_format(G.vp[prop][v])
+
+              del G.vp[prop]
+              G.vp[prop] = new_prop
+
+          for prop in ep:
+              # create new map
+              new_prop = G.new_edge_property(gt_format)
+
+              for e in G.edges():
+                  new_prop[e] = out_format(G.ep[prop][e])
+
+              del G.ep[prop]
+              G.ep[prop] = new_prop
+#+END_SRC
+
 #+NAME: graph_utils
 #+BEGIN_SRC python :noweb yes
   <<distance_utilities>>
   <<networkx_to_graph_tool>>
   <<graph_to_geopandas>>
   <<graph_plot>>
+  <<convert_properties_nx>>
+  <<convert_properties>>
 #+END_SRC
 
 * Datasets reading routines
