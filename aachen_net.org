@@ -1254,7 +1254,7 @@ See [[https://www.itscosts.its.dot.gov][here]] for pricing. TODO cite as a sourc
 #+NAME: DSLAM_params
 | $n_M$ [unit]   |    50 |
 | $d_M$ [m]      |  1500 |
-| $c_r$ [€/unit] | 21000 |
+| $c_r$ [€/unit] | 31000 |
 | $c_f$ [€/m]    |     3 |
 | $c_e$ [€/m]    |   100 |
 
@@ -1365,7 +1365,7 @@ Distance $d_M$ is set to a very high value, since in this case it is not relevan
 #+NAME: 2router_params
 | $n_M$ [unit]   |   400 |
 | $d_M$ [m]      | 150000 |
-| $c_r$ [€/unit] | 75000 |
+| $c_r$ [€/unit] | 100000 |
 | $c_f$ [€/m]    |     3 |
 | $c_e$ [€/m]    |   100 |
 
