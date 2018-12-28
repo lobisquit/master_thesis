@@ -938,9 +938,15 @@ measuring its cost for each node of the cluster as root.
 #+NAME: min_path_tree
 #+BEGIN_SRC python
   paths = {}
+
+  def _order(i, j):
+      return tuple(sorted([i, j]))
+
   def compute_path(G, i, j):
-      if (i, j) in paths:
-          return paths[(i, j)]
+      global paths
+
+      if _order(i, j) in paths:
+          return paths[_order(i, j)]
 
       sp_edges = shortest_path(G, i, j)[1]
       ids = [G.edge_index[e] for e in sp_edges]
@@ -952,9 +958,9 @@ measuring its cost for each node of the cluster as root.
       edge_count = np.zeros(G.num_edges(), dtype=np.int)
       mask[ids] = 1
 
-      paths[i, j] = (mask, edge_count)
+      paths[_order(i, j)] = (mask, edge_count)
 
-      return paths[i, j]
+      return (mask, edge_count)
 
   def get_min_path_tree(G, vertex_dist, cluster_nodes, is_terminal, params, fast_mode=False):
       # compute pairwise path for each couple of nodes in the cluster
@@ -1073,6 +1079,8 @@ Merge has to guarantee that
       return sub_root_cost + cable_cost + excavation_cost
 
   def heuristic_solve(G, params):
+      global paths
+
       if isinstance(G, nx.DiGraph) or isinstance(G, nx.Graph):
           G = nx2gt(G)
 
@@ -1131,8 +1139,9 @@ Merge has to guarantee that
                                               is_terminal,
                                               params)
 
-              logger.info("Money {:.2f}M€ n_cluster {}".format(total_cost/1e6,
-                                                               len(set(clusters))))
+              logger.info("Money {:.2f}M€ n_cluster {} cache_size {}".format(total_cost/1e6,
+                                                                             len(set(clusters)),
+                                                                             len(paths)))
 
               # stop if the found solution is no better than the previous one
               if total_cost > previous_total_cost:
