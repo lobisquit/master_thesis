@@ -942,11 +942,12 @@ measuring its cost for each node of the cluster as root.
   def _order(i, j):
       return tuple(sorted([i, j]))
 
-  def compute_path(G, i, j):
+  def compute_path(G, i, j, enable_cache=False):
       global paths
 
-      if _order(i, j) in paths:
-          return paths[_order(i, j)]
+      if enable_cache:
+          if _order(i, j) in paths:
+              return paths[_order(i, j)]
 
       sp_edges = shortest_path(G, i, j)[1]
       ids = [G.edge_index[e] for e in sp_edges]
@@ -958,11 +959,12 @@ measuring its cost for each node of the cluster as root.
       edge_count = np.zeros(G.num_edges(), dtype=np.int)
       mask[ids] = 1
 
-      paths[_order(i, j)] = (mask, edge_count)
+      if enable_cache:
+          paths[_order(i, j)] = (mask, edge_count)
 
       return (mask, edge_count)
 
-  def get_min_path_tree(G, vertex_dist, cluster_nodes, is_terminal, params, fast_mode=False):
+  def get_min_path_tree(G, vertex_dist, cluster_nodes, is_terminal, params, fast_mode=False, enable_path_cache=True):
       # compute pairwise path for each couple of nodes in the cluster
       # and remove duplicate edges
       best_road_length = float('inf')
@@ -995,7 +997,8 @@ measuring its cost for each node of the cluster as root.
           for node in cluster_nodes:
               path_edges, edge_count = compute_path(G,
                                                     G.vertex(root),
-                                                    G.vertex(node))
+                                                    G.vertex(node),
+                                                    enable_cache=enable_path_cache)
 
               # a cable has to be placed per each customer
               cable_edge_counts += G.vp['n_lines'][G.vertex(node)] * edge_count
@@ -1068,7 +1071,8 @@ Merge has to guarantee that
                                                                cluster_nodes,
                                                                is_terminal,
                                                                params,
-                                                               fast_mode=True)
+                                                               fast_mode=True,
+                                                               enable_path_cache=True)
 
           total_road_length += road_length
           total_cable_length += cable_length
@@ -1184,7 +1188,6 @@ Merge has to guarantee that
           disable_link(clusters, min_cluster_dist, i, j)
 
       # save results in the graph
-
       # create maps if needed
       G.vp['is_subroot'] = G.new_vertex_property("bool")
       G.vp['active']     = G.new_vertex_property("bool")
@@ -1202,7 +1205,8 @@ Merge has to guarantee that
                                                      vertex_dist,
                                                      cluster_nodes,
                                                      is_terminal, params,
-                                                     fast_mode=False)
+                                                     fast_mode=False,
+                                                     enable_path_cache=False)
 
           # root may also be (in non-fast mode) a non-terminal, so its n_lines
           # would be zero: better set it
@@ -1442,7 +1446,7 @@ Run the heuristic and save its results as well.
 
   # find optimal configuration
   params = dict(params)
-  params['discovery_dist'] = 400
+  params['discovery_dist'] = 200
   G_prime = heuristic_solve(G, params)
 
   # output to graphml file
