@@ -289,7 +289,11 @@ Plot a ~networkx~ graph in a geographical map, plus various utilities.
       nodes_df, edges_df = graph_to_geopandas(G, lon_label, lat_label, projection)
       plot_geopandas_graph(nodes_df, edges_df, ax, figsize, title)
 
-  def plot_geopandas_graph(nodes_df, edges_df, ax=None, figsize=(6, 6), title=None, projection=None):
+  def plot_geopandas_graph(nodes_df, edges_df, ax=None,
+                                               figsize=(6, 6),
+                                               title=None,
+                                               projection=None,
+                                               root_markersize=2):
       ## plot everything
       if ax is None:
           fig = plt.figure(figsize=figsize, frameon=False)
@@ -307,7 +311,7 @@ Plot a ~networkx~ graph in a geographical map, plus various utilities.
 
       if 'is_subroot' in nodes_df.columns:
           nodes_df[nodes_df['is_subroot']].plot(ax=ax,
-                                                markersize=2,
+                                                markersize=root_markersize,
                                                 color='red',
                                                 zorder=3)
 

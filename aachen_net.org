@@ -1228,7 +1228,7 @@ Adaptable to both ILP and heuristic results.
 
 #+NAME: plot_result
 #+BEGIN_SRC python
-  def plot_result(G, projection=None, cut=True, title=None, ax=None):
+  def plot_result(G, projection=None, cut=True, title=None, ax=None, root_markersize=2):
       # convert to graph_tool if necessary
       if isinstance(G, nx.DiGraph) or isinstance(G, nx.Graph):
           G = nx2gt(G)
@@ -1243,7 +1243,8 @@ Adaptable to both ILP and heuristic results.
       plot_geopandas_graph(nodes_df[nodes_df['active']],
                            edges_df[edges_df['active']],
                            title=title,
-                           ax=ax)
+                           ax=ax,
+                           root_markersize=root_markersize)
 
       edges_df.plot(color='#b2b2b2', zorder=-1, ax=ax)
 
@@ -1413,7 +1414,7 @@ Plot detail of obtained graph.
 
   plot_result(G,
               projection=projection,
-              title="Detail of ILP solution\n", cut=False)
+              title="Detail of ILP solution\n")
   plt.show()
 #+END_SRC
 
@@ -1446,7 +1447,7 @@ Run the heuristic and save its results as well.
 
   # find optimal configuration
   params = dict(params)
-  params['discovery_dist'] = 200
+  params['discovery_dist'] = 400
   G_prime = heuristic_solve(G, params)
 
   # output to graphml file
@@ -1468,7 +1469,8 @@ Plot detail of obtained graph.
 
   plot_result(G,
               projection=projection,
-              title="Detail of heuristic solution\n", cut=False)
+              title="Detail of heuristic solution\n",
+              root_markersize=20)
   plt.show()
 #+END_SRC
 
