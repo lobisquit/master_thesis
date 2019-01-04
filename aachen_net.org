@@ -1474,6 +1474,110 @@ Plot detail of obtained graph.
   plt.show()
 #+END_SRC
 
+** Mainframe positioning
+Each 2nd level router is estimated to cost roughly 15.000€, and lump cost for
+connecting it to the mainframe doubles its price.
+Distance $d_M$ is set to a very high value, since in this case it is not relevant.
+
+#+NAME: mainframe_params
+| $n_M$ [unit]   | 100000000000 |
+| $d_M$ [m]      | 100000000000 |
+| $c_r$ [€/unit] |            0 |
+| $c_f$ [€/m]    |            3 |
+| $c_e$ [€/m]    |          100 |
+
+*** ILP
+#+BEGIN_SRC python :noweb yes :var params=extract(mainframe_params) :var graph_path=flatten(graph_path) :tangle scripts/aachen_net/16_solver_ILP_mainframe.py
+  <<solver_ILP>>
+  <<convert_properties_nx>>
+
+  # load graph
+  G = nx.read_graphml(graph_path + "_DSLAM_heuristic.graphml")
+  convert_properties_nx(G, float)
+
+  # find optimal configuration
+  G_prime = ILP_solve(G, dict(params), "logs/mainframe_ILP.log", 0.02)
+
+  # output to graphml file
+  convert_properties_nx(G_prime, str)
+  nx.write_graphml(G_prime, graph_path + "_mainframe_ILP.graphml")
+  logger.info("Graph saved to file")
+#+END_SRC
+
+Plot detail of obtained graph.
+
+#+BEGIN_SRC python :noweb yes :var graph_path=flatten(graph_path) :tangle scripts/aachen_net/17_plot_ILP_mainframe.py
+  <<imports_&_defaults>>
+  <<projection>>
+  <<graph_utils>>
+  <<plot_result>>
+
+  G = load_graph(graph_path + "_mainframe_ILP.graphml")
+  convert_properties(G, float)
+
+  plot_result(G,
+              projection=projection,
+              title="Detail of ILP solution\n")
+  plt.show()
+#+END_SRC
+
+*** Heuristic
+Run the heuristic and save its results as well.
+
+#+BEGIN_SRC python :noweb yes :var params=extract(mainframe_params) :var graph_path=flatten(graph_path) :tangle scripts/aachen_net/18_solver_heuristic_mainframe.py
+  <<imports_&_defaults>>
+
+  # send log also to file
+  fh = logging.FileHandler('logs/mainframe_heuristic.log', mode='w')
+  fh.setLevel(logging.INFO)
+  fh.setFormatter(formatter)
+  logger.addHandler(fh)
+
+  <<projection>>
+  <<graph_utils>>
+  <<terminal_dist_cache>>
+  <<min_path_tree>>
+  <<solver_heuristic>>
+
+  np.warnings.filterwarnings('ignore')
+
+  # load graph
+  G = load_graph(graph_path + "_DSLAM_heuristic.graphml")
+  convert_properties(G, float)
+
+  for key, value in params:
+      logger.info("{}={}".format(key, value))
+
+  # find optimal configuration
+  params = dict(params)
+  params['discovery_dist'] = 400
+  G_prime = heuristic_solve(G, params)
+
+  # output to graphml file
+  convert_properties(G_prime, str)
+  G_prime.save(graph_path + "_mainframe_heuristic.graphml")
+#+END_SRC
+
+Plot detail of obtained graph.
+
+#+BEGIN_SRC python :noweb yes :var graph_path=flatten(graph_path) :tangle scripts/aachen_net/19_plot_heuristic_mainframe.py
+  <<imports_&_defaults>>
+  <<projection>>
+  <<graph_utils>>
+  <<plot_result>>
+  <<min_path_tree>>
+
+  G = load_graph(graph_path + "_mainframe_heuristic.graphml")
+  convert_properties(G, float)
+
+  plot_result(G,
+              projection=projection,
+              title="Detail of heuristic solution\n",
+              root_markersize=20)
+  plt.show()
+#+END_SRC
+
+
 * COMMENT Local variables
 # Local Variables:
 # org-confirm-babel-evaluate: nil
