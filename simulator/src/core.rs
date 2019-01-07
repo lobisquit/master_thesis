@@ -3,8 +3,29 @@ use crate::counters::*;
 use std::cmp::Ordering;
 use std::sync::atomic::Ordering as AtomicOrdering;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct FiniteF32(f32);
+
+#[derive(Debug, Eq, PartialEq, PartialOrd, Ord, Clone, Copy)]
+pub struct NodeId(usize);
+
+impl Into<usize> for &NodeId {
+    fn into(self) -> usize {
+        self.0
+    }
+}
+
+impl Into<NodeId> for usize {
+    fn into(self) -> NodeId {
+        NodeId(self)
+    }
+}
+
+impl Default for NodeId {
+    fn default() -> NodeId {
+        NodeId( LAST_NODE_ID.fetch_add(1, AtomicOrdering::SeqCst) )
+    }
+}
 
 impl FiniteF32 {
     pub fn new(number: f32) -> Result<FiniteF32, ()> {
@@ -45,11 +66,11 @@ impl PartialOrd for FiniteF32 {
     }
 }
 
-#[derive(Debug, Eq, PartialEq, PartialOrd, Ord)]
+#[derive(Debug, Eq, PartialEq, PartialOrd, Ord, Clone)]
 pub enum Message {
     // data messages
-    DataPacket { id: usize, size: u64, source: usize },
-    GeneratePacket,
+    DataPacket { id: usize, size: u64, source: NodeId },
+    GeneratePacket(bool),
     TxPacket
 
     // control messages
@@ -59,7 +80,7 @@ pub enum Message {
 }
 
 impl Message {
-    pub fn new_packet(size: u64, source: usize) -> Message {
+    pub fn new_packet(size: u64, source: NodeId) -> Message {
         Message::DataPacket {
             id: LAST_PKT_ID.fetch_add(1, AtomicOrdering::SeqCst),
             size: size,
@@ -68,15 +89,15 @@ impl Message {
     }
 }
 
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Debug, Eq, PartialEq, Clone)]
 pub struct Event {
     time: FiniteF32,
     msg: Message,
-    dest: usize
+    dest: NodeId
 }
 
 impl Event {
-    pub fn new(time: f32, msg: Message, dest: usize) -> Result<Event, ()> {
+    pub fn new(time: f32, msg: Message, dest: NodeId) -> Result<Event, ()> {
         Ok(Event { time: FiniteF32::new(time)?, msg: msg, dest: dest })
     }
 }
@@ -95,5 +116,6 @@ impl PartialOrd for Event {
 
 pub trait Node {
     fn process_message(&mut self, message: Message, current_time: f32) -> Vec<Event>;
-    fn get_id(&self) -> usize;
+
+    fn get_id(&self) -> NodeId;
 }

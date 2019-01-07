@@ -1,9 +1,12 @@
 use crate::core::*;
 use crate::Message::*;
 
-#[derive(Debug)]
+#[derive(Debug, Builder)]
+#[builder(setter(into))]
 pub struct SimpleSink {
-    id: usize,
+    #[builder(setter(skip))]
+    id: NodeId,
+
     total_packet_size: u64
 }
 
@@ -12,7 +15,7 @@ impl Node for SimpleSink {
         debug!("Node {:?} received message {:?} at time {}", self, message, current_time);
 
         match message {
-            DataPacket { id: _, size, source: _ } => {
+            DataPacket { size, .. } => {
                 self.total_packet_size += size;
             },
 
@@ -23,7 +26,7 @@ impl Node for SimpleSink {
         vec![]
     }
 
-    fn get_id(&self) -> usize {
+    fn get_id(&self) -> NodeId {
         self.id
     }
 }

@@ -3,23 +3,35 @@ use std::collections::VecDeque;
 use crate::Message::*;
 /// see here for terminology: https://www.nsnam.org/docs/models/html/tbf.html
 
-#[derive(Debug)]
+#[derive(Debug, Builder)]
+#[builder(setter(into))]
 pub struct TokenBucketQueue {
-    node_id: usize,
-    dest_id: usize,
+    #[builder(setter(skip))]
+    node_id: NodeId,
+    dest_id: NodeId,
 
+    #[builder(setter(skip))]
     queue: VecDeque<Message>,
     max_queue: usize,
 
-    // allows for half tokens (for example when the event happens during regeneration)
+    #[builder(default = "self.default_tokens()?")]
     tokens: f32,
-    last_update_time: f32,
     max_tokens: f32,
 
-    conn_speed: f32,
+    #[builder(setter(skip))]
+    last_update_time: f32,
 
-    // transmission speed under normal conditions (data rate = tx rate)
+    conn_speed: f32,
     token_rate: f32
+}
+
+impl TokenBucketQueueBuilder {
+    // set to maximum value
+    fn default_tokens(&self) -> Result<f32, String> {
+        let max_tokens = self.max_tokens.ok_or("Max tokens not set")?;
+
+        return Ok(max_tokens);
+    }
 }
 
 impl TokenBucketQueue {
@@ -68,7 +80,7 @@ impl Node for TokenBucketQueue {
                     vec![
                         Event::new(current_time + pkt_delay,
                                   TxPacket,
-                                  self.node_id).unwrap()
+                                  self.dest_id).unwrap()
                     ]
                 }
             },
@@ -103,7 +115,7 @@ impl Node for TokenBucketQueue {
         }
     }
 
-    fn get_id(&self) -> usize {
+    fn get_id(&self) -> NodeId {
         self.node_id
     }
 }
