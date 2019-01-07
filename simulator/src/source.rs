@@ -11,6 +11,8 @@ pub struct DeterministicSource {
 
 impl Node for DeterministicSource {
     fn process_message(&mut self, message: Message, current_time: f32) -> Vec<Event> {
+        debug!("Node {:?} received message {:?} at time {}", self, message, current_time);
+
         match message {
             GeneratePacket => vec![
                 // shedule next packet transmission

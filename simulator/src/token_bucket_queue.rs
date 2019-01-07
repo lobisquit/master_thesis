@@ -46,6 +46,8 @@ impl TokenBucketQueue {
 
 impl Node for TokenBucketQueue {
     fn process_message(&mut self, message: Message, current_time: f32) -> Vec<Event> {
+        debug!("Node {:?} received message {:?} at time {}", self, message, current_time);
+
         // new event: time to update the tokens
         self.update_tokens(current_time);
 
