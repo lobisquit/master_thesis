@@ -1,13 +1,20 @@
 use crate::counters::*;
 
 use std::cmp::Ordering;
+use std::fmt::Debug;
 use std::sync::atomic::Ordering as AtomicOrdering;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub struct FiniteF32(f32);
 
-#[derive(Debug, Eq, PartialEq, PartialOrd, Ord, Clone, Copy)]
-pub struct NodeId(usize);
+impl Into<f32> for FiniteF32 {
+    fn into(self) -> f32 {
+        self.0
+    }
+}
+
+#[derive(Debug, Eq, PartialEq, PartialOrd, Ord, Clone, Copy, Hash)]
+pub struct NodeId(pub usize);
 
 impl Into<usize> for &NodeId {
     fn into(self) -> usize {
@@ -70,8 +77,11 @@ impl PartialOrd for FiniteF32 {
 pub enum Message {
     // data messages
     DataPacket { id: usize, size: u64, source: NodeId },
-    GeneratePacket(bool),
-    TxPacket
+    TxPacket,
+
+    GeneratePacket,
+    StartTx,
+    StopTx
 
     // control messages
     // ParamRequest  { param: String },
@@ -91,9 +101,9 @@ impl Message {
 
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub struct Event {
-    time: FiniteF32,
-    msg: Message,
-    dest: NodeId
+    pub time: FiniteF32,
+    pub msg: Message,
+    pub dest: NodeId
 }
 
 impl Event {
@@ -114,7 +124,7 @@ impl PartialOrd for Event {
     }
 }
 
-pub trait Node {
+pub trait Node: Debug {
     fn process_message(&mut self, message: Message, current_time: f32) -> Vec<Event>;
 
     fn get_id(&self) -> NodeId;

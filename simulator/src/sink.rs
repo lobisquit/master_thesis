@@ -6,7 +6,7 @@ use crate::Message::*;
 pub struct SimpleSink {
     #[builder(setter(skip))]
     id: NodeId,
-
+    #[builder(setter(skip))]
     total_packet_size: u64
 }
 

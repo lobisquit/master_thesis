@@ -7,6 +7,9 @@ pub struct DeterministicSource {
     #[builder(setter(skip))]
     id: NodeId,
 
+    #[builder(setter(skip))]
+    active: bool,
+
     delta_t: f32,
     dest_id: NodeId,
     packet_size: u64
@@ -17,21 +20,38 @@ impl Node for DeterministicSource {
         debug!("Node {:?} received message {:?} at time {}", self, message, current_time);
 
         match message {
-            GeneratePacket(go_on) => if go_on {
+            StartTx => {
+                self.active = true;
+
                 vec![
                     // shedule next packet transmission
-                    Event::new(current_time + self.delta_t,
-                              Message::GeneratePacket(go_on),
-                              self.id).unwrap(),
-
-                    // send packet to destination immediately
                     Event::new(current_time,
-                              Message::new_packet(self.packet_size, self.id),
-                              self.dest_id).unwrap(),
+                              Message::GeneratePacket,
+                              self.id).unwrap()
                 ]
-            }
-            else {
+            },
+            StopTx => {
+                self.active = false;
                 vec![]
+            },
+
+            GeneratePacket => {
+                if self.active {
+                    vec![
+                        // shedule next packet transmission
+                        Event::new(current_time + self.delta_t,
+                                   Message::GeneratePacket,
+                                   self.id).unwrap(),
+
+                        // send packet to destination immediately
+                        Event::new(current_time,
+                                   Message::new_packet(self.packet_size, self.id),
+                                   self.dest_id).unwrap(),
+                    ]
+                }
+                else {
+                    vec![]
+                }
             },
             _ => panic!("Wrong message type received in node {:?}: {:?}",
                        self.id, message)

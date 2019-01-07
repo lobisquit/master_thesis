@@ -52,7 +52,13 @@ impl TokenBucketQueue {
                 queue_size += pkt_size;
             }
         }
-        (queue_size as f32 - self.tokens) / self.token_rate
+
+        if self.tokens > queue_size as f32 {
+            0.
+        }
+        else {
+            (queue_size as f32 - self.tokens) / self.token_rate
+        }
     }
 }
 
@@ -80,7 +86,7 @@ impl Node for TokenBucketQueue {
                     vec![
                         Event::new(current_time + pkt_delay,
                                   TxPacket,
-                                  self.dest_id).unwrap()
+                                  self.node_id).unwrap()
                     ]
                 }
             },
