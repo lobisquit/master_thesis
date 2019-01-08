@@ -16,6 +16,7 @@ use self::sink::*;
 use self::token_bucket_queue::*;
 use std::collections::BinaryHeap;
 use std::collections::HashMap;
+use std::time::Instant;
 
 use env_logger::{Builder, Env};
 
@@ -46,7 +47,7 @@ fn main() {
                                Message::StartTx,
                                source.get_id()).unwrap();
 
-    let stop_event = Event::new(10.,
+    let stop_event = Event::new(100000.,
                                Message::StopTx,
                                source.get_id()).unwrap();
 
@@ -55,25 +56,30 @@ fn main() {
     println!("{:?}", source);
     println!("{:?}", tbq);
 
-    nodes.insert(sink.get_id().clone(), &mut sink);
-    nodes.insert(source.get_id().clone(), &mut source);
-    nodes.insert(tbq.get_id().clone(), &mut tbq);
+    nodes.insert(sink.get_id(),   &mut sink);
+    nodes.insert(source.get_id(), &mut source);
+    nodes.insert(tbq.get_id(),    &mut tbq);
 
     let mut event_queue: BinaryHeap<Event> = BinaryHeap::new();
     event_queue.push(fire_event);
     event_queue.push(stop_event);
 
+    let start = Instant::now();
+    let mut n_events = 0;
+
     while let Some(event) = event_queue.pop() {
-        println!("\nCurrent event: {:?}", event);
+        n_events += 1;
+
+        debug!("\nCurrent event: {:?}", event);
 
         let Event { time, msg, dest } = event;
 
         let destination = nodes.get_mut(&dest).unwrap();
         let new_events = destination.process_message(msg, time.into());
 
-        println!("New events:");
+        debug!("New events:");
         for event in &new_events {
-            println!("- {:?}", event);
+            debug!("- {:?}", event);
         }
 
         event_queue.extend(new_events);
@@ -83,4 +89,5 @@ fn main() {
         //     ::std::process::exit(1)
         // }
     }
+    println!("{:?}", start.elapsed() / n_events);
 }
