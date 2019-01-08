@@ -45,23 +45,18 @@ impl TokenBucketQueue {
     }
 
     fn next_pkt_delay(&self) -> f64 {
-        // tx time for packet already in the queue
-        let mut queue_size = 0;
-        for msg in &self.queue {
-            if let DataPacket { size: pkt_size, .. } = msg {
-                queue_size += pkt_size;
+        if let Some( DataPacket { size: pkt_size, .. } ) = self.queue.get(0) {
+            let proc_time = 1e-6;
+
+            if self.tokens > *pkt_size as f64 {
+                proc_time
+            }
+            else {
+                (*pkt_size as f64 - self.tokens) / self.token_rate + proc_time
             }
         }
-
-        println!("tokens {}, queue_size {}", self.tokens, queue_size);
-
-        let proc_time = 1e-6;
-
-        if self.tokens > queue_size as f64 {
-            proc_time
-        }
         else {
-            (queue_size as f64 - self.tokens) / self.token_rate + proc_time
+            panic!("No packet in the queue to compute delay of")
         }
     }
 }
@@ -74,24 +69,32 @@ impl Node for TokenBucketQueue {
         debug!("Node {:?} received message {:?} at time {}", self, message, current_time);
 
         match message {
-            DataPacket { .. } => {
+            DataPacket { size: pkt_size, .. } => {
                 // destroy packet if queue is full
                 if self.queue.len() > self.max_queue {
                     vec![]
                 }
                 else {
+                    if self.max_tokens < pkt_size as f64 {
+                        panic!("Packet {:?} does not fit the bucket of {:?}", message, self)
+                    }
+
                     // add packet to the queue
                     self.queue.push_back(message);
 
-                    let pkt_delay = self.next_pkt_delay();
+                    // if packet is the only one, schedule its tx
+                    if self.queue.len() == 1 {
+                        let pkt_delay = self.next_pkt_delay();
 
-                    // schedule reception of packet from destination at
-                    // appropriate time
-                    vec![
-                        Event::new(current_time + pkt_delay,
-                                  TxPacket,
-                                  self.node_id).unwrap()
-                    ]
+                        vec![
+                            Event::new(current_time + pkt_delay,
+                                      TxPacket,
+                                      self.node_id).unwrap()
+                        ]
+                    }
+                    else {
+                        vec![]
+                    }
                 }
             },
             TxPacket => {
@@ -102,7 +105,7 @@ impl Node for TokenBucketQueue {
 
                     // safety check
                     if self.tokens < pkt_size as f64 {
-                        panic!("Node {:?} does not have enough tokens to tx pkt{:?}", self, next_pkt);
+                        panic!("Node {:?} does not have enough tokens to tx pkt {:?}", self, next_pkt);
                     }
 
                     // pay the tokens required
@@ -110,11 +113,24 @@ impl Node for TokenBucketQueue {
 
                     // schedule reception after connection tx time
                     let tx_time = pkt_size as f64 / self.conn_speed;
-                    vec![
+
+                    let mut events = vec![
                         Event::new(current_time + tx_time,
-                                   next_pkt,
-                                   self.dest_id).unwrap()
-                    ]
+                                  next_pkt,
+                                  self.dest_id).unwrap()
+                    ];
+
+                    // schedule next packet tx if queue is not empty
+                    if self.queue.len() > 0 {
+                        let next_pkt_delay = self.next_pkt_delay();
+                        events.push(
+                            Event::new(current_time + next_pkt_delay,
+                                      TxPacket,
+                                      self.node_id).unwrap()
+                        )
+                    }
+
+                    events
                 }
                 else {
                     panic!("Invalid element in pkt queue of node {:?}: {:?}", self, next_pkt)
