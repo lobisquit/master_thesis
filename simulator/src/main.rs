@@ -23,21 +23,22 @@ fn main() {
     let environment = Env::default().default_filter_or("error");
     Builder::from_env(environment).init();
 
-
     let mut sink = SimpleSinkBuilder::default().build().unwrap();
 
     let mut tbq = TokenBucketQueueBuilder::default()
         .dest_id(sink.get_id())
         .max_queue(10 as usize)
         .max_tokens(10000.)
+        .tokens(1100.)
         .conn_speed(1200.)
-        .token_rate(1000.)
+        .token_rate(500.)
         .build().unwrap();
 
     let mut source = DeterministicSourceBuilder::default()
         .delta_t(1.)
         .dest_id(tbq.get_id())
         .packet_size(1000 as u64)
+        .conn_speed(1200.)
         .build()
         .unwrap();
 
@@ -45,7 +46,7 @@ fn main() {
                                Message::StartTx,
                                source.get_id()).unwrap();
 
-    let stop_event = Event::new(3.,
+    let stop_event = Event::new(10.,
                                Message::StopTx,
                                source.get_id()).unwrap();
 
@@ -63,28 +64,23 @@ fn main() {
     event_queue.push(stop_event);
 
     while let Some(event) = event_queue.pop() {
-        println!("\n\nCurrent event: {:?}", event);
+        println!("\nCurrent event: {:?}", event);
 
         let Event { time, msg, dest } = event;
-
-        // println!("{:?}", time);
 
         let destination = nodes.get_mut(&dest).unwrap();
         let new_events = destination.process_message(msg, time.into());
 
-        println!("\n\nNew events:");
+        println!("New events:");
         for event in &new_events {
-            println!("\n - {:?}", event);
+            println!("- {:?}", event);
         }
 
         event_queue.extend(new_events);
 
-        let t: f32 = time.into();
-        if t > 3. {
-            ::std::process::exit(1)
-        }
-        // println!("{:?}", event_queue);
+        // let t: f64 = time.into();
+        // if t > 3. {
+        //     ::std::process::exit(1)
+        // }
     }
-    // println!("{:?}", n);
-    // println!("{:?}", nu);
 }

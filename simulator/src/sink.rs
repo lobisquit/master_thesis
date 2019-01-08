@@ -11,7 +11,7 @@ pub struct SimpleSink {
 }
 
 impl Node for SimpleSink {
-    fn process_message(&mut self, message: Message, current_time: f32) -> Vec<Event> {
+    fn process_message(&mut self, message: Message, current_time: f64) -> Vec<Event> {
         debug!("Node {:?} received message {:?} at time {}", self, message, current_time);
 
         match message {

@@ -10,13 +10,15 @@ pub struct DeterministicSource {
     #[builder(setter(skip))]
     active: bool,
 
-    delta_t: f32,
+    delta_t: f64,
     dest_id: NodeId,
-    packet_size: u64
+    packet_size: u64,
+
+    conn_speed: f64
 }
 
 impl Node for DeterministicSource {
-    fn process_message(&mut self, message: Message, current_time: f32) -> Vec<Event> {
+    fn process_message(&mut self, message: Message, current_time: f64) -> Vec<Event> {
         debug!("Node {:?} received message {:?} at time {}", self, message, current_time);
 
         match message {
@@ -37,6 +39,8 @@ impl Node for DeterministicSource {
 
             GeneratePacket => {
                 if self.active {
+                    let tx_time = self.packet_size as f64 / self.conn_speed;
+
                     vec![
                         // shedule next packet transmission
                         Event::new(current_time + self.delta_t,
@@ -44,7 +48,7 @@ impl Node for DeterministicSource {
                                    self.id).unwrap(),
 
                         // send packet to destination immediately
-                        Event::new(current_time,
+                        Event::new(current_time + tx_time,
                                    Message::new_packet(self.packet_size, self.id),
                                    self.dest_id).unwrap(),
                     ]
