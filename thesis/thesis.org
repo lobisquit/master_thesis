@@ -128,7 +128,7 @@ LaTeX support for svg files sucks.
     \vspace{1cm}
     {\Large \textsl{Master degree in Telecommunication Engineering}} \\
     \vspace{1cm}
-    {\scshape\huge TODO: Title}
+    {\scshape\huge Traffic flow optimization \\[0.3em] for urban xDSL based access networks }
 
     \iftoggle{images_titlepage}{
       \vspace{1cm}
