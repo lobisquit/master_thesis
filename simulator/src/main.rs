@@ -24,7 +24,7 @@ fn main() {
     let environment = Env::default().default_filter_or("error");
     Builder::from_env(environment).init();
 
-    let mut sink = SimpleSinkBuilder::default().build().unwrap();
+    let mut sink = TrackingSinkBuilder::default().build().unwrap();
 
     let mut tbq = TokenBucketQueueBuilder::default()
         .dest_id(sink.get_id())

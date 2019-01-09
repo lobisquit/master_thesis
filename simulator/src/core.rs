@@ -78,6 +78,7 @@ pub enum Message {
     // data messages
     DataPacket { id: usize, size: u64, source: NodeId },
     TxPacket,
+    SuccessPacket { id: usize, size: u64 },
 
     GeneratePacket,
     StartTx,
