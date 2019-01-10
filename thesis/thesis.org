@@ -37,6 +37,28 @@
 #+latex_header_extra: \newacronym{qos}{QoS}{Quality of Service}
 #+latex_header_extra: \newacronym{ilp}{ILP}{Integer Linear Programming}
 
+#+LATEX_HEADER: \makeatletter
+#+LATEX_HEADER: \newenvironment{bigalgorithm}
+#+LATEX_HEADER:   {% \begin{bigalgorithm}
+#+LATEX_HEADER:    \begin{center}
+#+LATEX_HEADER:      \refstepcounter{algorithm}% New algorithm
+#+LATEX_HEADER:      \hrule height.8pt depth0pt \kern2pt% \@fs@pre for \@fs@ruled
+#+LATEX_HEADER:      \renewcommand{\caption}[2][\relax]{% Make a new \caption
+#+LATEX_HEADER:        {\raggedright\textbf{\ALG@name~\thealgorithm} ##2\par}%
+#+LATEX_HEADER:        \ifx\relax##1\relax % #1 is \relax
+#+LATEX_HEADER:          \addcontentsline{loa}{algorithm}{\protect\numberline{\thealgorithm}##2}%
+#+LATEX_HEADER:        \else % #1 is not \relax
+#+LATEX_HEADER:          \addcontentsline{loa}{algorithm}{\protect\numberline{\thealgorithm}##1}%
+#+LATEX_HEADER:        \fi
+#+LATEX_HEADER:        \kern2pt\hrule\kern2pt
+#+LATEX_HEADER:      }
+#+LATEX_HEADER:   }{% \end{bigalgorithm}
+#+LATEX_HEADER:      \kern4pt\hrule\relax% \@fs@post for \@fs@ruled
+#+LATEX_HEADER:    \end{center}
+#+LATEX_HEADER:   }
+#+LATEX_HEADER: \makeatother
+
+
 #+BEGIN_COMMENT
 PlantUML skin, reusable for all diagrams
 #+END_COMMENT
@@ -218,14 +240,16 @@ conjuction with the /Open Data Portal/ of the city of Aachen [fn:1]: the former
 provides buildings and roads positions, while the latter describes how
 population is distributed across the city districts.
 
-[fn:1: Please refer to http://daten.aachen.de for further information and licensing.]
+[fn:1] Please refer to http://daten.aachen.de for further information and licensing.
 
-This information can be visualized in the map in [[autoref:fig:aachen_city_graph]].
 
-#+LABEL: fig:aachen_city_graph
+This information can be visualized in the map of [[autoref:fig:aachen_city_map]].
+
+#+LABEL: fig:aachen_city_map
 #+CAPTION: Summary of all Aachen district information we will employ: building, roads positions and population distribution.
-#+RESULTS[ea0d941863a2f88dda8d4c477b78e3c1fdef18bc]: fig:network_tree
 [[file:../figures/aachen_citymap.png]]
+
+\bigbreak
 
 Due to the level of detail of these datasets, two assumptions are needed in
 order to extract a reasonable diagram for the access city network.
@@ -242,14 +266,17 @@ We have to take this strong hypothesis because of the level of details the
 OpenStreetMap dataset provides: information about the building use and its
 height is lacking in most entries.
 
-I consider these two suppositions acceptable, since we want to analyze how the
+I consider these two points acceptable, since we want to analyze how the
 access network of a city like Aachen behaves, not to replicate it in its
 details.
 
-This information is then condensed in an abstract graph, whose edges are the
-streets and vertices are the road crossing. The former were given the
-corresponding lane length, while the latter were assigned the supposed number of
-people living in the surrounding area.
+This information is then condensed in an abstract graph, with streets as edges
+and road crossing as vertices. The former were given corresponding lane length,
+while the latter were assigned the supposed number of people living in the
+surrounding area. \\
+The elements of obtained graph are too tiny to be distinguished in the main map,
+so [[autoref:fig:aachen_city_graph]] shows just a central area as a visual
+reference.
 
 #+LABEL: fig:aachen_city_graph
 #+CAPTION: City topology is converted into an abstract graph.
@@ -741,7 +768,6 @@ With this setup our network access configuration will simply be a direct tree, o
 #+ATTR_LATEX: :width \linewidth
 #+RESULTS[fe1eb5e3a44dd6ff6e0ccc2d64f3d36dd92b1d62]:
 [[file:../figures/ilp_graph_reduced.eps]]
-
 As customary in this type of optimization problems, the optimal solution will
 eventually be returned by the solver as the sequence of indicator variables
 $\{ x_e \}_{e \in A}$ where $x_e$ is equal to 1 only if the arc $e$ has been selected.
@@ -750,18 +776,6 @@ Because of the system requirements we also have to keep track of the distance
 $d_i$ of each node $i \in V \cup \{r\}$ from its root and the number of users $n_e$ served
 by each link in $A$, ensuring they don't exceed their limits.
 
-# To make notation clearer, we define the functions $\delta^+, \, \delta^-: V
-# \rightarrow \mathbb{P}(A)$ associating each node with the out-going and in-going
-# edges respectively.
-
-# \begin{equation}
-#   \begin{split}
-#     \delta^+(j) &= \left\{ (j,\,k) \in A \right\} \\
-#     \delta^-(j) &= \left\{ (i,\,j) \in A \right\} \\
-#   \end{split}
-# \end{equation}
-
-\bigbreak
 Given this setup, our optimization problem can be written as
 
 \begin{align}
@@ -805,6 +819,17 @@ Given this setup, our optimization problem can be written as
   & \forall j \in V \cup \{r\}, \, d_j \ge 0
     \label{eq:var_domain_2}
 \end{align}
+
+where, to clear the notation, we defined functions $\delta^+, \, \delta^-: V
+\rightarrow \mathbb{P}(A)$ associating each node with the out-going and in-going
+edges respectively.
+
+\begin{equation}
+  \begin{split}
+    \delta^+(j) &= \left\{ (j,\,k) \in A \right\} \\
+    \delta^-(j) &= \left\{ (i,\,j) \in A \right\} \\
+  \end{split}
+\end{equation}
 
 The problem is set to minimize the objective function autoref:eq:obj_function
 that sums up the cost of copper and optical fiber lines, the roadworks cost for
@@ -861,9 +886,10 @@ merge increases the cost of the network.
 
 Pseudocode is available in [[autoref:lst:alg:heuristic]].
 
-\begin{algorithm}
+\begin{bigalgorithm}
+  \label{lst:alg:heuristic}
   \begin{algorithmic}
-    \caption{Heuristic solver}\label{lst:alg:heuristic}
+    \caption{Heuristic solver}
     \State /* \quad \textsc{init} phase \quad */
     \State $C=\emptyset$
     \State $\forall\, t \in T$ add singleton $\{t\}$ to $C$
@@ -900,7 +926,7 @@ Pseudocode is available in [[autoref:lst:alg:heuristic]].
     \State
     \State\Return $C$
   \end{algorithmic}
-\end{algorithm}
+\end{bigalgorithm}
 
 The cost of each sub-network is not evaluated on the best possible
 configuration, but instead goes for an sub-optimal one. \\
