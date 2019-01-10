@@ -8,14 +8,20 @@
 #+LaTeX_CLASS: book
 #+LATEX_HEADER: \usepackage{charter}
 #+LATEX_HEADER: \usepackage{subcaption}
+
 #+LATEX_HEADER: \usepackage{geometry}
 #+LATEX_HEADER: \usepackage{etoolbox}
 #+LATEX_HEADER: \usepackage{multirow}
 #+LATEX_HEADER: \usepackage{graphicx}
 #+LATEX_HEADER: \graphicspath{{../figures/}}
+
 #+LATEX_HEADER: \usepackage{mathtools}
 #+LaTeX_HEADER: \usepackage{booktabs}
 #+LaTeX_HEADER: \usepackage{amsmath}
+
+#+LaTeX_HEADER: \usepackage{algpseudocode}
+#+LaTeX_HEADER: \usepackage{algorithm}
+
 #+LaTeX_HEADER: \def\equationautorefname#1#2\null{(#2\null)}
 #+LATEX_HEADER: \providetoggle{images_titlepage}
 #+LATEX_HEADER: \settoggle{images_titlepage}{true}
@@ -436,7 +442,7 @@ constraints.
 
 To overcome this issue I moved to a different way of designing the topology.
 Instead of positioning all the nodes at once, the solver would place the leaves
-of the tree, meaning the [[acs:dslam][DSLAMs]], first and then move up to the higher-level
+of the tree, meaning the [[ac:dslam][DSLAM]]s, first and then move up to the higher-level
 elements. \\
 This is closer to what is done in practice, as each step is examined and
 evaluated according to criteria, such as soundness and future-proofing of the
@@ -531,6 +537,9 @@ simplified setting of autoref:fig:network_tree_simplified.
   c16 -[hidden] c17
   c17 -[hidden] c18
 #+END_SRC
+
+#+RESULTS[57895584675366485538bd7127a6d511605cf424]:
+[[file:../figures/network_tree_simplified.eps]]
 
 #+LABEL: fig:network_tree_simplified
 #+CAPTION: The second-level-routers are all condensed into the mainframe root in the first iteration.
@@ -837,6 +846,112 @@ Variable domains are eventually specified in autoref:eq:var_domain_1 and
 autoref:eq:var_domain_2.
 
 *** Heuristic algorithm
+The mathematical formulation given in the previous section is able to solve the
+problem effectively in small instances, i.e. sparse graphs with up to 100 nodes.
+When tested on our specific case, with 10.000 nodes and 20.000 edges, the solver
+cannot output the solution with a reasonable amount of time and resources.
+
+A heuristic program is then needed in order to have a definite network topology
+to optimize.
+
+Specifically I chose a greedy approach, inspired by hierarchical clustering
+techniques. Pseudocode is available in algorithm [[ref:lst:alg:heuristic]].
+
+\begin{algorithm}
+  \begin{algorithmic}
+    \caption{Heuristic solver}\label{lst:alg:heuristic}
+    \State /* \quad \textsc{init} phase \quad */
+    \State $C=\emptyset$
+    \State $\forall\, t \in T$ add singleton ${t}$ to $C$
+    \State mark all couples $C_i, C_j \in C^2$ as mergeable
+    \State cost = \Call{objective\_function}{$C$}
+    \State
+    \State stop = False
+    \Repeat
+    \State /* \quad \textsc{iteration} phase \quad */
+    \State pick $C_i$ and $C_j$ the two closest clusters in $C$
+    \State $d_{ij}$ = diameter of cluster $C_i \cup C_j$
+    \State $n_{ij}$ = number of users inside $C_i \cup C_j$
+    \State
+    \If {$d_{ij} < 2 \, d_M$ and $n_{ij} < n_M$}
+    \State $C^\prime = \{C_1, \ldots, C_i \cup C_j, \ldots \}$
+    \State current\_cost = \Call{objective\_function}{$C^\prime$}
+    \State
+    \State /* \quad \textsc{performance} stop condition \quad */
+    \If {current\_cost > cost}
+    \State stop = True
+    \Else
+    \State $C = C^\prime$
+    \EndIf
+    \State merge $C_i$ and $C_j$
+    \Else
+    \State mark the couple $C_i$ and $C_j$ as unmergeable
+    \EndIf
+    \State
+    \State /* \quad \textsc{exhaustion} stop condition \quad */
+    \If {$\nexists \, C_i, C_j \in C^2$ mergeable}
+    \State stop = True
+    \EndIf
+    \Until { stop = False }
+    \State
+    \State\Return $C$
+  \end{algorithmic}
+\end{algorithm}
+
+First, in the \textsc{init} phase, clusters are defined as set of a single
+terminal. Since no inspection has been performed yet, each pair of sets is
+still a viable candidate for merging into a bigger one.
+
+In each \textsc{iteration} the closest couple is considered, where cluster
+distance is defined as the distance between the two closest element: this choice
+promotes generation of small and more cohesive groups.
+
+In each \textsc{iteration} the union of the closest couple is evaluated in terms
+of diameter and number of users, to ensure the merge is possible given the
+previously mentioned domain constraints. \\
+Then the two sets are joined or marked as unmergeable, not to be considered
+again, in a greedy fashion.
+
+This procedure is repeated until all candidate couples are considered or the merge
+increases the cost function.
+
+The cost function chosen for the algorithm does not employs the best network
+configuration for each cluster, but instead goes for an sub-optimal one.
+
+This is done for computational feasability, as the Steiner-tree-like problem
+that the program is required to solve in order to connect all node of the each
+set to a common sub-root is yet again too expensive.
+
+As can be seen in algorithm ref:lst:alg:heuristic_obj, each node close enough to
+the cluster is evaluated to be the root of the corresponding spanning tree,
+which is built simply using the minimum paths between the current candidate and
+the terminals.
+
+\begin{algorithm}
+  \begin{algorithmic}
+    \caption{Approximated objective function}\label{lst:alg:heuristic_obj}
+    \Function{objective\_function}{$C$}
+    \State total\_cost = 0
+    \ForAll{$c \in C$}
+    \State best\_cost = $+\infty$
+    \ForAll{$v \in V$ close to $c$}
+    \State $T_v = \bigcup_{t \in C} \text{minimum path from } v \text{ to } t$
+
+    \State $\text{cost}_v = \text{cable cost of } T_v + \text{excavation cost of } T_v$
+    \If {$\text{cost}_v > \text{best\_cost}$ }
+    \State $\text{best\_cost} = \text{cost}_v$
+    \EndIf
+    \EndFor
+    \State total\_cost += best\_cost
+    \EndFor
+    \State \Return total\_cost
+    \EndFunction
+  \end{algorithmic}
+\end{algorithm}
+
+All this approximations, required for the algorithm to be fast enough for our
+case, will be proved to be good ones in the Results chapter.
+
 ** Flow balancing optimization
 TODO using machine learning to control TBFs
 
