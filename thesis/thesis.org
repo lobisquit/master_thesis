@@ -861,6 +861,11 @@ ILP results
   + analyze performance of found solution (bandwidth, ...)
   + consideration on actual used heuristics
 
+* Conclusion
+
+bibliographystyle:plain
+bibliography:biblio.bib
+
 * COMMENT Local variables
 # Local Variables:
 # org-latex-tables-booktabs: t
