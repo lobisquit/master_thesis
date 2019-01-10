@@ -5,7 +5,7 @@
 
 #+OPTIONS: toc:nil title:nil
 
-#+LaTeX_CLASS: book
+#+LaTeX_CLASS: article
 #+LATEX_HEADER: \usepackage{charter}
 #+LATEX_HEADER: \usepackage{subcaption}
 
@@ -29,7 +29,7 @@
 #+LATEX_HEADER: \settoggle{images_titlepage}{true}
 
 #+LaTeX_HEADER: \setlength{\parindent}{0cm}
-#+LATEX_HEADER: \setlength{\parskip}{0.2em}
+#+LATEX_HEADER: \setlength{\parskip}{0.25em}
 
 #+LATEX_HEADER: \usepackage{glossaries}
 #+LATEX_HEADER_EXTRA: \newacronym{pop}{PoP}{Point of Presence}
@@ -148,7 +148,6 @@ LaTeX support for svg files sucks.
 
 #+BEGIN_EXPORT latex
 \newgeometry{top=1in, bottom=1in, inner=1in, outer=1in}
-
 \begin{titlepage}
   {\Large University of Padova}
   \vspace{5mm}
@@ -166,9 +165,8 @@ LaTeX support for svg files sucks.
       \begin{figure}[h]
         \centering
         \includegraphics[height=5cm]{logo_unipd.pdf}
-        \vspace{1cm} \\
+        \vspace{0.5cm} \\
         \includegraphics[height=2cm]{logo_rwth.pdf}
-        \vspace{1cm}
       \end{figure}
     }
 
@@ -185,7 +183,7 @@ LaTeX support for svg files sucks.
   \end{tabular}
   \vspace{1cm}
 
-  \hfill{\large February 6, 2019} \vspace{3mm}
+  \hfill{\large February 6, 2019} \vspace{2mm}
 
   \hfill{\Large Academic year 2018-2019 \par}
 \end{titlepage}
@@ -890,7 +888,7 @@ Pseudocode is available in [[autoref:lst:alg:heuristic]].
   \label{lst:alg:heuristic}
   \begin{algorithmic}
     \caption{Heuristic solver}
-    \State /* \quad \textsc{init} phase \quad */
+    % \State /* \quad \textsc{init} phase \quad */
     \State $C=\emptyset$
     \State $\forall\, t \in T$ add singleton $\{t\}$ to $C$
     \State mark all couples $C_i, C_j \in C^2$ as mergeable
@@ -898,7 +896,7 @@ Pseudocode is available in [[autoref:lst:alg:heuristic]].
     \State
     \State stop = False
     \Repeat
-    \State /* \quad \textsc{iteration} phase \quad */
+    % \State /* \quad \textsc{iteration} phase \quad */
     \State pick $C_i$ and $C_j$ the two closest clusters in $C$
     \State $d_{ij}$ = diameter of cluster $C_i \cup C_j$
     \State $n_{ij}$ = number of users inside $C_i \cup C_j$
@@ -907,7 +905,7 @@ Pseudocode is available in [[autoref:lst:alg:heuristic]].
     \State $C^\prime = \{C_1, \ldots, C_i \cup C_j, \ldots \}$
     \State current\_cost = \Call{objective\_function}{$C^\prime$}
     \State
-    \State /* \quad \textsc{performance} stop condition \quad */
+    % \State /* \quad \textsc{performance} stop condition \quad */
     \If {current\_cost > cost}
     \State stop = True
     \Else
@@ -918,7 +916,7 @@ Pseudocode is available in [[autoref:lst:alg:heuristic]].
     \State mark the couple $C_i$ and $C_j$ as unmergeable
     \EndIf
     \State
-    \State /* \quad \textsc{exhaustion} stop condition \quad */
+    % \State /* \quad \textsc{exhaustion} stop condition \quad */
     \If {$\nexists \, C_i, C_j \in C^2$ mergeable}
     \State stop = True
     \EndIf
@@ -939,9 +937,10 @@ cluster is evaluated as a candidate root of the corresponding spanning tree. The
 network is then simply built joining the minimum paths between the best of those
 and the terminals of the set.
 
-\begin{algorithm}
+\begin{bigalgorithm}
+  \label{lst:alg:heuristic_obj}
   \begin{algorithmic}
-    \caption{Approximated objective function}\label{lst:alg:heuristic_obj}
+    \caption{Approximated objective function}
     \Function{objective\_function}{$C$}
     \State total\_cost = 0
     \ForAll{$c \in C$}
@@ -950,7 +949,7 @@ and the terminals of the set.
     \State $T_v = \bigcup_{t \in C} \text{minimum path from } v \text{ to } t$
 
     \State $\text{cost}_v = \text{cable cost of } T_v + \text{excavation cost of } T_v$
-    \If {$\text{cost}_v > \text{best\_cost}$ }
+    \If {$\text{cost}_v < \text{best\_cost}$ }
     \State $\text{best\_cost} = \text{cost}_v$
     \EndIf
     \EndFor
@@ -959,7 +958,7 @@ and the terminals of the set.
     \State \Return total\_cost
     \EndFunction
   \end{algorithmic}
-\end{algorithm}
+\end{bigalgorithm}
 
 In [[#results-network_design]] all this approximations, required for the algorithm
 to be fast enough for our case, will be proved to be good ones, close to the
