@@ -22,6 +22,7 @@
 #+LaTeX_HEADER: \usepackage{algpseudocode}
 #+LaTeX_HEADER: \usepackage{algorithm}
 
+#+LaTeX_HEADER: \allowdisplaybreaks
 #+LaTeX_HEADER: \def\equationautorefname#1#2\null{(#2\null)}
 #+LATEX_HEADER: \providetoggle{images_titlepage}
 #+LATEX_HEADER: \settoggle{images_titlepage}{true}
@@ -538,13 +539,10 @@ simplified setting of autoref:fig:network_tree_simplified.
   c17 -[hidden] c18
 #+END_SRC
 
-#+RESULTS[57895584675366485538bd7127a6d511605cf424]:
-[[file:../figures/network_tree_simplified.eps]]
-
 #+LABEL: fig:network_tree_simplified
 #+CAPTION: The second-level-routers are all condensed into the mainframe root in the first iteration.
-#+ATTR_LATEX: :height 3.5in
-#+RESULTS[57895584675366485538bd7127a6d511605cf424]: fig:network_tree_simplified
+#+ATTR_LATEX: :height 2.5in
+#+RESULTS[57895584675366485538bd7127a6d511605cf424]:
 [[file:../figures/network_tree_simplified.eps]]
 
 As apparent in the diagram the solver must now take into consideration the cost
