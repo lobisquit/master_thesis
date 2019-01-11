@@ -213,7 +213,13 @@ LaTeX support for svg files sucks.
 * State of the art
 
 * Methodology
-In order to optimize the network, we need a schematic of it => educated guess
+This section will discuss which theoretical framework and tools have been used
+throughout the analysis and the motivation behind them.
+
+As presented before, this thesis is divided into two main tasks: first the
+design part, where a plausible network for the city of Aachen is devised, and
+then the optimization part, where a self learning algorithm is written in
+order to tune the system.
 
 ** Geographical analysis
 #+BEGIN_SRC org :exports none
@@ -229,9 +235,9 @@ In order to optimize the network, we need a schematic of it => educated guess
     - population estimated based on district population, building area
 #+END_SRC
 
-Unfortunately, schematics for Aachen access network are not publicly avaiable,
+Unfortunately, schematics for Aachen access network are not publicly available,
 so we have to perform what it is called an /educated guess/, meaning a good
-estimation based on avaiable information.
+estimation based on available information.
 
 This evaluation will be performed using OpenStreetMap cite:OpenStreetMap in
 conjuction with the /Open Data Portal/ of the city of Aachen [fn:1]: the former
@@ -241,7 +247,7 @@ population is distributed across the city districts.
 [fn:1] Please refer to http://daten.aachen.de for further information and licensing.
 
 
-This information can be visualized in the map of [[autoref:fig:aachen_city_map]].
+All this information can be visualized in the map of [[autoref:fig:aachen_city_map]].
 
 #+LABEL: fig:aachen_city_map
 #+CAPTION: Summary of all Aachen district information we will employ: building, roads positions and population distribution.
@@ -254,7 +260,7 @@ order to extract a reasonable diagram for the access city network.
 
 First, we suppose cables to be put along streets and not to cross (even public)
 terrains. This is common practice in contexts like ours, since all the roadwork
-the city is frequently under is exploited to perform manteinance and build new
+the city is frequently under is exploited to perform maintenance and build new
 parts of the network.
 
 Second, we consider the population of a given area to be distributed across a
@@ -310,15 +316,13 @@ In this chapter we will exploit this information to find the optimal network
 configuration, given some assumptions and requirements derived from best
 practices in access network design.
 
-TODO cite CISCO
-
 *** Topology considerations
 As depicted in autoref:fig:network_tree we suppose our access network to be made of
 layer-2 type switches and to be logically shaped as a tree.
 
 This seemingly strong assumption is confirmed to be common practice in such
 access networks, where more complex and elaborate topologies are too expensive
-and offer no substantial benefit.
+and offer no substantial benefit. cite:CiscoWAN
 
 In this configuration the path from users to the provider mainframe is fixed and
 must cross two kinds of intermediate nodes, a [[acp:dslam][DSLAM]] and a router, whose main
@@ -456,11 +460,11 @@ manual inspection and evaluation: a programmatic strategy is then necessary to
 proceed.
 
 Problems on graphs similar to the one we face are often solved using either [[ac:ilp][ILP]]
-or an heuristic approach. TODO cite \\
+or an heuristic approach. cite:Koch1998,Rehfeldt2015,Diane1993,Leitner2014 \\
 The former is a powerful mathematical tool that finds the best possible solution
 to the problem, but it is very computational resources and time demanding. \\
 The latter instead does not strive to give the optimal configuration, but can
-achieve possibly good results in a more reasonable amount of time.
+hopefully achieve decent results in a more reasonable amount of time.
 
 My first attempt involved writing the mathematical model to describe the
 multi-layered system as a whole, but it was immediately clear that it would have
@@ -862,6 +866,11 @@ forces the network to be connected, finally giving it the wanted shape.
 Variable domains are eventually specified in autoref:eq:var_domain_1 and
 autoref:eq:var_domain_2.
 
+\bigbreak
+
+Overall, the model requires $|V| + 1 + 4 \, |E|$ variables and $3\, |V| +
+2\,|T| + 4 \, |E| + 1$ constraints, both of which are $O(|V|)$ for sparse graphs like the one we are working on.
+
 *** Heuristic algorithm
 The mathematical problem described in the previous section can be effectively
 solved only for small instances, i.e. sparse graphs with up to 100 nodes. \\
@@ -961,7 +970,7 @@ and the terminals of the set.
 \end{bigalgorithm}
 
 In [[#results-network_design]] all this approximations, required for the algorithm
-to be fast enough for our case, will be proved to be good ones, close to the
+to be fast enough for our case, will prove to be good ones, close to the
 theoretical optimum.
 
 ** Flow balancing optimization
@@ -969,28 +978,32 @@ TODO using machine learning to control TBFs
 
 * Results
 ** Geographical analysis
-+ maps details (whatever): maps only here?
-+ graph details
-  - number of nodes (building & others)
-  - number of edges
-  - degree distribution
-  - average node distance, population
-  - ... anything basically ...
+#+BEGIN_SRC org :exports none
+  + maps details (whatever): maps only here?
+  + graph details
+    - number of nodes (building & others)
+    - number of edges
+    - degree distribution
+    - average node distance, population
+    - ... anything basically ...
+#+END_SRC
 
 ** Network design
 :PROPERTIES:
 :CUSTOM_ID: results-network_design
 :END:
 
-ILP results
+#+BEGIN_SRC org :exports none
+  ILP results
 
-- CPLEX performance on the problem
-  + computational time
-  + number of branches
-  + (ask Massimo in case)
-- show found solution for network
-  + analyze performance of found solution (bandwidth, ...)
-  + consideration on actual used heuristics
+  - CPLEX performance on the problem
+    + computational time
+    + number of branches
+    + (ask Massimo in case)
+  - show found solution for network
+    + analyze performance of found solution (bandwidth, ...)
+    + consideration on actual used heuristics
+#+END_SRC
 
 * Conclusion
 
