@@ -489,6 +489,7 @@ Read all roads and buildings that are either of ~None~ type or member of this gr
 #+NAME: all_datasets
 #+BEGIN_SRC python :noweb yes :var valid_types=flatten(valid_types)
   <<imports_&_defaults>>
+  <<projection>>
   <<districts>>
   <<population>>
   <<roads>>
