@@ -213,6 +213,10 @@ LaTeX support for svg files sucks.
 * State of the art
 
 * Methodology
+:PROPERTIES:
+:CUSTOM_ID: methodology
+:END:
+
 This section will discuss which theoretical framework and tools have been used
 throughout the analysis and the motivation behind them.
 
@@ -222,6 +226,10 @@ then the optimization part, where a self learning algorithm is written in
 order to tune the system.
 
 ** Geographical analysis
+:PROPERTIES:
+:CUSTOM_ID: methodology-geographical_analysis
+:END:
+
 #+BEGIN_SRC org :exports none
   OpenStreetMap ~> roads + buildings graph: only methodological consideration
 
@@ -247,11 +255,8 @@ population is distributed across the city districts.
 [fn:1] Please refer to http://daten.aachen.de for further information and licensing.
 
 
-All this information can be visualized in the map of [[autoref:fig:aachen_city_map]].
-
-#+LABEL: fig:aachen_city_map
-#+CAPTION: Summary of all Aachen district information we will employ: building, roads positions and population distribution.
-[[file:../figures/aachen_citymap.png]]
+All this information can be visualized in the map of
+[[autoref:fig:aachen_city_map]], in the autoref:results-geographical_analysis.
 
 \bigbreak
 
@@ -277,14 +282,7 @@ details.
 This information is then condensed in an abstract graph, with streets as edges
 and road crossing as vertices. The former were given corresponding lane length,
 while the latter were assigned the supposed number of people living in the
-surrounding area. \\
-The elements of obtained graph are too tiny to be distinguished in the main map,
-so [[autoref:fig:aachen_city_graph]] shows just a central area as a visual
-reference.
-
-#+LABEL: fig:aachen_city_graph
-#+CAPTION: City topology is converted into an abstract graph.
-[[file:~/Archivi/tesi/figures/aachen_city_graph.png]]
+surrounding area.
 
 ** Network design
 #+BEGIN_SRC org :exports none
@@ -874,7 +872,7 @@ Overall, the model requires $|V| + 1 + 4 \, |E|$ variables and $3\, |V| +
 *** Heuristic algorithm
 The mathematical problem described in the previous section can be effectively
 solved only for small instances, i.e. sparse graphs with up to 100 nodes. \\
-In fact, when tested on our specific case, with 10.000 nodes and 20.000 edges,
+In fact, when tested on our specific case, with 10.000 nodes and 20.000 edges
 the program cannot output the solution within a reasonable amount of time and
 resources.
 
@@ -969,15 +967,23 @@ and the terminals of the set.
   \end{algorithmic}
 \end{bigalgorithm}
 
-In [[#results-network_design]] all this approximations, required for the algorithm
-to be fast enough for our case, will prove to be good ones, close to the
+In [[autoref:results-network_design]] all this approximations, that are required for the algorithm
+to be fast enough for our case, will prove to be good ones, i.e. to be close to the
 theoretical optimum.
 
 ** Flow balancing optimization
-TODO using machine learning to control TBFs
+# TODO using machine learning to control TBFs
+WIP
 
 * Results
+This chapter follows the what was presented in [[autoref:methodology]] and shows
+what can be obtained using those theoretical frameworks and tools.
+
 ** Geographical analysis
+:PROPERTIES:
+:CUSTOM_ID: results-geographical_analysis
+:END:
+
 #+BEGIN_SRC org :exports none
   + maps details (whatever): maps only here?
   + graph details
@@ -987,6 +993,56 @@ TODO using machine learning to control TBFs
     - average node distance, population
     - ... anything basically ...
 #+END_SRC
+
+In order to obtain a decent map, the two OpenStreetMap datasets corresponding to
+buildings and streets of the entire state of North Rein-Westphalia were
+downloaded, merged and cropped to remove anothing unwanted, i.e. outside the
+border of Aachen. cite:OpenStreetMap
+
+After those operations, the remaining 58.305 constructions and 9.759 roads,
+paired with the population density information, were employed to draw the map in
+autoref:results-geographical_analysis.
+
+#+LABEL: fig:aachen_city_map
+#+ATTR_LATEX: :height 4.5in
+#+CAPTION: Summary of all Aachen district information we will employ: building, roads positions and population distribution.
+[[file:../figures/aachen_citymap.png]]
+
+As can be seen in the plot, the data is indeed quite accurate and suitable for
+the conversion to an abstract graph with streets as edges and road crossing as
+vertices. \\
+This procedure was performed using a dedicated library that took care of all the
+quirks of OpenStreetMap measures[fn:2]: for example a tolerance was added in
+order to consider two geographical polygons connected.
+
+After that, all nodes that were too close to each other less than 20m were
+merged: this lowered the number of variables in the upcoming analysis and
+removed many useless details.
+
+Then all users were assigned to the residential buildings uniformly with respect
+to the area population density and building surface, as was explained in
+autoref:methodology-geographical_analysis.
+
+A first attempt was made where a new vertex was created for each building but
+again the number of variables turned out to be too high: a decision was then
+made to assign the inhabitants of the city to the closer road crossing. \\
+In order to reduce the introduced approximation error, all long roads were split
+and forced to be shorter than 200m: this way the average displacement was
+reduced to just 50m, tolerable for our purposes.
+
+At the end of this pre-processing phase, the final graph has 7.231 vertices and
+9.272 edges, whose complexity can be handled in the following analysis. \\
+Since the elements of obtained graph are too close to each other to be discerned
+in the main map [[autoref:fig:aachen_city_graph]] shows just a central area as a
+visual reference.
+
+#+LABEL: fig:aachen_city_graph
+#+ATTR_LATEX: :width 4in
+#+CAPTION: City topology is converted into an abstract graph.
+[[file:~/Archivi/tesi/figures/aachen_city_graph.png]]
+
+
+[fn:2] See http://xiaming.me/posts/2016/12/18/process-gis-shapefile-with-graph-tools/
 
 ** Network design
 :PROPERTIES:
