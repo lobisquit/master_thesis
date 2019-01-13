@@ -1311,8 +1311,7 @@ Plot detail of obtained graph.
   G = load_graph(graph_path + "_DSLAM_ILP.graphml")
 
   plot_result(G,
-              projection=projection,
-              title="Detail of ILP solution\n")
+              projection=projection)
 
   # plt.show()
   plt.savefig('figures/ILP_DSLAM.png', dpi=250)
@@ -1369,8 +1368,7 @@ Plot detail of obtained graph.
   convert_properties(G, float)
 
   plot_result(G,
-              projection=projection,
-              title="Detail of heuristic solution\n")
+              projection=projection)
 
   # plt.show()
   plt.savefig('figures/heuristic_DSLAM.png', dpi=250)
@@ -1419,8 +1417,7 @@ Plot detail of obtained graph.
   convert_properties(G, float)
 
   plot_result(G,
-              projection=projection,
-              title="Detail of ILP solution\n")
+              projection=projection)
 
   # plt.show()
   plt.savefig('figures/ILP_2router.png', dpi=250)
@@ -1478,11 +1475,10 @@ Plot detail of obtained graph.
 
   plot_result(G,
               projection=projection,
-              title="Detail of heuristic solution\n",
               root_markersize=20)
 
   # plt.show()
-  plt.savefig('figures/heuristic-2router.png', dpi=250)
+  plt.savefig('figures/heuristic_2router.png', dpi=250)
   plt.close('all')
 #+END_SRC
 
@@ -1528,8 +1524,7 @@ Plot detail of obtained graph.
 #   convert_properties(G, float)
 
 #   plot_result(G,
-#               projection=projection,
-#               title="Detail of ILP solution\n")
+#               projection=projection)
 #   plt.show()
 # #+END_SRC
 
@@ -1584,7 +1579,6 @@ Plot detail of obtained graph.
 
 #   plot_result(G,
 #               projection=projection,
-#               title="Detail of heuristic solution\n",
 #               root_markersize=20)
 #   plt.show()
 # #+END_SRC
