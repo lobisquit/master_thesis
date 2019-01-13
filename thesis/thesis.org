@@ -7,13 +7,13 @@
 
 #+LaTeX_CLASS: article
 #+LATEX_HEADER: \usepackage{charter}
-#+LATEX_HEADER: \usepackage{subcaption}
 
 #+LATEX_HEADER: \usepackage{geometry}
 #+LATEX_HEADER: \usepackage{etoolbox}
 #+LATEX_HEADER: \usepackage{multirow}
 #+LATEX_HEADER: \usepackage{graphicx}
 #+LATEX_HEADER: \graphicspath{{../figures/}}
+#+LATEX_HEADER: \usepackage{subcaption}
 
 #+LATEX_HEADER: \usepackage{mathtools}
 #+LaTeX_HEADER: \usepackage{booktabs}
@@ -1108,43 +1108,42 @@ bound for the objective function.
 This value was then compared to the cost of the heuristic solution,
 whose algorithm is explained in autoref:methodology-heuristic.
 
-autoref:solution-table clearly shows that the sub-optimal heuristic approach is
+[[autoref:solution_table]] clearly shows that the sub-optimal heuristic approach is
 indeed remarkably close to the theoretical optimum, proving that the choices and
 approximations made indeed captured the relevant features of the problem.
 
-#+NAME: solution-table
-#+CAPTION:
+#+NAME: solution_table
+#+CAPTION: Cost of heuristic solution is compared to the theoretical limit given by [[ac:ilp][ILP]].
 #+ATTR_LATEX: :align crr
 | Problem            | [[ac:dslam][DSLAM]] | Routers |
 |--------------------+-------+---------|
 | Number of clusters |  1115 |      70 |
-| [[ac:ilp][ILP]] bound [€]      |    10 |    1800 |
+| [[ac:ilp][ILP]] bound [€]      |   990 |    1800 |
 | Heuristic cost [€] |  1000 |    2000 |
-| Heuristic gap      | 9900% |     11% |
+| Heuristic gap      |    1% |     11% |
 #+TBLFM: @5$2='(format "%d%% "(truncate (* 100 (/ (float (- @4$2 @3$2)) @3$2))));N::@5$3='(format "%d%% "(truncate (* 100 (/ (float (- @4$3 @3$3)) @3$3))));N
 
-A visual representation of the obtained clusters in the two steps is given in TODO cit,
-where again the map is cropped in order to scale at the proper level of detail.
+A visual representation of the obtained clusters in the two steps is given in
+[[autoref:fig:heuristic_result]], where again the map is cropped in order to scale
+at the proper level of detail.
 
-#+LABEL: fig:heuristic-DSLAM
-#+ATTR_LATEX: :width 4in
-#+CAPTION: City topology is converted into an abstract graph.
-[[file:~/Archivi/tesi/figures/heuristic-DSLAM.png]]
+#+BEGIN_EXPORT latex
+\begin{figure}
+  \captionsetup[subfigure]{skip=-15pt}
+  \centering
+  \begin{subfigure}[b]{0.48\textwidth}
+    \includegraphics[width=\textwidth]{../figures/heuristic_DSLAM.png}
+    \caption{DSLAM positioning}
+  \end{subfigure}
+  \begin{subfigure}[b]{0.48\textwidth}
+    \includegraphics[width=\textwidth]{../figures/heuristic_2router.png}
+    \caption{Second level routers positioning}
+  \end{subfigure}
+  \caption{The sub-roots nodes in red are hubs for terminals, black points.}
+  \label{fig:heuristic_result}
+\end{figure}
+#+END_EXPORT
 
-#+LABEL: fig:aachen_city_graph
-#+ATTR_LATEX: :width 4in
-#+CAPTION: City topology is converted into an abstract graph.
-[[file:~/Archivi/tesi/figures/heuristic-2router.png]]
-
-#+LABEL: fig:ILP-DSLAM
-#+ATTR_LATEX: :width 4in
-#+CAPTION: City topology is converted into an abstract graph.
-[[file:~/Archivi/tesi/figures/ILP-DSLAM.png]]
-
-#+LABEL: fig:aachen_city_graph
-#+ATTR_LATEX: :width 4in
-#+CAPTION: City topology is converted into an abstract graph.
-[[file:~/Archivi/tesi/figures/ILP-2router.png]]
 
 
 * Conclusion
