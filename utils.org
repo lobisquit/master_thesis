@@ -293,7 +293,8 @@ Plot a ~networkx~ graph in a geographical map, plus various utilities.
                                                figsize=(6, 6),
                                                title=None,
                                                projection=None,
-                                               root_markersize=2):
+                                               root_markersize=2,
+                                               edges_linewidth=0.5):
       ## plot everything
       if ax is None:
           fig = plt.figure(figsize=figsize, frameon=False)
@@ -318,7 +319,7 @@ Plot a ~networkx~ graph in a geographical map, plus various utilities.
       edges_df.plot(ax=ax,
                     color='black',
                     # column='weight',
-                    linewidth=0.5,
+                    linewidth=edges_linewidth,
                     zorder=1)
 
       plt.axis('off')

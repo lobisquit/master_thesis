@@ -1230,13 +1230,20 @@ Adaptable to both ILP and heuristic results.
 
 #+NAME: plot_result
 #+BEGIN_SRC python
-  def plot_result(G, projection=None, cut=True, title=None, ax=None, root_markersize=2):
+  def plot_result(G,
+                  projection=None,
+                  cut=True,
+                  title=None,
+                  ax=None,
+                  root_markersize=2,
+                  edges_linewidth=0.5):
       # convert to graph_tool if necessary
       if isinstance(G, nx.DiGraph) or isinstance(G, nx.Graph):
           G = nx2gt(G)
 
       # get geopandas elements to plot
-      nodes_df, edges_df = graph_to_geopandas(G, projection=projection)
+      nodes_df, edges_df = graph_to_geopandas(G,
+                                              projection=projection)
 
       if ax is None:
           fig = plt.figure(figsize=(6, 6), frameon=False)
@@ -1246,9 +1253,10 @@ Adaptable to both ILP and heuristic results.
                            edges_df[edges_df['active']],
                            title=title,
                            ax=ax,
-                           root_markersize=root_markersize)
+                           root_markersize=root_markersize,
+                           edges_linewidth=edges_linewidth)
 
-      edges_df.plot(color='#b2b2b2', zorder=-1, ax=ax)
+      edges_df.plot(color='#b2b2b2', zorder=-1, ax=ax, linewidth=edges_linewidth)
 
       if cut:
           ax.set_xlim(293117, 295351)
