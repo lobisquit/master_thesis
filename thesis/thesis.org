@@ -1077,40 +1077,44 @@ As was introduced in autoref:solution-approach, the design procedure is
 performed starting from the edge of the network, first positioning the [[ac:dslam][DSLAM]],
 then the main routers and finally the mainframe.
 
-While the last one is a bare Steiner-tree problem, the first and the second
-iteration required different values for the problem parameters, see
-autoref:quantities_constraints for further details.
+While the mathematical formulation was the same each iteration required
+different values for the problem parameters, listed in
+autoref:optimization_params. Please refer to autoref:quantities_constraints for
+further details about each variable meaning.
 
 #+NAME: optimization_params
 #+CAPTION: Values for problem parameters in the first two iterations.
-#+ATTR_LATEX: :align crr
-| Parameters     | [[ac:dslam][DSLAM]] sub-problem | Routers sub-problem |
-|----------------+-------------------+---------------------|
-| $n_M$ [unit]   |                48 |                 400 |
-| $d_M$ [m]      |              1500 |                   - |
-| $c_r$ [€/unit] |      1000 + 30000 |       15000 + 85000 |
-| $c_f$ [€/m]    |                 3 |                   3 |
-| $c_e$ [€/m]    |               100 |                 100 |
+#+ATTR_LATEX: :align crrr
+| Parameters     |        [[ac:dslam][DSLAM]] |       Routers | Mainframe |
+|----------------+--------------+---------------+-----------|
+| $n_M$ [unit]   |           48 |           400 | -         |
+| $d_M$ [m]      |         1500 |             - | -         |
+| $c_r$ [€/unit] | 1000 + 30000 | 15000 + 85000 | -         |
+| $c_f$ [€/m]    |            3 |             3 | 3         |
+| $c_e$ [€/m]    |          100 |           100 | 100       |
 
-In autoref:optimization_params it can be seen that the cost per unit of sub-root
-node, $c_r$, is splitted in two numbers: they are the cost of one physical
-device and the lump sum for its connection to the mainframe. \\
+The cost per unit of sub-root node, $c_r$, is split in two numbers: they are
+the cost of one physical device and the lump sum for its connection to the
+mainframe respectively. \\
 The price and the number of ports are given by the most popular items available
-in the market and what appears to be the industry standards. cite:CiscoWAN
+in the market and what appears to be the industry best practices. cite:CiscoWAN
+
+Some values were omitted from the table when not relevant in the specific
+iteration: for example the unique mainframe is a fixed cost for the last step
+and so can be ignored.
 
 As anticipated in autoref:methodology-network_design the exact solution for any
 of these two problems could not be obtained using [[ac:ilp][ILP]]. Even using a commercial
 software such as CPLEX cite:Cplex, in fact, computational time and memory demand
-exceeded all resources available for our instances. Although not conclusive, the
-solver provided useful insights on the optimal solution, specifically a lower
-bound for the objective function.
+exceeded all resources available.
 
-This value was then compared to the cost of the heuristic solution,
-whose algorithm is explained in autoref:methodology-heuristic.
-
-[[autoref:solution_table]] clearly shows that the sub-optimal heuristic approach is
-indeed remarkably close to the theoretical optimum, proving that the choices and
-approximations made indeed captured the relevant features of the problem.
+Although not conclusive, the solver provided useful insights on the optimal
+solution, specifically a lower bound for the objective function. These limits
+were then compared to the cost of the heuristic solution, whose algorithm is
+explained in autoref:methodology-heuristic. [[autoref:solution_table]] clearly shows
+that the sub-optimal heuristic configuration is indeed remarkably close to the
+theoretical optimum, proving that the choices and approximations made previously
+indeed captured all relevant features of the problem.
 
 #+NAME: solution_table
 #+CAPTION: Cost of heuristic solution is compared to the theoretical limit given by [[ac:ilp][ILP]].
@@ -1123,12 +1127,12 @@ approximations made indeed captured the relevant features of the problem.
 | Heuristic gap      |    1% |     11% |
 #+TBLFM: @5$2='(format "%d%% "(truncate (* 100 (/ (float (- @4$2 @3$2)) @3$2))));N::@5$3='(format "%d%% "(truncate (* 100 (/ (float (- @4$3 @3$3)) @3$3))));N
 
-A visual representation of the obtained clusters in the two steps is given in
-[[autoref:fig:heuristic_result]], where again the map is cropped in order to scale
-at the proper level of detail.
+A visual representation of the obtained clusters is given
+in [[autoref:fig:heuristic_result]], where again the map is cropped in order to
+scale at the proper level of detail, and in autoref:fig:heuristic_mainframe.
 
 #+BEGIN_EXPORT latex
-\begin{figure}
+\begin{figure}[htp]
   \captionsetup[subfigure]{skip=-15pt}
   \centering
   \begin{subfigure}[b]{0.48\textwidth}
@@ -1144,6 +1148,10 @@ at the proper level of detail.
 \end{figure}
 #+END_EXPORT
 
+#+LABEL: fig:heuristic_mainframe
+#+ATTR_LATEX: :height 4.5in
+#+CAPTION: The mainframe, red dot, is located in an industrial complex and is connected to all routers.
+[[file:~/Archivi/tesi/figures/heuristic_mainframe.png]]
 
 
 * Conclusion
