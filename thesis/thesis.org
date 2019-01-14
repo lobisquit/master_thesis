@@ -1075,12 +1075,12 @@ other to be discerned at the previous level of zoom.
 
 As was introduced in autoref:solution-approach, the design procedure is
 performed starting from the edge of the network, first positioning the [[ac:dslam][DSLAM]],
-then the main routers and finally the mainframe.
+then the second level routers routers and finally the mainframe.
 
-While the mathematical formulation was the same each iteration required
-different values for the problem parameters, listed in
-autoref:optimization_params. Please refer to autoref:quantities_constraints for
-further details about each variable meaning.
+While the mathematical formulation is the same each iteration requires different
+values for the problem parameters, listed in autoref:optimization_params. Please
+refer to autoref:quantities_constraints for further details about each variable
+meaning.
 
 #+NAME: optimization_params
 #+CAPTION: Values for problem parameters in the first two iterations.
@@ -1101,20 +1101,22 @@ in the market and what appears to be the industry best practices. cite:CiscoWAN
 
 Some values were omitted from the table when not relevant in the specific
 iteration: for example the unique mainframe is a fixed cost for the last step
-and so can be ignored.
+and so its $c_r$ can be ignored.
 
+\bigbreak
 As anticipated in autoref:methodology-network_design the exact solution for any
 of these two problems could not be obtained using [[ac:ilp][ILP]]. Even using a commercial
 software such as CPLEX cite:Cplex, in fact, computational time and memory demand
 exceeded all resources available.
 
-Although not conclusive, the solver provided useful insights on the optimal
-solution, specifically a lower bound for the objective function. These limits
+Although not conclusive, the solver provided useful insights on the domain of
+solutions, specifically a lower bound for the objective function. These limits
 were then compared to the cost of the heuristic solution, whose algorithm is
-explained in autoref:methodology-heuristic. [[autoref:solution_table]] clearly shows
-that the sub-optimal heuristic configuration is indeed remarkably close to the
-theoretical optimum, proving that the choices and approximations made previously
-indeed captured all relevant features of the problem.
+explained in autoref:methodology-heuristic. \\
+[[autoref:solution_table]] clearly shows that the heuristic configuration is indeed
+remarkably close to the theoretical optimum, proving that the choices and
+approximations made previously indeed captured all relevant features of the
+problem.
 
 #+NAME: solution_table
 #+CAPTION: Cost of heuristic solution is compared to the theoretical limit given by [[ac:ilp][ILP]].
@@ -1153,8 +1155,7 @@ scale at the proper level of detail, and in autoref:fig:heuristic_mainframe.
 #+CAPTION: The mainframe, red dot, is located in an industrial complex and is connected to all routers.
 [[file:~/Archivi/tesi/figures/heuristic_mainframe.png]]
 
-
-* Conclusion
+* Conclusions
 
 bibliographystyle:plain
 bibliography:biblio.bib
