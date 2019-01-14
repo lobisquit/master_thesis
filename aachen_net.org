@@ -616,11 +616,14 @@ Plot final graph on top of district map.
 
   # plot just city external border (already projected)
   aachen_border = cascaded_union(district_map.geometry)
+  # remove hole in union
+  aachen_border = aachen_border.buffer(100).buffer(-100)
+
   gpd.GeoDataFrame({'geometry': [aachen_border]}).plot(color='white',
                                                        edgecolor='black',
                                                        linewidth=0.5,
                                                        ax=ax,
-                                                       zorder=0)
+                                                       zorder=-2)
 
   # plt.show()
 
