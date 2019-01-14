@@ -1119,12 +1119,12 @@ indeed captured all relevant features of the problem.
 #+NAME: solution_table
 #+CAPTION: Cost of heuristic solution is compared to the theoretical limit given by [[ac:ilp][ILP]].
 #+ATTR_LATEX: :align crr
-| Problem            | [[ac:dslam][DSLAM]] | Routers |
-|--------------------+-------+---------|
-| Number of clusters |  1115 |      70 |
-| [[ac:ilp][ILP]] bound [€]      |   990 |    1800 |
-| Heuristic cost [€] |  1000 |    2000 |
-| Heuristic gap      |    1% |     11% |
+| Problem             | [[ac:dslam][DSLAM]] | 2nd level routers |
+|---------------------+-------+-------------------|
+| Number of clusters  |  1115 |                70 |
+| [[ac:ilp][ILP]] bound [M€]      |   990 |              1800 |
+| Heuristic cost [M€] | 67.73 |             39.40 |
+| Heuristic gap       |  -93% |              -97% |
 #+TBLFM: @5$2='(format "%d%% "(truncate (* 100 (/ (float (- @4$2 @3$2)) @3$2))));N::@5$3='(format "%d%% "(truncate (* 100 (/ (float (- @4$3 @3$3)) @3$3))));N
 
 A visual representation of the obtained clusters is given
