@@ -61,7 +61,7 @@
    | Bonn       | right  | top    |
    | Aachen     | right  | top    |
 
-   #+BEGIN_SRC python :noweb yes :results none :var labels_positions=labels_positions
+   #+BEGIN_SRC python :noweb yes :results none :var labels_positions=labels_positions :tangle scripts/lambdanet.py
      <<imports_&_defaults>>
      <<projection>>
 
@@ -156,14 +156,12 @@
      states = states.to_crs(projection.srs)
 
      ## plot everything
-     fig = plt.figure(figsize=(4, 6), frameon=False)
+     fig = plt.figure(figsize=(4, 5), frameon=False)
      ax = fig.gca()
 
      ttl = ax.set_title("Map of LambdaNet network",
-                        fontsize=15,
+                        fontsize=12,
                         fontweight=font_spec['font.weight'])
-
-     ttl.set_position([.5, 0.95])
 
      nodes_df.plot(ax=ax,
                    markersize=1,
@@ -179,6 +177,7 @@
                         xy=x.geometry.centroid.coords[0],
                         ha=label_details.loc[x.label][1],
                         va=label_details.loc[x.label][2],
+                        fontsize=8,
                         zorder=5)
 
      edges_df.plot(ax=ax,
@@ -202,7 +201,7 @@
                        zorder=4)
 
      plt.axis('off')
-     plt.tight_layout(rect=[-0.2, -0.3, 1.2, 1.05])
+     plt.tight_layout(rect=[0, -0.1, 1, 1])
      # plt.show()
 
      plt.savefig('figures/german_backbone.pdf')

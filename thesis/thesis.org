@@ -259,8 +259,7 @@ autoref:fig:lambdanet.
 
 #+LABEL: fig:lambdanet
 #+CAPTION: LambdaNet is a national backbone that serves all German major cities and connects the country to the rest of Europe.
-#+ATTR_LATEX: :width 6in
-[[file:~/projects/master_thesis/figures/german_backbone.pdf]]
+[[file:~/Archivi/tesi/figures/german_backbone.pdf]]
 
 In this thesis we will then suppose that the access network connects all Aachen
 buildings to this main backbone via a single [[ac:pop][PoP]], located in the industrial
