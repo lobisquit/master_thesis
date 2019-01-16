@@ -217,13 +217,16 @@ LaTeX support for svg files sucks.
 :CUSTOM_ID: methodology
 :END:
 
-This section will discuss which theoretical framework and tools have been used
+This section will discuss which theoretical framework and tools that have been used
 throughout the analysis and the motivation behind them.
 
-As presented before, this thesis is divided into two main tasks: first the
-design part, where a plausible network for the city of Aachen is devised, and
-then the optimization part, where a self learning algorithm is written in
-order to tune the system.
+First, in autoref:methodology-geographical_analysis, we will analyze the Aachen
+buildings and roads in order to design, in autoref:methodology-network_design, a
+proper access network based on city topology and population density.
+
+Once obtained a suitable structure, its parameters are optimized in
+autoref:methodology-flow_optimization using a genetic algorithm, building an
+effectively self-learning framework.
 
 ** Geographical analysis
 :PROPERTIES:
@@ -245,7 +248,7 @@ order to tune the system.
 
 Unfortunately, schematics for Aachen access network are not publicly available,
 so we have to perform what it is called an /educated guess/, meaning a good
-estimation based on available information.
+estimation of it based on available information.
 
 This evaluation will be performed using OpenStreetMap cite:OpenStreetMap in
 conjuction with the /Open Data Portal/ of the city of Aachen [fn:1]: the former
@@ -260,24 +263,22 @@ All this information can be visualized in the map of
 
 \bigbreak
 
-Due to the level of detail of these datasets, two assumptions are needed in
-order to extract a reasonable diagram for the access city network.
+Due to the level of detail of these datasets, two assumptions are needed to
+proceed and extract a reasonable diagram for the access city network.
 
 First, we suppose cables to be put along streets and not to cross (even public)
 terrains. This is common practice in contexts like ours, since all the roadwork
 the city is frequently under is exploited to perform maintenance and build new
 parts of the network.
 
-Second, we consider the population of a given area to be distributed across a
-fraction of its buildings, so-called /residential/ ones, uniformly picked across
-all the constructions. \\
-We have to take this strong hypothesis because of the level of details the
-OpenStreetMap dataset provides: information about the building use and its
-height is lacking in most entries.
+Second, we consider the population of a given area to be uniformly distributed
+across a fraction of its buildings, so-called /residential/ ones, randomly
+picked across all the constructions. \\
+We have to take this strong hypothesis because the OpenStreetMap dataset lacks
+information about the building use and its height in most entries.
 
-I consider these two points acceptable, since we want to analyze how the
-access network of a city like Aachen behaves, not to replicate it in its
-details.
+I consider these two points acceptable, since we want to analyze how the access
+network of a city like Aachen behaves, not to replicate it in perfect detail.
 
 This information is then condensed in an abstract graph, with streets as edges
 and road crossing as vertices. The former were given corresponding lane length,
@@ -310,13 +311,13 @@ undirected graph $G=(V, \,E)$ all relevant information about the streets
 topology, buildings and estimated number of users.
 
 As specified earlier, each node $i$ is assigned a number of users $u_i$ to serve
-and, since that they represent a physical line, edges are given instead a length
-value $l_e$: both these parameters will be used later to evaluate the access
-network cost.
+and, since that they represent a physical line, edges are given a length value
+$l_e$: both these parameters will be used later to evaluate the access network
+cost.
 
 In this chapter we will exploit this information to find the optimal network
 configuration, given some assumptions and requirements derived from best
-practices in access network design.
+practices in access network design. cite:CiscoWAN
 
 *** Topology considerations
 As depicted in autoref:fig:network_tree we suppose our access network to be made of
@@ -440,11 +441,12 @@ From a technological point of view the network is considered to be relatively
 modern, since the infrastructure has been renewed on the past years in
 conjuction with works on main city roads.
 
-That is the reason why we suppose all main links to be fiber optic ones and to
-be able to serve the customer with the state-of-the-art VDSL/VDSL2. The minor
-fraction of legacy ADSL and copper-cable users can be well approximated as VDSL
-connections at the same distance, in terms of bandwidth and other network
-metrics.
+That is the reason why we suppose all main links to be fiber optic ones running
+state-of-the-art VDSL/VDSL2. The minor fraction of legacy ADSL and copper-cable
+users can be well approximated as VDSL connections at the same distance, in
+terms of bandwidth and other network metrics.
+
+# TODO citation needed
 
 In order to guarantee a suitable [[ac:qos][QoS]], all connected network components have to
 be close enough to each other: this is taken into account though a maximum
@@ -459,18 +461,18 @@ of the device.
 :CUSTOM_ID: solution-approach
 :END:
 
-In smaller context, an handmade network design is often good enough to meet all
-needed conditions and to be reasonably cheap. \\
-This is not our case, since the set of possible topologies is far too vast for a
-manual inspection and evaluation: a programmatic strategy is then necessary to
-proceed.
+In smaller context, an handmade network is often enough to meet all wanted
+conditions while being reasonably cheap. This is not our case, since the set of
+possible topologies is far too vast for a manual evaluation: a programmatic
+strategy is then necessary to proceed.
 
 Problems on graphs similar to the one we face are often solved using either [[ac:ilp][ILP]]
 or an heuristic approach. cite:Koch1998,Rehfeldt2015,Diane1993,Leitner2014 \\
 The former is a powerful mathematical tool that finds the best possible solution
-to the problem, but it is very computational resources and time demanding. \\
-The latter instead does not strive to give the optimal configuration, but can
-hopefully achieve decent results in a more reasonable amount of time.
+to the problem, but it is very demanding with respect to computational resources
+and time. \\
+The latter instead does not strive to give the optimum, but can hopefully
+achieve decent results in a more reasonable amount of time.
 
 My first attempt involved writing the mathematical model to describe the
 multi-layered system as a whole, but it was immediately clear that it would have
@@ -494,14 +496,14 @@ simplified setting of autoref:fig:network_tree_simplified.
 
   queue Backbone as b
 
-  rectangle Root as r #ff9b9b
+  rectangle Mainframe as r #ff9b9b
 
-  rectangle DSLAM as d1 #f6ff9b
-  rectangle DSLAM as d2 #f6ff9b
-  rectangle DSLAM as d3 #f6ff9b
-  rectangle DSLAM as d4 #f6ff9b
-  rectangle DSLAM as d5 #f6ff9b
-  rectangle DSLAM as d6 #f6ff9b
+  rectangle Head as d1 #f6ff9b
+  rectangle Head as d2 #f6ff9b
+  rectangle Head as d3 #f6ff9b
+  rectangle Head as d4 #f6ff9b
+  rectangle Head as d5 #f6ff9b
+  rectangle Head as d6 #f6ff9b
 
   interface " " as c1
   interface " " as c2
@@ -576,22 +578,22 @@ simplified setting of autoref:fig:network_tree_simplified.
 #+END_SRC
 
 #+LABEL: fig:network_tree_simplified
-#+CAPTION: The second-level-routers are all condensed into the mainframe root in the first iteration.
+#+CAPTION: Each /head/ aggregates the traffic of all nodes in its /cluster/.
 #+ATTR_LATEX: :height 2.5in
-#+RESULTS[57895584675366485538bd7127a6d511605cf424]:
+#+RESULTS[1aeae82b46a3422b121cba576d8d6c20dc52a89c]:
 [[file:../figures/network_tree_simplified.eps]]
 
 As apparent in the diagram the solver must now take into consideration the cost
 of the nodes that have been omitted from the tree. This is accounted as a lump
-sum for the connection of each aggregating network entity, called from now on
-/sub-root/, to the mainframe both in terms of cables and intermediate nodes.
+sum for the connection of each network switch, called from now on cluster
+/head/, to the mainframe both in terms of cables and intermediate nodes.
 
-Both the exact and approximated approach that will be discussed later will
-consider a topology built in this fashion, starting from the periphery and
-moving towards the core of the network.
+Both the exact and approximated approach that will be propose the access network
+structure will consider a topology built in this fashion, starting from the
+periphery and moving towards the core of the network.
 
 All relevant parameters have been collected in [[autoref:quantities_constraints]] and
-will be taken for granted in the following sections.
+will be taken for granted from now on.
 
 #+NAME: quantities_constraints
 #+CAPTION: Problem parameters, divided in topology specific ones, technological limits and costs.
@@ -623,9 +625,9 @@ the set of arcs $A$ is defined as follows.
   \left\{ (r,\,j) ~ \forall j \in V \right\}
 \end{equation}
 
-First each undirected edge in $E$ is doubled with the two corresponding directed
-arcs; then an artificial node $r$ is added to the vertices set and connected to
-each of the nodes in $V$.
+In autoref:induction_G each undirected edge in $E$ is doubled with the two
+corresponding directed arcs; then an artificial node $r$ is added to the
+vertices set and connected to each of the nodes in $V$.
 
 Each arc $(i,\,j) \in A$ is assigned a length, in meters $l_{ij}$, given by the
 geographical distance between its endpoints. Artificial arcs $(r,\,j)$ do not
@@ -781,7 +783,7 @@ eventually be returned by the solver as the sequence of indicator variables
 $\{ x_e \}_{e \in A}$ where $x_e$ is equal to 1 only if the arc $e$ has been selected.
 
 Because of the system requirements we also have to keep track of the distance
-$d_i$ of each node $i \in V \cup \{r\}$ from its root and the number of users $n_e$ served
+$d_i$ of each node $i \in V \cup \{r\}$ from its head and the number of users $n_e$ served
 by each link in $A$, ensuring they don't exceed their limits.
 
 Given this setup, our optimization problem can be written as
@@ -828,9 +830,9 @@ Given this setup, our optimization problem can be written as
     \label{eq:var_domain_2}
 \end{align}
 
-where, to clear the notation, we defined functions $\delta^+, \, \delta^-: V
-\rightarrow \mathbb{P}(A)$ associating each node with the out-going and in-going
-edges respectively.
+To clear the notation, we have defined functions $\delta^+, \, \delta^-: V \rightarrow
+\mathbb{P}(A)$ associating each node with the out-going and in-going edges
+respectively.
 
 \begin{equation}
   \begin{split}
@@ -840,16 +842,16 @@ edges respectively.
 \end{equation}
 
 The problem is set to minimize the objective function autoref:eq:obj_function
-that sums up the cost of copper and optical fiber lines, the roadworks cost for
-installing them and the total price of the root nodes unit.
+that sums up the cost of optical fiber lines, roadworks and the total price of
+/head/ switching units.
 
 The first constraint autoref:eq:single_arc_in forces the terminals to be connected
 to our network and sets the number of in-going arcs to be at most one, which is a
 necessary condition for the network to be a directed tree.
 
-After the leaves are set to be part of the network, $r$ has to be as well by
-autoref:eq:r_active. Specifically it will be the root node, as by construction
-of $G^\prime$ it has no in-going arcs.
+As the leaves are set to be part of the network, $r$ has to be as well by
+autoref:eq:r_active. It will then be the root node of the resulting tree, as by
+construction of $G^\prime$ node $r$ has no in-going arcs.
 
 The next equations deal with the variables $d_j$, distance from the tree root.
 First, in autoref:eq:distance_upper_limit this quantity is limited by $d_M$ if
@@ -861,11 +863,11 @@ Implicitly the latter prevents the resulting network to have loops, necessary
 for our solution to be a proper arborescence.
 
 The last needed metric for limiting the possible solutions is the number of
-users each link can handle, $n_M$. \\
-First, this upper limit for $n_e$ is set in autoref:eq:n_terminals_upper_limit
-such that it has to hold only for active edges, and then the count of the users
-from leaves to each sub-root is performed in autoref:eq:n_flow_balance, which
-has the same form as a flow-conservation clause. \\
+users each link can handle, $n_M$. This upper limit for $n_e$ is set in
+autoref:eq:n_terminals_upper_limit such that it has to hold only for active
+edges, and then the count of the users from leaves to each sub-root is performed
+in autoref:eq:n_flow_balance, which has the same form as a flow-conservation
+clause. \\
 All such flows must converge towards the root $r$ for autoref:eq:root_sink: this
 forces the network to be connected, finally giving it the wanted shape.
 
@@ -883,25 +885,26 @@ Overall, the model requires $|V| + 1 + 4 \, |E|$ variables and $3\, |V| +
 :END:
 
 The mathematical problem described in the previous section can be effectively
-solved only for small instances, i.e. sparse graphs with up to 100 nodes. \\
-In fact, when tested on our specific case, with tens of thousands of nodes and
-edges the program could not output the solution within a reasonable amount of
+solved only for small instances, i.e. sparse graphs with up to one hundred
+nodes. \\
+In fact, when tested on our specific case with tens of thousands of nodes and
+edges, the program could not output the solution within a reasonable amount of
 time and resources.
 
-An heuristic approach has to be devised: I chose for the peculiarities of the
+An heuristic approach had to be devised: I chose for the peculiarities of the
 problem a greedy approach, inspired by the hierarchical clustering.
 
 The basic idea is to progressively join single nodes of the graph in bigger and
-bigger groups until it is cheaper to do so. \\
+bigger /clusters/ until it is cheaper to do so. \\
 Such merges are allowed whenever the previously mentioned [[ac:qos][QoS]] constraints are
 met and adjacent subsets are preferred. To be precise, distance between each
-couple is defined as the distance of the closest elements: this is done to
-privilege more cohesive and compact pair of candidates.
+couple of groups is defined as the distance of the closest elements: this is
+done to privilege more cohesive and compact pairs.
 
-This procedure is repeated until all possible couples are considered or the
-merge increases the cost of the network.
+This procedure is repeated until all possible choices have been considered or
+the next merge increases the cost of the network.
 
-Pseudocode is available in [[autoref:lst:alg:heuristic]].
+Pseudo-code is available in [[autoref:lst:alg:heuristic]].
 
 \begin{bigalgorithm}
   \label{lst:alg:heuristic}
@@ -979,11 +982,15 @@ and the terminals of the set.
   \end{algorithmic}
 \end{bigalgorithm}
 
-In [[autoref:results-network_design]] all this approximations, that are required for the algorithm
-to be fast enough for our case, will prove to be good ones, i.e. to be close to the
-theoretical optimum.
+For now all this approximations are mandatory for the algorithm to be fast
+enough to deal with our case of study, but in [[autoref:results-network_design]]
+they will prove to be good ones, i.e. to be close to the theoretical optimum.
 
 ** Flow balancing optimization
+:PROPERTIES:
+:CUSTOM_ID: methodology-flow_optimization
+:END:
+
 # TODO using machine learning to control TBFs
 WIP
 
@@ -1008,11 +1015,11 @@ what can be obtained using those theoretical frameworks and tools.
 
 In order to obtain a decent map, the two OpenStreetMap datasets corresponding to
 buildings and streets of the entire state of North Rein-Westphalia were
-downloaded, merged and cropped to remove anothing unwanted, i.e. outside the
-border of Aachen. cite:OpenStreetMap
+downloaded, merged and cropped to remove anything outside the border of the
+city. cite:OpenStreetMap
 
-After those operations, the remaining 58.305 constructions and 9.759 roads,
-paired with the population density information, were employed to draw the map in
+After those operations, the remaining 58305 constructions and 9759 roads were
+paired with the population density information and used to draw the map in
 autoref:results-geographical_analysis.
 
 #+LABEL: fig:aachen_city_map
@@ -1020,33 +1027,34 @@ autoref:results-geographical_analysis.
 #+CAPTION: Summary of all Aachen district information we will employ: building, roads positions and population distribution.
 [[file:../figures/aachen_citymap.png]]
 
-As can be seen in the plot, the data is indeed quite accurate and suitable for
-the conversion to an abstract graph with streets as edges and road crossing as
-vertices. \\
+As can be appreciated in the plot, the data is indeed quite accurate and
+suitable for the conversion to an abstract graph with streets as edges and road
+crossing as vertices. \\
 This procedure was performed using a dedicated library that took care of all the
-quirks of OpenStreetMap measures[fn:2]: for example a tolerance was added in
-order to consider two geographical polygons connected.
+quirks of OpenStreetMap measures[fn:2]: polygons were considered joinable up to
+a certain distance of tolerance and everything outside the main connected
+component was pruned.
 
-After that, all nodes that were too close to each other less than 20m were
-merged: this lowered the number of variables in the upcoming analysis and
-removed many useless details.
+After that, all nodes close to each other less than 20m were merged: this
+removed many useless details and lowered the number of variables in the upcoming
+analysis.
 
-Then buildings were assigned residents, users of our access network, uniformly
-with respect to the area population density and building surface, as was
-explained in autoref:methodology-geographical_analysis.
+Then each buildings was assigned residents, i.e. users of our access network,
+uniformly with respect to the area population density and building surface, as
+was explained in autoref:methodology-geographical_analysis.
 
 To integrate customers information into the road graph, a first attempt was made
-where new vertices were created for each building, but the number of variables
-turned out to be too high: a decision was then made to assign the inhabitants of
-the city to the closer road crossing. \\
+where a new vertex was created for every building, but the number of variables
+turned out to be too high: it was then made the decision to assign the
+inhabitants of the city to the closer road crossing. \\
 All long roads were split and forced to be shorter than 200m: this way the
 average displacement introduced via this approximation was reduced to just 50m,
 tolerable for our purposes.
 
-At the end of this pre-processing phase, the final graph has 7.231 vertices and
-9.272 edges and its complexity can be handled in the following analysis. \\
+At the end of this pre-processing phase, the graph is made of 7231 vertices and
+9272 edges and its complexity can be handled in the following analysis. \\
 [[autoref:fig:aachen_city_graph]] shows the final result in a central area of the
-Aachen district, since the elements of obtained graph are too close to each
+Aachen district: since the elements of obtained graph are too close to each
 other to be discerned at the previous level of zoom.
 
 #+LABEL: fig:aachen_city_graph
@@ -1106,21 +1114,21 @@ time and memory demand exceeded all resources available.
 Although not conclusive, the solver provided useful insights on the valid
 solution domain, specifically a lower bound for the objective function. These
 limits are then compared against the configuration obtained via heuristic
-algorithm, presented previously in autoref:methodology-heuristic. \\
+algorithm, presented before in autoref:methodology-heuristic. \\
 [[autoref:solution_table]] clearly shows that the heuristic result is indeed
-remarkably close to the theoretical optimum, proving that the choices and
+remarkably close to the theoretical optimum and proves that the choices and
 approximations made previously indeed captured all relevant features of the
 problem.
 
 #+NAME: solution_table
 #+CAPTION: Cost of heuristic solution is compared to the theoretical limit given by [[ac:ilp][ILP]].
 #+ATTR_LATEX: :align crr
-| Problem              | [[ac:dslam][DSLAM]]   | 2nd level routers |
-|----------------------+---------+-------------------|
-| Number of groups     | 1115    | 70                |
-| [[ac:ilp][ILP]] lower bound [M€] | 65M€    | 38M€              |
-| Heuristic cost [M€]  | 67.73M€ | 39.40M€           |
-| Heuristic gap        | 4%      | 3%                |
+| Problem              | [[ac:dslam][DSLAM]] | 2nd level routers |
+|----------------------+-------+-------------------|
+| Number of groups     |  1115 |                70 |
+| [[ac:ilp][ILP]] lower bound [M€] | 65.05 |             38.08 |
+| Heuristic cost [M€]  | 67.73 |             39.40 |
+| Heuristic gap        |    4% |                3% |
 #+TBLFM: @5$2='(format "%d%% "(truncate (* 100 (/ (float (- @4$2 @3$2)) @3$2))));N::@5$3='(format "%d%% "(truncate (* 100 (/ (float (- @4$3 @3$3)) @3$3))));N
 
 A visual representation of the obtained clusters, groups of devices connected to
