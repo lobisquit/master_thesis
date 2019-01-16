@@ -62,12 +62,12 @@
    | Aachen     | right  | top    |
 
    #+BEGIN_SRC python :noweb yes :results none :var labels_positions=labels_positions
-     <<init>>
-     <<matplotlib_defaults>>
+     <<imports_&_defaults>>
+     <<projection>>
 
      path = "data/lambdanet/lambdanet.graphml"
 
-     G = read_graphml(path)
+     G = nx.read_graphml(path)
 
      ## fix missing positions
      # NOTE lots of them are removed because I don't need them (for now)
