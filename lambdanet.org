@@ -62,12 +62,12 @@
    | Aachen     | right  | top    |
 
    #+BEGIN_SRC python :noweb yes :results none :var labels_positions=labels_positions
-     <<init>>
-     <<matplotlib_defaults>>
+     <<imports_&_defaults>>
+     <<projection>>
 
      path = "data/lambdanet/lambdanet.graphml"
 
-     G = read_graphml(path)
+     G = nx.read_graphml(path)
 
      ## fix missing positions
      # NOTE lots of them are removed because I don't need them (for now)
@@ -156,12 +156,14 @@
      states = states.to_crs(projection.srs)
 
      ## plot everything
-     fig = plt.figure(figsize=(6, 6), frameon=False)
+     fig = plt.figure(figsize=(4, 6), frameon=False)
      ax = fig.gca()
 
-     ax.set_title("Map of LambdaNet network\n",
-                  fontsize=15,
-                  fontweight=font_spec['font.weight'])
+     ttl = ax.set_title("Map of LambdaNet network",
+                        fontsize=15,
+                        fontweight=font_spec['font.weight'])
+
+     ttl.set_position([.5, 0.95])
 
      nodes_df.plot(ax=ax,
                    markersize=1,
@@ -185,7 +187,7 @@
                    linewidth=0.5,
                    zorder=1)
 
-     states.plot(facecolor='white',
+     states.plot(facecolor='#ededed',
                  linewidth=0.3,
                  edgecolor='grey',
                  zorder=0,
@@ -200,8 +202,9 @@
                        zorder=4)
 
      plt.axis('off')
-     plt.tight_layout(rect=[-0.1, -0.05, 1.1, 1])
+     plt.tight_layout(rect=[-0.2, -0.3, 1.2, 1.05])
      # plt.show()
+
      plt.savefig('figures/german_backbone.pdf')
      plt.close('all')
    #+END_SRC
