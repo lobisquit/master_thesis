@@ -243,12 +243,32 @@ order to tune the system.
     - population estimated based on district population, building area
 #+END_SRC
 
-Unfortunately, schematics for Aachen access network are not publicly available,
-so we have to perform what it is called an /educated guess/, meaning a good
-estimation based on available information.
+The city of Aachen is located in the north-west of Germany, in state of North
+Rhine-Westphalia. Its district has a surface of 160.85km² and a population of
+244951 citizens.
 
-This evaluation will be performed using OpenStreetMap cite:OpenStreetMap in
-conjuction with the /Open Data Portal/ of the city of Aachen [fn:1]: the former
+Although medium sized, the city is an important telecommunication node between
+Germany and the neighbour countries of Belgium and Netherlands. The LambdaNet
+backbone, owned by /euNetworks Managed Services GmbH/, crosses in fact the city
+and provides direct connection to public Internet. Its map, built by ``The
+Internet Topology Zoo'' project cite:topology_zoo, has been plotted in
+autoref:fig:lambdanet.
+
+#+LABEL: fig:lambdanet
+#+CAPTION: LambdaNet is a national backbone that serves all German major cities and connects the country to the rest of Europe.
+#+ATTR_LATEX: :width 6in
+[[file:~/projects/master_thesis/figures/german_backbone.pdf]]
+
+In this thesis we will then suppose that the access network connects all Aachen
+buildings to this main backbone via a single [[ac:pop][PoP]], located in the industrial
+district of the city.
+
+Unfortunately, schematics for such network are not publicly available, so we
+have to perform what it is called an /educated guess/, meaning a good estimation
+based on available information.
+
+The evaluation will be performed using OpenStreetMap cite:OpenStreetMap in
+conjunction with the /Open Data Portal/ of the city of Aachen [fn:1]: the former
 provides buildings and roads positions, while the latter describes how
 population is distributed across the city districts.
 
