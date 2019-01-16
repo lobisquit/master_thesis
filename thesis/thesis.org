@@ -354,8 +354,6 @@ task is to aggregate all the traffic further and further.
   <<plantuml_skin>>
   skinparam nodesep 10
 
-  left to right direction
-
   queue Backbone as b
 
   rectangle Mainframe as m #ff9b9b
