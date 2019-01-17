@@ -1,0 +1,82 @@
+#+STARTUP: indent
+
+
+* TCP like protocol
+Description of a Go-Back-N ARQ protocol that is similar enough to TCP for our
+purposes.
+
+#+BEGIN_SRC plantuml :file figures/tcp_server_side.eps :noweb yes
+  <<plantuml_skin>>
+  skinparam defaultTextAlignment left
+  hide empty description
+
+  state "# set A = -1 \l# set B = 0 \l# compute ρ of request packet" as INIT
+  IDLE -> INIT : Page request received
+
+  state "B < A + N + 1?" as DECIDE
+  INIT --> DECIDE
+
+  DECIDE --> WAIT : NO
+
+  state "# transmit packet B + 1 \l# set B += 1" as TX
+  DECIDE -left> TX : YES
+  TX -> DECIDE : Timeout of ρ x packet size
+  TX -> RECV : ACK(L)
+
+  state "compute ρ of the last ACKed packets" as RECV
+
+  state "set B = A" as RETX
+  RETX --> DECIDE
+  WAIT -> RETX : Timeout of t<sub>0</sub>
+  WAIT --> RECV : ACK(L) received
+
+  RECV -> CHECK_FINISH
+  state "L = N?" as CHECK_FINISH
+
+  state "IDLE" as FINISH
+  CHECK_FINISH --> FINISH : YES
+  CHECK_FINISH -> UPDATE_A : NO
+
+  state "A = max{A, L}" as UPDATE_A
+  UPDATE_A --> DECIDE
+#+END_SRC
+
+#+RESULTS:
+[[file:figures/server_side.eps]]
+
+#+BEGIN_SRC plantuml :file figures/tcp_client_side.eps :noweb yes
+  <<plantuml_skin>>
+
+  skinparam defaultTextAlignment left
+  hide empty description
+
+  state "# Transmit page request\l# initialize arrived array" as INIT
+  IDLE --> INIT
+
+  INIT -> INIT : Timeout of t<sub>0</sub>
+
+  state "# estimate RTT based on received packets\l# set arrived(K) = True\l# set L=argmin{arrived(i)=False}" as RECV
+  INIT --> RECV : Packet K arrives
+
+  RECV --> SEND_ACK: \n
+  state "Send ACK(L)" as SEND_ACK
+  SEND_ACK -> RECV : Packet K arrives
+  SEND_ACK --> SEND_ACK : Timeout of RTT
+#+END_SRC
+
+#+RESULTS:
+[[file:figures/tcp_client_side.eps]]
+
+
+
+# Local Variables:
+# org-confirm-babel-evaluate: nil
+# eval: (add-hook 'org-babel-pre-tangle-hook (lambda () (org-babel-lob-ingest "thesis/thesis.org")) t t
+# eval:  (add-hook 'org-babel-after-execute-hook 'org-display-inline-images)
+# End:
+
+* UDP like protocol
+Simply send packets with serial number from the server at requested quality
+(bitrate). Client side, just compute jitter, throughput and packet losses in a
+certain time window based on what arrives: packet losses are easy to calculate
+based on serial numbers.
