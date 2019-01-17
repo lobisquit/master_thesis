@@ -1030,10 +1030,10 @@ what can be obtained using those theoretical frameworks and tools.
     - ... anything basically ...
 #+END_SRC
 
-In order to obtain a decent map, the two OpenStreetMap datasets corresponding to
-buildings and streets of the entire state of North Rein-Westphalia were
-downloaded, merged and cropped to remove anything outside the border of the
-city. cite:OpenStreetMap
+In order to obtain a decent map of the city, the two OpenStreetMap datasets
+corresponding to buildings and streets of the entire state of North
+Rein-Westphalia were downloaded, merged and cropped to remove anything outside
+Aachen border. cite:OpenStreetMap
 
 After those operations, the remaining 58305 constructions and 9759 roads were
 paired with the population density information and used to draw the map in
@@ -1046,17 +1046,14 @@ autoref:results-geographical_analysis.
 
 As can be appreciated in the plot, the data is indeed quite accurate and
 suitable for the conversion to an abstract graph with streets as edges and road
-crossing as vertices. \\
-This procedure was performed using a dedicated library that took care of all the
-quirks of OpenStreetMap measures[fn:2]: polygons were considered joinable up to
-a certain distance of tolerance and everything outside the main connected
-component was pruned.
+crossing as vertices. This procedure was performed using a dedicated library
+that took care of all the quirks of OpenStreetMap measures[fn:2]. For example
+polygons were considered in contact up to a certain tolerance distance and
+everything outside the main connected component was pruned. Moreover all nodes
+close to each other less than 20m were merged: this removed many useless details
+and lowered the number of variables in the upcoming analysis.
 
-After that, all nodes close to each other less than 20m were merged: this
-removed many useless details and lowered the number of variables in the upcoming
-analysis.
-
-Then each buildings was assigned residents, i.e. users of our access network,
+Then each building was assigned residents, i.e. users of our access network,
 uniformly with respect to the area population density and building surface, as
 was explained in autoref:methodology-geographical_analysis.
 
@@ -1069,10 +1066,10 @@ average displacement introduced via this approximation was reduced to just 50m,
 tolerable for our purposes.
 
 At the end of this pre-processing phase, the graph is made of 7231 vertices and
-9272 edges and its complexity can be handled in the following analysis. \\
-[[autoref:fig:aachen_city_graph]] shows the final result in a central area of the
-Aachen district: since the elements of obtained graph are too close to each
-other to be discerned at the previous level of zoom.
+9272 edges and its complexity can be handled by our algorithms. \\
+A visual representation is given in [[autoref:fig:aachen_city_graph]] that shows the
+result of a small part of the city center, as tiny details could not be
+otherwise discerned.
 
 #+LABEL: fig:aachen_city_graph
 #+ATTR_LATEX: :width 4in
@@ -1140,12 +1137,12 @@ problem.
 #+NAME: solution_table
 #+CAPTION: Cost of heuristic solution is compared to the theoretical limit given by [[ac:ilp][ILP]].
 #+ATTR_LATEX: :align crr
-| Problem              | [[ac:dslam][DSLAM]] | 2nd level routers |
-|----------------------+-------+-------------------|
-| Number of groups     |  1115 |                70 |
-| [[ac:ilp][ILP]] lower bound [M€] | 65.05 |             38.08 |
-| Heuristic cost [M€]  | 67.73 |             39.40 |
-| Heuristic gap        |    4% |                3% |
+| Problem                   | [[ac:dslam][DSLAM]] | 2nd level routers |
+|---------------------------+-------+-------------------|
+| Number of groups          |  1115 |                70 |
+| [[ac:ilp][ILP]] cost lower bound [M€] | 65.05 |             38.08 |
+| Heuristic cost [M€]       | 67.73 |             39.40 |
+| Heuristic gap             |    4% |                3% |
 #+TBLFM: @5$2='(format "%d%% "(truncate (* 100 (/ (float (- @4$2 @3$2)) @3$2))));N::@5$3='(format "%d%% "(truncate (* 100 (/ (float (- @4$3 @3$3)) @3$3))));N
 
 A visual representation of the obtained clusters, groups of devices connected to
@@ -1153,7 +1150,6 @@ the same switching unit, is given in [[autoref:fig:heuristic_result]] and in
 autoref:fig:heuristic_mainframe. Again the map is cropped in order to scale at
 the proper level of detail if needed.
 
-#+BEGIN_EXPORT latex
 \begin{figure}[htp]
   \captionsetup[subfigure]{skip=-15pt}
   \centering
@@ -1168,7 +1164,6 @@ the proper level of detail if needed.
   \caption{The root nodes in red are hubs for terminals, black points.}
   \label{fig:heuristic_result}
 \end{figure}
-#+END_EXPORT
 
 #+LABEL: fig:heuristic_mainframe
 #+ATTR_LATEX: :height 4.5in
