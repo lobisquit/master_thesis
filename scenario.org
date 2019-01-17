@@ -1,6 +1,8 @@
 #+STARTUP: indent
 
-#+BEGIN_SRC plantuml :file figures/simulator_uplink.png :noweb yes
+As a general rule, a TBF is put in front of any output device.
+
+#+BEGIN_SRC plantuml :file figures/simulator_downlink.png :noweb yes
   skinparam nodesep 10
   skinparam ranksep 30
   <<plantuml_skin>>
@@ -24,17 +26,61 @@
   database "Server" as server2
 
   node "Mainframe" as mf
+  dslam1 <-- interface1
+  dslam2 <-- interface2
+  dslam3 <-- interface3
+
+  interface1 <-- ROUTER_tbf1
+  interface2 <-- ROUTER_tbf2
+  interface3 <-- ROUTER_tbf3
+
+  ROUTER_tbf1 <-- ROUTER_queue
+  ROUTER_tbf2 <-- ROUTER_queue
+  ROUTER_tbf3 <-- ROUTER_queue
+
+  ROUTER_queue <-- mf
+
+  cloud "Public\nInternet" as internet
+  mf <-- internet
+
+  internet <-- server1
+  internet <-- server2
+#+END_SRC
+
+#+RESULTS:
+[[file:figures/simulator_downlink.png]]
+
+#+BEGIN_SRC plantuml :file figures/simulator_uplink.png :noweb yes
+  skinparam nodesep 10
+  skinparam ranksep 30
+  <<plantuml_skin>>
+  left to right direction
+
+  node "DSLAM" as dslam1
+  node "DSLAM" as dslam2
+  node "DSLAM" as dslam3
+
+  node ROUTER {
+  queue "TBF" as ROUTER_tbf #f6ff9b
+  queue "NIC" as ROUTER_queue
+  queue "NIC" as interface1
+  queue "NIC" as interface2
+  queue "NIC" as interface3
+  }
+
+  database "Server" as server1
+  database "Server" as server2
+
+  node "Mainframe" as mf
   dslam1 --> interface1
   dslam2 --> interface2
   dslam3 --> interface3
 
-  interface1 --> ROUTER_tbf1
-  interface2 --> ROUTER_tbf2
-  interface3 --> ROUTER_tbf3
+  interface1 --> ROUTER_tbf
+  interface2 --> ROUTER_tbf
+  interface3 --> ROUTER_tbf
 
-  ROUTER_tbf1 --> ROUTER_queue
-  ROUTER_tbf2 --> ROUTER_queue
-  ROUTER_tbf3 --> ROUTER_queue
+  ROUTER_tbf --> ROUTER_queue
 
   ROUTER_queue --> mf
 
@@ -47,6 +93,7 @@
 
 #+RESULTS:
 [[file:figures/simulator_uplink.png]]
+
 
 * COMMENT Local Variables
 # Local Variables:
