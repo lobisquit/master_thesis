@@ -68,15 +68,15 @@ purposes.
 [[file:figures/tcp_client_side.eps]]
 
 
-
-# Local Variables:
-# org-confirm-babel-evaluate: nil
-# eval: (add-hook 'org-babel-pre-tangle-hook (lambda () (org-babel-lob-ingest "thesis/thesis.org")) t t
-# eval:  (add-hook 'org-babel-after-execute-hook 'org-display-inline-images)
-# End:
-
 * UDP like protocol
 Simply send packets with serial number from the server at requested quality
 (bitrate). Client side, just compute jitter, throughput and packet losses in a
 certain time window based on what arrives: packet losses are easy to calculate
 based on serial numbers.
+
+* COMMENT Local variables
+# Local Variables:
+# org-confirm-babel-evaluate: nil
+# eval: (add-hook 'org-babel-pre-tangle-hook (lambda () (org-babel-lob-ingest "thesis/thesis.org")) t t
+# eval:  (add-hook 'org-babel-after-execute-hook 'org-display-inline-images)
+# End:

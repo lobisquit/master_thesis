@@ -79,6 +79,30 @@ PlantUML skin, reusable for all diagrams
   FontColor       black
   }
 
+  skinparam Node {
+  BackgroundColor white
+  BorderColor     black
+  FontColor       black
+  }
+
+  skinparam Cloud {
+  BackgroundColor white
+  BorderColor     black
+  FontColor       black
+  }
+
+  skinparam Database {
+  BackgroundColor white
+  BorderColor     black
+  FontColor       black
+  }
+
+  skinparam Actor {
+  BackgroundColor white
+  BorderColor     black
+  FontColor       black
+  }
+
   skinparam Activity {
   BackgroundColor white
   BorderColor     black
