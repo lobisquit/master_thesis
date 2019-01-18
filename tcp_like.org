@@ -1,72 +1,104 @@
+# -*- mode: Org; -*-
+
 #+STARTUP: indent
 
+In order for this to work, each page request has to have a unique ID.
 
 * TCP like protocol
 Description of a Go-Back-N ARQ protocol that is similar enough to TCP for our
 purposes.
 
-#+BEGIN_SRC plantuml :file figures/tcp_server_side.eps :noweb yes
-  <<plantuml_skin>>
-  skinparam defaultTextAlignment left
-  hide empty description
+Note that at any time, receiving a request with ID different from the current
+one (if any) resets the server to IDLE and the last request is processed.
 
+#+BEGIN_SRC plantuml :file figures/tcp_server_side.png :noweb yes
+  <<plantuml_skin>>
+  skinparam defaultTextAlignment center
+  hide empty description
   state "# set A = -1 \l# set B = 0 \l# compute ρ of request packet" as INIT
-  IDLE -> INIT : Page request received
+  state IDLE #f6ff9b
+  IDLE -> INIT : Page request \n with window size N
+
+  legend
+  ,* A is the ID of the last packet known to be received by the user
+  ,* B is the ID of the last packet sent by the server
+  ,* L is the ID of the last packet of current page request
+  ,* ρ is the current (estimated) throughput of the connection
+  ,* t<sub>0</sub> is a multiple of the estimated Round Trip Time
+  end legend
 
   state "B < A + N + 1?" as DECIDE
   INIT --> DECIDE
 
   DECIDE --> WAIT : NO
 
-  state "# transmit packet B + 1 \l# set B += 1" as TX
+  state "# transmit packet B + 1 \l# set B = B + 1" as TX
   DECIDE -left> TX : YES
-  TX -> DECIDE : Timeout of ρ x packet size
-  TX -> RECV : ACK(L)
+  TX -> DECIDE : Timeout of RTT/2
+  TX -> RECV : ACK(P) received
 
-  state "compute ρ of the last ACKed packets" as RECV
+  state "compute Round Trip Time \lof the last ACKed packets" as RECV
 
   state "set B = A" as RETX
   RETX --> DECIDE
   WAIT -> RETX : Timeout of t<sub>0</sub>
-  WAIT --> RECV : ACK(L) received
+  WAIT --> RECV : ACK(P) received
 
   RECV -> CHECK_FINISH
-  state "L = N?" as CHECK_FINISH
+  state "P = L?" as CHECK_FINISH
 
-  state "IDLE" as FINISH
+  state "IDLE" as FINISH #f6ff9b
   CHECK_FINISH --> FINISH : YES
   CHECK_FINISH -> UPDATE_A : NO
 
-  state "A = max{A, L}" as UPDATE_A
+  state "A = max{A, P}" as UPDATE_A
   UPDATE_A --> DECIDE
 #+END_SRC
 
 #+RESULTS:
-[[file:figures/server_side.eps]]
+[[file:figures/tcp_server_side.png]]
 
-#+BEGIN_SRC plantuml :file figures/tcp_client_side.eps :noweb yes
+#+BEGIN_SRC plantuml :file figures/tcp_client_side.png :noweb yes
   <<plantuml_skin>>
 
-  skinparam defaultTextAlignment left
+  skinparam defaultTextAlignment center
   hide empty description
 
-  state "# Transmit page request\l# initialize arrived array" as INIT
-  IDLE --> INIT
+  state "# Transmit page request\l# Initialize <i>arrived</i> array" as INIT
+  state IDLE #f6ff9b
+  state ACK_L as "Send ACK(L)"
+  state "# set <i>arrived</i>(P) = True\l# set K=argmin{<i>arrived</i>(i)=False}" as RECV
+  state "Send ACK(K)" as SEND_ACK
+  state "K = L?" as CHECK_FINISH
+  state "IDLE" as FINISH #f6ff9b
+
+  IDLE --> INIT : User requests a page
+  IDLE -> ACK_L : Packet P of L arrives
+
+  ACK_L -> IDLE : \n
 
   INIT -> INIT : Timeout of t<sub>0</sub>
+  INIT --> RECV : Packet P of L arrives
 
-  state "# estimate RTT based on received packets\l# set arrived(K) = True\l# set L=argmin{arrived(i)=False}" as RECV
-  INIT --> RECV : Packet K arrives
+  RECV -> SEND_ACK
 
-  RECV --> SEND_ACK: \n
-  state "Send ACK(L)" as SEND_ACK
-  SEND_ACK -> RECV : Packet K arrives
-  SEND_ACK --> SEND_ACK : Timeout of RTT
+  SEND_ACK --> CHECK_FINISH
+
+  WAIT --> RECV : \nPacket P of L arrives
+  WAIT -> SEND_ACK : Timeout of t<sub>0</sub>\n
+
+  CHECK_FINISH --> FINISH : YES
+  CHECK_FINISH --> WAIT : NO
+
+  legend
+  ,* t<sub>0</sub> is a multiple of the estimated Round Trip Time of the connection
+  ,* each data packet contains its ID, P, and the ID of the last one, L
+  end legend
+
 #+END_SRC
 
 #+RESULTS:
-[[file:figures/tcp_client_side.eps]]
-
+[[file:figures/tcp_client_side.png]]
 
 * UDP like protocol
 Simply send packets with serial number from the server at requested quality
