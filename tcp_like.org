@@ -1,8 +1,17 @@
 # -*- mode: Org; -*-
 
 #+STARTUP: indent
+#+OPTIONS: toc:nil
 
-In order for this to work, each page request has to have a unique ID.
+In order for this protocols to work, each page request has to have
+
+- a request ID unique for the user
+- a sequence number P, unique in the session
+- a sequence max number L, constant for the session
+- routing information (path)
+- size
+- transmission time, in order to estimate RTT
+- a type, for distinguishing between page requests, ACKs, ...
 
 * TCP like protocol
 Description of a Go-Back-N ARQ protocol that is similar enough to TCP for our
@@ -65,10 +74,10 @@ one (if any) resets the server to IDLE and the last request is processed.
   skinparam defaultTextAlignment center
   hide empty description
 
-  state "# Transmit page request\l# Initialize <i>arrived</i> array" as INIT
+  state "# Transmit page request\l# Initialize arrived array" as INIT
   state IDLE #f6ff9b
   state ACK_L as "Send ACK(L)"
-  state "# estimate RTT on last packets\l# set <i>arrived</i>(P) = True\l# set K=argmin{<i>arrived</i>(i)=False}" as RECV
+  state "# estimate RTT on last packets\l# set arrived(P) = True\l# set K=argmin{arrived(i)=False}" as RECV
   state "Send ACK(K)" as SEND_ACK
   state "K = L?" as CHECK_FINISH
   state "IDLE" as FINISH #f6ff9b
