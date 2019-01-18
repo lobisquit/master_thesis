@@ -21,7 +21,6 @@ pub struct TokenBucketQueue {
     #[builder(setter(skip))]
     last_update_time: f64,
 
-    conn_speed: f64,
     token_rate: f64
 }
 
@@ -30,7 +29,7 @@ impl TokenBucketQueueBuilder {
     fn default_tokens(&self) -> Result<f64, String> {
         let max_tokens = self.max_tokens.ok_or("Max tokens not set")?;
 
-        return Ok(max_tokens);
+        Ok(max_tokens)
     }
 }
 
@@ -45,7 +44,7 @@ impl TokenBucketQueue {
     }
 
     fn next_pkt_delay(&self) -> f64 {
-        if let Some( DataPacket { size: pkt_size, .. } ) = self.queue.get(0) {
+        if let Some( Packet { size: pkt_size, .. } ) = self.queue.get(0) {
             let proc_time = 1e-6;
 
             if self.tokens > *pkt_size as f64 {
@@ -69,7 +68,7 @@ impl Node for TokenBucketQueue {
         debug!("Node {:?} received message {:?} at time {}", self, message, current_time);
 
         match message {
-            DataPacket { size: pkt_size, .. } => {
+            Packet { size: pkt_size, .. } => {
                 // destroy packet if queue is full
                 if self.queue.len() > self.max_queue {
                     vec![]
@@ -84,11 +83,9 @@ impl Node for TokenBucketQueue {
 
                     // if packet is the only one, schedule its tx
                     if self.queue.len() == 1 {
-                        let pkt_delay = self.next_pkt_delay();
-
                         vec![
-                            Event::new(current_time + pkt_delay,
-                                      TxPacket,
+                            self.new_event(current_time + self.next_pkt_delay(),
+                                      QueueTransmitPacket,
                                       self.node_id).unwrap()
                         ]
                     }
@@ -97,10 +94,10 @@ impl Node for TokenBucketQueue {
                     }
                 }
             },
-            TxPacket => {
+            QueueTransmitPacket => {
                 let next_pkt = self.queue.pop_front().unwrap();
 
-                if let DataPacket { size: pkt_size, .. } = next_pkt {
+                if let Packet { size: pkt_size, .. } = next_pkt {
                     self.update_tokens(current_time);
 
                     // safety check
@@ -111,11 +108,8 @@ impl Node for TokenBucketQueue {
                     // pay the tokens required
                     self.tokens -= pkt_size as f64;
 
-                    // schedule reception after connection tx time
-                    let tx_time = pkt_size as f64 / self.conn_speed;
-
                     let mut events = vec![
-                        Event::new(current_time + tx_time,
+                        self.new_event(current_time,
                                   next_pkt,
                                   self.dest_id).unwrap()
                     ];
@@ -124,8 +118,8 @@ impl Node for TokenBucketQueue {
                     if self.queue.len() > 0 {
                         let next_pkt_delay = self.next_pkt_delay();
                         events.push(
-                            Event::new(current_time + next_pkt_delay,
-                                      TxPacket,
+                            self.new_event(current_time + next_pkt_delay,
+                                      QueueTransmitPacket,
                                       self.node_id).unwrap()
                         )
                     }
