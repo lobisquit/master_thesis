@@ -83,6 +83,7 @@ one (if any) resets the server to IDLE and the last request is processed.
   state "Send ACK(K)" as SEND_ACK
   state "K = L?" as CHECK_FINISH
   state "IDLE" as FINISH #f6ff9b
+  state "Evaluate QoE" as JUDGE
 
   IDLE --> INIT : User requests a page
   IDLE -> ACK_L : Packet P of L arrives
@@ -99,8 +100,10 @@ one (if any) resets the server to IDLE and the last request is processed.
   WAIT --> RECV : \nPacket P of L arrives
   WAIT -> SEND_ACK : Timeout of RTT\n
 
-  CHECK_FINISH --> FINISH : YES
+  CHECK_FINISH --> JUDGE : YES
   CHECK_FINISH --> WAIT : NO
+
+  JUDGE --> FINISH
 
   legend
   ,* t<sub>0</sub> is a multiple of the supposed Round Trip Time of the connection
