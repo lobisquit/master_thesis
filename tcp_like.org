@@ -13,6 +13,8 @@ In order for this protocols to work, each page request has to have
 - transmission time, in order to estimate RTT
 - a type, for distinguishing between page requests, ACKs, ...
 
+We suppose a on-off user activity process, with exponential off times, 10s mean.
+
 * TCP like protocol
 Description of a Go-Back-N ARQ protocol that is similar enough to TCP for our
 purposes.
