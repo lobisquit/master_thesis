@@ -1,3 +1,4 @@
+# -*- mode: Org; -*-
 #+STARTUP: indent
 
 As a general rule, a TBF is put in front of any output device.
@@ -94,6 +95,39 @@ As a general rule, a TBF is put in front of any output device.
 #+RESULTS:
 [[file:figures/simulator_uplink.png]]
 
+* HOWTO build the network
+** Preliminary step
+Create these data structures from the tree
+- leaves list
+- father map <node_id, father node_id>
+- leaves map <node_id, <child node_id, leaf node_id>>
+
+** Uplink
+- build servers, one per service
+- build users using leaves list
+- set users final destination as corresponding server
+- aggregate users according to the fathers map
+  + create an aggregator node
+- put a TBF after each aggregator with ID the one of the corresponding DSLAM
+- aggregate DSLAMs using the fathers map
+  + create an aggregator node
+- put a TBF after each aggregator with ID the one of the corresponding ROUTER
+- aggregate ROUTERs using the fathers map
+  + create an aggregator node
+- put a TBF after each aggregator with ID the one of the MAINFRAME
+- connect MAINFRAME to the servers
+
+** Downlink
+- create an aggregator node in the MAINFRAME
+- connect all servers to the aggregator
+- connect the aggregator to the MAINFRAME switch, using a blocking queue
+- using leaves map child information, create a TBF + switch for each child node
+  + assign the switch node the ID of the corresponding ROUTER
+  + create a routing table <leaf, child> using the leaves map
+- again using leaves map, create a TBF + switch for each child node
+  + assign the child node the ID of the corresponding DSLAM
+  + create a routing table using the leaves map
+- connect the DSLAMs to each user using a TBF, again via the leaves map
 
 * COMMENT Local Variables
 # Local Variables:

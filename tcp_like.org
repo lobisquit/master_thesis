@@ -124,6 +124,6 @@ based on serial numbers.
 * COMMENT Local variables
 # Local Variables:
 # org-confirm-babel-evaluate: nil
-# eval: (add-hook 'org-babel-pre-tangle-hook (lambda () (org-babel-lob-ingest "thesis/thesis.org")) t t
+# eval: (add-hook 'org-babel-pre-tangle-hook (lambda () (org-babel-lob-ingest "thesis/thesis.org")) t t)
 # eval:  (add-hook 'org-babel-after-execute-hook 'org-display-inline-images)
 # End:
