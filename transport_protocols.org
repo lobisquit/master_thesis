@@ -26,11 +26,11 @@ one (if any) resets the server to IDLE and the last request is processed.
   <<plantuml_skin>>
   skinparam defaultTextAlignment center
   hide empty description
-  state "# set A = -1 \l# set B = 0 \l# estimate RTT based on request packet" as INIT
+  state INIT : # set A = -1 \l# set B = 0 \l# estimate RTT based on request packet
   state IDLE #f6ff9b
   state "B < A + N + 1?" as DECIDE
   state "compute Round Trip Time \lof the last ACKed packets" as RECV
-  state "# transmit packet B + 1 \l# set B = B + 1" as TX
+  state TRANSMIT : # transmit packet B + 1 \l# set B = B + 1
   state "set B = A" as RETX
   state "P = L?" as CHECK_FINISH
   state "IDLE" as FINISH #f6ff9b
@@ -41,10 +41,10 @@ one (if any) resets the server to IDLE and the last request is processed.
   INIT --> DECIDE
 
   DECIDE --> WAIT : NO
-  DECIDE -left> TX : YES
+  DECIDE -left> TRANSMIT : YES
 
-  TX -> DECIDE : Timeout of RTT/2
-  TX -> RECV : ACK(P) received
+  TRANSMIT -> DECIDE : Timeout of RTT/2
+  TRANSMIT -> RECV : ACK(P) received
 
   RETX --> DECIDE
 
@@ -76,7 +76,7 @@ one (if any) resets the server to IDLE and the last request is processed.
   skinparam defaultTextAlignment center
   hide empty description
 
-  state "# Transmit page request\l# Initialize arrived array" as INIT
+  state INIT : # Transmit page request\l# Initialize arrived array
   state IDLE #f6ff9b
   state ACK_L as "Send ACK(L)"
   state "# estimate RTT on last packets\l# set arrived(P) = True\l# set K=argmin{arrived(i)=False}" as RECV
@@ -180,8 +180,8 @@ based on serial numbers.
   INIT --> DATA_SEND
   DATA_SEND --> STREAM_ENDED : \n
 
-  STREAM_ENDED --> DATA_SEND : N
-  STREAM_ENDED --> FINISH_SEND : Y
+  STREAM_ENDED --> DATA_SEND : NO
+  STREAM_ENDED --> FINISH_SEND : YES
 
   DATA_SEND --> FINISH_SEND : STOP packet received
 
