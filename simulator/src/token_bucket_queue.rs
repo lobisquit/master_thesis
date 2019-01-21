@@ -85,8 +85,8 @@ impl Node for TokenBucketQueue {
                     if self.queue.len() == 1 {
                         vec![
                             self.new_event(current_time + self.next_pkt_delay(),
-                                      QueueTransmitPacket,
-                                      self.node_id).unwrap()
+                                           QueueTransmitPacket,
+                                           self.node_id).unwrap()
                         ]
                     }
                     else {
@@ -110,8 +110,8 @@ impl Node for TokenBucketQueue {
 
                     let mut events = vec![
                         self.new_event(current_time,
-                                  next_pkt,
-                                  self.dest_id).unwrap()
+                                       next_pkt,
+                                       self.dest_id).unwrap()
                     ];
 
                     // schedule next packet tx if queue is not empty
@@ -119,8 +119,8 @@ impl Node for TokenBucketQueue {
                         let next_pkt_delay = self.next_pkt_delay();
                         events.push(
                             self.new_event(current_time + next_pkt_delay,
-                                      QueueTransmitPacket,
-                                      self.node_id).unwrap()
+                                           QueueTransmitPacket,
+                                           self.node_id).unwrap()
                         )
                     }
 
@@ -131,7 +131,7 @@ impl Node for TokenBucketQueue {
                 }
             }
             _ => panic!("Wrong message type received in node {:?}: {:?}",
-                        self.node_id, message)
+                       self.node_id, message)
         }
     }
 
