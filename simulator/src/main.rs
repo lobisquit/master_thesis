@@ -6,12 +6,10 @@ extern crate derive_builder;
 
 mod core;
 mod counters;
-mod token_bucket_queue;
-mod blocking_queue;
+mod queue;
 
 use self::core::*;
-use self::token_bucket_queue::*;
-use self::blocking_queue::*;
+use self::queue::*;
 use std::collections::BinaryHeap;
 use std::collections::HashMap;
 use std::time::Instant;
