@@ -84,10 +84,10 @@ impl PartialOrd for FiniteF64 {
 #[derive(Debug, Eq, PartialEq, PartialOrd, Ord, Clone)]
 pub enum PacketType {
     TcpData {
-        P: usize, // sequence number of current packet
-        L: usize, // sequence number of last packet (total)
+        sequence_num: usize, // sequence number of current packet
+        sequence_end: usize, // sequence number of last packet (total)
     },
-    UdpData,
+    UdpData(bool),
     DataRequest,
     DataStop,
     ACK(usize),
@@ -99,7 +99,7 @@ pub enum Message {
 
     Packet {
         id: usize,   // unique packet ID across all packets
-        S: usize,    // current session  ID
+        session: usize,    // current session  ID
         size: u64,
         pkt_type: PacketType,
         creation_time: FiniteF64,
@@ -109,29 +109,28 @@ pub enum Message {
 
     // control messages
 
-    UserSwitchOn,
-    UserSwitchOff,
+    UserSwitch(bool),
     UserPageRequest,
 
     QueueTransmitPacket
 }
 
 impl Message {
-    pub fn new_packet(S: Option<usize>,
+    pub fn new_packet(session_id: Option<usize>,
                       size: u64,
                       pkt_type: PacketType,
                       current_time: f64,
                       src_node: NodeId,
                       dst_node: NodeId) -> Message {
 
-        let session_id = S.unwrap_or(
+        let session_id = session_id.unwrap_or(
             LAST_SESSION_ID.fetch_add(1, AtomicOrdering::SeqCst)
         );
 
         Message::Packet {
             id: LAST_PKT_ID.fetch_add(1, AtomicOrdering::SeqCst),
 
-            S: session_id,
+            session: session_id,
 
             size: size,
             pkt_type: pkt_type,
@@ -168,12 +167,12 @@ pub trait Node: Debug {
 
     fn process_message(&mut self, message: Message, current_time: f64) -> Vec<Event>;
 
-    fn new_event(&self, time: f64, msg: Message, recipient: NodeId) -> Result<Event, ()> {
-        Ok(Event {
-            time:     FiniteF64::new(time)?,
+    fn new_event(&self, time: f64, msg: Message, recipient: NodeId) -> Event {
+        Event {
+            time:     FiniteF64::new(time).unwrap(),
             msg:      msg,
             sender: self.get_id(),
             recipient: recipient
-        })
+        }
     }
 }

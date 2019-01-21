@@ -31,7 +31,7 @@ impl Node for BlockingQueue {
                     if self.queue.len() == 1 {
                         return vec![ self.new_event(current_time,
                                                     QueueTransmitPacket,
-                                                    self.node_id).unwrap() ]
+                                                    self.node_id) ]
                     }
                 }
 
@@ -48,14 +48,14 @@ impl Node for BlockingQueue {
                     // tx the first packet in the queue
                     let mut events = vec![ self.new_event(current_time + tx_time,
                                                           next_pkt,
-                                                          self.node_id).unwrap() ];
+                                                          self.node_id) ];
 
                     // schedule next one if queue is still not empty
                     if self.queue.len() > 0 {
                         events.push(
                             self.new_event(current_time + tx_time,
                                            QueueTransmitPacket,
-                                           self.node_id).unwrap()
+                                           self.node_id)
                         )
                     }
 
@@ -157,7 +157,7 @@ impl Node for TokenBucketQueue {
                         vec![
                             self.new_event(current_time + self.next_pkt_delay(),
                                            QueueTransmitPacket,
-                                           self.node_id).unwrap()
+                                           self.node_id)
                         ]
                     }
                     else {
@@ -166,7 +166,7 @@ impl Node for TokenBucketQueue {
                 }
             },
             QueueTransmitPacket => {
-                let next_pkt = self.queue.pop_front().unwrap();
+                let next_pkt = self.queue.pop_front().expect("Empty queue");
 
                 if let Packet { size: pkt_size, .. } = next_pkt {
                     self.update_tokens(current_time);
@@ -182,7 +182,7 @@ impl Node for TokenBucketQueue {
                     let mut events = vec![
                         self.new_event(current_time,
                                        next_pkt,
-                                       self.dest_id).unwrap()
+                                       self.dest_id)
                     ];
 
                     // schedule next packet tx if queue is not empty
@@ -191,7 +191,7 @@ impl Node for TokenBucketQueue {
                         events.push(
                             self.new_event(current_time + next_pkt_delay,
                                            QueueTransmitPacket,
-                                           self.node_id).unwrap()
+                                           self.node_id)
                         )
                     }
 

@@ -7,9 +7,12 @@ extern crate derive_builder;
 mod core;
 mod counters;
 mod queue;
+mod switch;
 
 use self::core::*;
 use self::queue::*;
+use self::switch::*;
+
 use std::collections::BinaryHeap;
 use std::collections::HashMap;
 use std::time::Instant;
