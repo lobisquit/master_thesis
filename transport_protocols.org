@@ -121,6 +121,76 @@ Simply send packets with serial number from the server at requested quality
 certain time window based on what arrives: packet losses are easy to calculate
 based on serial numbers.
 
+#+BEGIN_SRC plantuml :file figures/udp_client_side.png :noweb yes
+  <<plantuml_skin>>
+  hide empty description
+
+  state IDLE #f6ff9b
+
+  state INIT : Pick unique session number for the stream
+  state REQUEST_WAIT : Send DATA request to server
+  state DATA_WAIT : Update stream metrics
+  state UNUSABLE : Mark service as unusable
+  state STOP_WAIT : Send STOP request to server
+  state "IDLE" as FINISH #f6ff9b
+
+  IDLE --> INIT : User requests some content
+
+  INIT --> REQUEST_WAIT
+
+  REQUEST_WAIT --> REQUEST_WAIT : t<sub>0</sub>
+  REQUEST_WAIT --> UNUSABLE : N × t<sub>0</sub>
+
+  REQUEST_WAIT --> DATA_WAIT : DATA packet received
+
+  DATA_WAIT --> DATA_WAIT : DATA packet received
+  DATA_WAIT --> UNUSABLE : N × t<sub>0</sub>
+  DATA_WAIT --> FINISH : FINISH packet received
+
+  DATA_WAIT --> STOP_WAIT : User cancels \nits request
+  REQUEST_WAIT --> STOP_WAIT : User cancels \nits request
+
+  UNUSABLE --> STOP_WAIT
+
+  STOP_WAIT -> STOP_WAIT : t<sub>0</sub>
+
+  STOP_WAIT -up-> FINISH : FINISH packet received
+
+#+END_SRC
+
+#+RESULTS:
+[[file:figures/udp_client_side.png]]
+
+
+#+BEGIN_SRC plantuml :file figures/udp_server_side.png :noweb yes
+  <<plantuml_skin>>
+  hide empty description
+
+  state IDLE #f6ff9b
+  state INIT : Track request session number
+  state DATA_SEND: Send DATA packet to the user
+  state "Has the stream ended?" as STREAM_ENDED
+
+  state FINISH_SEND : Send FINISH packet to the user
+  state "IDLE" as FINISH  #f6ff9b
+
+  IDLE --> FINISH_SEND : STOP packet received
+
+  IDLE --> INIT : DATA request received     \n
+  INIT --> DATA_SEND
+  DATA_SEND --> STREAM_ENDED : \n
+
+  STREAM_ENDED --> DATA_SEND : N
+  STREAM_ENDED --> FINISH_SEND : Y
+
+  DATA_SEND --> FINISH_SEND : STOP packet received
+
+  FINISH_SEND --> FINISH
+#+END_SRC
+
+#+RESULTS:
+[[file:figures/udp_server_side.png]]
+
 * COMMENT Local variables
 # Local Variables:
 # org-confirm-babel-evaluate: nil
