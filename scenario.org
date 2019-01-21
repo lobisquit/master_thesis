@@ -1,6 +1,7 @@
 # -*- mode: Org; -*-
 #+STARTUP: indent
 
+* Nodes topology
 As a general rule, a TBF is put in front of any output device.
 
 #+BEGIN_SRC plantuml :file figures/simulator_downlink.png :noweb yes
@@ -96,18 +97,21 @@ As a general rule, a TBF is put in front of any output device.
 [[file:figures/simulator_uplink.png]]
 
 * HOWTO build the network
+It's important that graph IDs are kept the same as in the simulator, to easily
+handle everything.
+
 ** Preliminary step
 Create these data structures from the tree
 - leaves list
 - father map <node_id, father node_id>
-- leaves map <node_id, <child node_id, leaf node_id>>
+- leaves map <node_id, <leaf node_id, child node_id>>
 
 ** Uplink
 - build servers, one per service
-- build users using leaves list
+- build users using leaves list (with ids as in the graph)
 - set users final destination as corresponding server
 - aggregate users according to the fathers map
-  + create an aggregator node
+  + create an aggregator node (meaning a blocking queue with single destination)
 - put a TBF after each aggregator with ID the one of the corresponding DSLAM
 - aggregate DSLAMs using the fathers map
   + create an aggregator node
