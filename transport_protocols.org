@@ -122,51 +122,51 @@ certain time window based on what arrives: packet losses are easy to calculate
 based on serial numbers.
 
 #+BEGIN_SRC plantuml :file figures/udp_client_side.png :noweb yes
-    <<plantuml_skin>>
-    hide empty description
+  <<plantuml_skin>>
+  hide empty description
 
-    state IDLE #f6ff9b
+  state IDLE #f6ff9b
 
-    state REQUEST {
-      state REQUEST_INIT : # Pick unique session number for the stream\n# Start unusability timeout
-      state REQUEST_WAIT : Send DATA request to server
-    }
-    state "DATA   " as DATA {
-      state DATA_INIT : # Clear all previous timeouts \n# Start new unusability timeout
-      state DATA_WAIT
-      state DATA_UPDATE : Update stream metrics
-    }
-    state UNUSABLE : Mark service as unusable
-    state STOP_WAIT : Send STOP request to server
-    state "IDLE" as FINISH #f6ff9b
-    state EVALUATE : Compute QoS, QoE based on metrics
+  state REQUEST {
+    state REQUEST_INIT : # Pick unique session number for the stream\n# Start unusability timeout
+    state REQUEST_WAIT : Send DATA request to server
+  }
+  state "DATA   " as DATA {
+    state DATA_INIT : # Clear all previous timeouts \n# Start new unusability timeout
+    state DATA_WAIT
+    state DATA_UPDATE : Update stream metrics
+  }
+  state UNUSABLE : Mark service as unusable
+  state STOP_WAIT : Send STOP request to server
+  state "IDLE" as FINISH #f6ff9b
+  state EVALUATE : Compute QoS, QoE based on metrics
 
-    IDLE --> REQUEST_INIT : User requests \nsome content
+  IDLE --> REQUEST_INIT : User requests \nsome content
+  IDLE --> STOP_WAIT : DATA packet received
 
-    REQUEST_INIT --> REQUEST_WAIT
+  REQUEST --> UNUSABLE : N × t<sub>0</sub>
 
-    REQUEST_WAIT --> REQUEST_WAIT : t<sub>0</sub>
-    REQUEST --> UNUSABLE : N × t<sub>0</sub>
+  REQUEST_INIT --> REQUEST_WAIT
 
-    REQUEST_WAIT --> DATA_INIT : DATA packet received
+  REQUEST_WAIT --> REQUEST_WAIT : t<sub>0</sub>
+  REQUEST_WAIT --> DATA_INIT : DATA packet received
+
+  DATA --> UNUSABLE : N × t<sub>0</sub>
+
   DATA_INIT --> DATA_WAIT
-    DATA_WAIT -> DATA_UPDATE : DATA packet received
-    DATA_UPDATE -> DATA_WAIT : \n
-    DATA --> UNUSABLE : N × t<sub>0</sub>
-    DATA_WAIT -> EVALUATE : FINISH packet received
 
-    ' DATA_WAIT --> STOP_WAIT : User cancels \nits request
-    ' REQUEST_WAIT --> STOP_WAIT : User cancels \nits request
+  DATA_WAIT -> DATA_UPDATE : DATA packet received
+  DATA_WAIT -> EVALUATE : FINISH packet received
 
-    UNUSABLE --> STOP_WAIT
+  DATA_UPDATE -> DATA_WAIT : \n
 
-    STOP_WAIT --> STOP_WAIT : t<sub>0</sub>
+  UNUSABLE --> STOP_WAIT
 
-    STOP_WAIT --> EVALUATE : FINISH packet received
+  STOP_WAIT --> STOP_WAIT : t<sub>0</sub>
+  STOP_WAIT --> EVALUATE : FINISH packet received
 
-    EVALUATE --> FINISH
+  EVALUATE --> FINISH
 
-    IDLE --> STOP_WAIT : DATA packet received
 #+END_SRC
 
 #+RESULTS:
