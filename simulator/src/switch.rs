@@ -25,7 +25,7 @@ impl Node for Switch {
 
     fn process_message(&mut self, message: Message, current_time: f64) -> Vec<Event> {
         match message {
-            Packet { dst_node, .. } => {
+            Data(Packet { dst_node, .. }) => {
                 match self.routing_table.get(&dst_node) {
                     Some(next_hop) => {
                         vec![ self.new_event(current_time,

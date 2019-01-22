@@ -8,6 +8,7 @@ mod core;
 mod counters;
 mod queue;
 mod switch;
+mod udp;
 
 use self::core::*;
 use self::queue::*;
@@ -23,7 +24,7 @@ fn main() {
     let ptype = PacketType::ACK(44 as usize);
 
 
-    let x = Message::new_packet(Some(1),
+    let x = Message::new_packet(1,
                                100,
                                ptype,
                                0.0,

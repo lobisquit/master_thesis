@@ -22,7 +22,7 @@ impl Node for BlockingQueue {
 
     fn process_message(&mut self, message: Message, current_time: f64) -> Vec<Event> {
         match message {
-            Packet { .. } => {
+            Data { .. } => {
                 // put packet in the queue if there is space for it
                 if self.queue.len() < self.max_queue {
                     self.queue.push_back(message);
@@ -41,7 +41,7 @@ impl Node for BlockingQueue {
             QueueTransmitPacket => {
                 let next_pkt = self.queue.pop_front().expect("Empty queue");
 
-                if let Packet { size: pkt_size, .. } = next_pkt {
+                if let Data(Packet { size: pkt_size, .. }) = next_pkt {
                     // service time is given by connection speed
                     let tx_time = pkt_size as f64 / self.conn_speed;
 
@@ -115,7 +115,7 @@ impl TokenBucketQueue {
     }
 
     fn next_pkt_delay(&self) -> f64 {
-        if let Some( Packet { size: pkt_size, .. } ) = self.queue.get(0) {
+        if let Some( Data(Packet { size: pkt_size, .. }) ) = self.queue.get(0) {
             let proc_time = 1e-6;
 
             if self.tokens > *pkt_size as f64 {
@@ -139,7 +139,7 @@ impl Node for TokenBucketQueue {
         debug!("Node {:?} received message {:?} at time {}", self, message, current_time);
 
         match message {
-            Packet { size: pkt_size, .. } => {
+            Data(Packet { size: pkt_size, .. }) => {
                 // destroy packet if queue is full
                 if self.queue.len() > self.max_queue {
                     vec![]
@@ -168,7 +168,7 @@ impl Node for TokenBucketQueue {
             QueueTransmitPacket => {
                 let next_pkt = self.queue.pop_front().expect("Empty queue");
 
-                if let Packet { size: pkt_size, .. } = next_pkt {
+                if let Data(Packet { size: pkt_size, .. }) = next_pkt {
                     self.update_tokens(current_time);
 
                     // safety check

@@ -128,12 +128,13 @@ based on serial numbers.
     state IDLE #f6ff9b
 
     state REQUEST {
-      state REQUEST_INIT : # Pick unique session number for the stream\n# Setup unusability timeout
+      state REQUEST_INIT : # Pick unique session number for the stream\n# Start unusability timeout
       state REQUEST_WAIT : Send DATA request to server
     }
-    state "DATA       " as DATA {
-      state DATA_INIT : # Clear all previous timeouts \n# Setup unusability timeout
-      state DATA_WAIT : Update stream metrics
+    state "DATA   " as DATA {
+      state DATA_INIT : # Clear all previous timeouts \n# Start new unusability timeout
+      state DATA_WAIT
+      state DATA_UPDATE : Update stream metrics
     }
     state UNUSABLE : Mark service as unusable
     state STOP_WAIT : Send STOP request to server
@@ -149,7 +150,8 @@ based on serial numbers.
 
     REQUEST_WAIT --> DATA_INIT : DATA packet received
   DATA_INIT --> DATA_WAIT
-    DATA_WAIT --> DATA_WAIT : DATA packet received
+    DATA_WAIT -> DATA_UPDATE : DATA packet received
+    DATA_UPDATE -> DATA_WAIT : \n
     DATA --> UNUSABLE : N × t<sub>0</sub>
     DATA_WAIT -> EVALUATE : FINISH packet received
 
