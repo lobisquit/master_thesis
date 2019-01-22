@@ -166,7 +166,6 @@ based on serial numbers.
   STOP_WAIT --> EVALUATE : FINISH packet received
 
   EVALUATE --> FINISH
-
 #+END_SRC
 
 #+RESULTS:
@@ -178,23 +177,26 @@ based on serial numbers.
   hide empty description
 
   state IDLE #f6ff9b
-  state INIT : Track request session number
+  state DATA {
   state DATA_SEND: Send DATA packet to the user
+  state DATA_WAIT
   state "Has the stream ended?" as STREAM_ENDED
+  }
 
   state FINISH_SEND : Send FINISH packet to the user
   state "IDLE" as FINISH  #f6ff9b
 
+  IDLE --> DATA_SEND : DATA request received
   IDLE --> FINISH_SEND : STOP packet received
 
-  IDLE --> INIT : DATA request received     \n
-  INIT --> DATA_SEND
-  DATA_SEND --> STREAM_ENDED : \n
+  DATA_SEND --> STREAM_ENDED
 
-  STREAM_ENDED --> DATA_SEND : NO
+  STREAM_ENDED --> DATA_WAIT : NO
+  DATA_WAIT --> DATA_SEND : Δt
+  DATA_WAIT --> FINISH_SEND : STOP packet received
   STREAM_ENDED --> FINISH_SEND : YES
 
-  DATA_SEND --> FINISH_SEND : STOP packet received
+  DATA_SEND --> FINISH_SEND : STOP packet \nreceived
 
   FINISH_SEND --> FINISH
 #+END_SRC

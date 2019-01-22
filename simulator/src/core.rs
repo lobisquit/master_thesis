@@ -38,15 +38,23 @@ pub trait MachineStatus : Debug {
     fn as_any(&self) -> &dyn Any;
 }
 
-#[derive(Debug, Eq, PartialEq, PartialOrd, Ord, Clone)]
+impl<T: 'static + Debug> MachineStatus for T {
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+}
+
+
+#[derive(Debug, Clone)]
 pub enum PacketType {
     TcpData {
         sequence_num: usize, // sequence number of current packet
         sequence_end: usize, // sequence number of last packet (total)
     },
+    UdpDataRequest { bitrate: f64 },
     UdpData,
+    UdpFinishRequest,
     UdpFinish,
-    DataRequest,
     DataStop,
     ACK(usize),
 }
@@ -75,7 +83,9 @@ pub enum Message {
     UserSwitchOn,
     UserSwitchOff,
 
-    MoveToStatus(Box<MachineStatus>)
+    MoveToStatus(Box<MachineStatus>),
+
+    QueueTransmitPacket
 }
 
 impl Message {
