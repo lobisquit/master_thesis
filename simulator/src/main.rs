@@ -11,24 +11,22 @@ mod switch;
 mod udp;
 
 use self::core::*;
-use self::queue::*;
-use self::switch::*;
-
-use std::collections::BinaryHeap;
-use std::collections::HashMap;
-use std::time::Instant;
-
-use env_logger::{Builder, Env};
+use self::udp::*;
 
 fn main() {
     let ptype = PacketType::ACK(44 as usize);
 
+    let x = UdpClient {
+        node_id: 0.into(),
+        status: udp::UdpClientStatus::default(),
+        next_hop_id: 1.into(),
+        dst_id: 10.into(),
 
-    let x = Message::new_packet(1,
-                               100,
-                               ptype,
-                               0.0,
-                               NodeId(10),
-                               NodeId(10));
+        bitrate: 10.0,
+        t0: 14.0,
+        n: 12,
+        timeouts: vec![]
+    };
+
     dbg!(x);
 }

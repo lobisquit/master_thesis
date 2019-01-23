@@ -54,7 +54,7 @@ pub enum PacketType {
     UdpDataRequest { bitrate: f64 },
     UdpData,
     UdpFinishRequest,
-    UdpFinish,
+    UdpFinish { file_size: u64 },
     DataStop,
     ACK(usize),
 }
