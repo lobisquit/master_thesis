@@ -145,38 +145,35 @@ based on serial numbers.
     state REQUEST_WAIT : Send DATA request to server
   }
   state "RECEIVE   " as DATA {
-    state DATA_INIT : # Clear all previous timeouts \n# Start new unusability timeout
     state DATA_WAIT
     state DATA_UPDATE : Update stream metrics
   }
   state UNUSABLE : Mark service as unusable
-  state STOP_WAIT : Send STOP request to server
+  state FINISH_WAIT : Send FINISH request to server
   state "IDLE" as FINISH #f6ff9b
   state EVALUATE : Compute QoS, QoE based on metrics
 
-  IDLE --> REQUEST_INIT : User requests \nsome content
-  IDLE --> STOP_WAIT : DATA packet received
+  IDLE --> REQUEST_INIT : User requests\lsome content
+  IDLE --> FINISH_WAIT : DATA packet received
 
   REQUEST --> UNUSABLE : N × t<sub>0</sub>
 
   REQUEST_INIT --> REQUEST_WAIT
 
   REQUEST_WAIT --> REQUEST_WAIT : t<sub>0</sub>
-  REQUEST_WAIT --> DATA_INIT : DATA packet received
+  REQUEST_WAIT --> DATA_UPDATE : DATA packet received
 
-  DATA --> UNUSABLE : N × t<sub>0</sub>
+  DATA_WAIT --> UNUSABLE : N × t<sub>0</sub>
 
-  DATA_INIT --> DATA_WAIT
-
-  DATA_WAIT -> DATA_UPDATE : DATA packet received
-  DATA_WAIT -> EVALUATE : FINISH packet received
+  DATA_WAIT --> DATA_UPDATE : DATA packet received
+  DATA_WAIT --> EVALUATE : FINISH packet \lreceived
 
   DATA_UPDATE -> DATA_WAIT : \n
 
-  UNUSABLE --> STOP_WAIT
+  UNUSABLE --> FINISH_WAIT
 
-  STOP_WAIT --> STOP_WAIT : t<sub>0</sub>
-  STOP_WAIT --> EVALUATE : FINISH packet received
+  FINISH_WAIT --> FINISH_WAIT : t<sub>0</sub>
+  FINISH_WAIT --> EVALUATE : FINISH packet received
 
   EVALUATE --> FINISH
 #+END_SRC
