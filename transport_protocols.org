@@ -28,35 +28,38 @@ one (if any) resets the server to IDLE and the last request is processed.
   hide empty description
   state INIT : # set A = -1 \l# set B = 0 \l# estimate RTT based on request packet
   state IDLE #f6ff9b
-  state "B < A + N + 1?" as DECIDE
-  state "compute Round Trip Time \lof the last ACKed packets" as RECV
+  state DECIDE_TRANSMIT : B < A + N + 1?
   state TRANSMIT : # transmit packet B + 1 \l# set B = B + 1
-  state "set B = A" as RETX
-  state "P = L?" as CHECK_FINISH
+  state SCHEDULE_RETX : set B = A
+
+  state "    PROCESS   ARRIVAL" as PROCESS_ARRIVAL {
+    state "compute Round Trip Time \lof the last ACKed packets" as RECV
+    state "P = L?" as CHECK_FINISH
+    state "A = max{A, P}\nB= max{B, A}" as UPDATE_A
+  }
   state "IDLE" as FINISH #f6ff9b
-  state "A = max{A, P}" as UPDATE_A
 
   IDLE -> INIT : Page request \n with window size N
 
-  INIT --> DECIDE
+  INIT --> DECIDE_TRANSMIT
 
-  DECIDE --> WAIT : NO
-  DECIDE -left> TRANSMIT : YES
+  DECIDE_TRANSMIT --> WAIT : NO
+  DECIDE_TRANSMIT -left> TRANSMIT : YES
 
-  TRANSMIT -> DECIDE : Timeout of RTT/2
-  TRANSMIT -> RECV : ACK(P) received
+  TRANSMIT -> DECIDE_TRANSMIT : Timeout of RTT/2
+  TRANSMIT --> RECV : ACK(P) received
 
-  RETX --> DECIDE
+  SCHEDULE_RETX -> DECIDE_TRANSMIT
 
-  WAIT -> RETX : Timeout of t<sub>0</sub>
+  WAIT -> SCHEDULE_RETX : Timeout of t<sub>0</sub>
   WAIT --> RECV : ACK(P) received
 
-  RECV -> CHECK_FINISH
+  RECV --> CHECK_FINISH
 
   CHECK_FINISH --> FINISH : YES
   CHECK_FINISH -> UPDATE_A : NO
 
-  UPDATE_A --> DECIDE
+  UPDATE_A --> DECIDE_TRANSMIT
 
   legend
   ,* A is the ID of the last packet known to be received by the user
