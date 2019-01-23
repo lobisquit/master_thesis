@@ -15,7 +15,7 @@ pub enum UdpClientStatus {
 
     FinishWait { session_id: usize },
     Unusable { session_id: usize },
-    Evaluate { session_id: usize }
+    Evaluate { session_id: usize, file_size: u64 }
 }
 
 impl Default for UdpClientStatus {
@@ -39,21 +39,27 @@ impl UdpClientStatus {
 
             FinishWait { session_id } => Some(session_id),
             Unusable { session_id } => Some(session_id),
-            Evaluate { session_id } => Some(session_id)
+            Evaluate { session_id, .. } => Some(session_id)
         }
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Builder)]
+#[builder(setter(into))]
 pub struct UdpClient {
     node_id: NodeId,
+
+    #[builder(setter(skip))]
     status: UdpClientStatus,
+
     next_hop_id: NodeId,
     dst_id: NodeId,
 
     bitrate: f64,
     t0: f64,
     n: u64,
+
+    #[builder(setter(skip))]
     timeouts: Vec<usize>
 }
 
@@ -216,12 +222,13 @@ impl Node for UdpClient {
                                                self.node_id)
                             ]
                         },
-                        Evaluate { session_id } => {
+                        Evaluate { session_id, file_size } => {
                             // FINISH packet received: connection is closed
                             self.timeouts.clear();
 
                             // TODO use obtained metrics to compute QoS, QoE
                             dbg!(session_id);
+                            dbg!(file_size);
 
                             vec![ self.new_event(current_time,
                                                  MoveToStatus(Box::new(Idle)),
@@ -284,7 +291,8 @@ impl Node for UdpClient {
                                 },
                                 UdpFinish { file_size }=> {
                                     let new_status = Evaluate {
-                                        session_id: number
+                                        session_id: number,
+                                        file_size: file_size
                                     };
                                     vec![ self.new_event(current_time,
                                                          MoveToStatus(

@@ -34,14 +34,21 @@ impl UdpServerStatus {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Builder)]
+#[builder(setter(into))]
 pub struct UdpServer {
     node_id: NodeId,
+
+    #[builder(setter(skip))]
     status: UdpServerStatus,
+
     next_hop_id: NodeId,
     dst_id: NodeId,
+
     file_size: u64,
     mtu_size: u64,
+
+    #[builder(setter(skip))]
     timeouts: Vec<usize>
 }
 

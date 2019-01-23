@@ -16,17 +16,27 @@ use self::udp::*;
 fn main() {
     let ptype = PacketType::ACK(44 as usize);
 
-    let x = UdpClient {
-        node_id: 0.into(),
-        status: udp::UdpClientStatus::default(),
-        next_hop_id: 1.into(),
-        dst_id: 10.into(),
-
-        bitrate: 10.0,
-        t0: 14.0,
-        n: 12,
-        timeouts: vec![]
-    };
+    let x = UdpClientBuilder::default()
+        .node_id(4)
+        .next_hop_id(12)
+        .dst_id(64)
+        .bitrate(10.0)
+        .t0(14.0)
+        .n(12 as u64)
+        .build()
+        .unwrap();
 
     dbg!(x);
+
+    let y = UdpServerBuilder::default()
+        .node_id(15)
+        .next_hop_id(17)
+        .dst_id(18)
+        .file_size(14000 as u64)
+        .mtu_size(53 as u64)
+        .build()
+        .unwrap();
+
+    dbg!(y);
+
 }
