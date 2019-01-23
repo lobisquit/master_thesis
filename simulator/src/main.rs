@@ -14,8 +14,6 @@ use self::core::*;
 use self::udp::*;
 
 fn main() {
-    let ptype = PacketType::ACK(44 as usize);
-
     let x = UdpClientBuilder::default()
         .node_id(4)
         .next_hop_id(12)
