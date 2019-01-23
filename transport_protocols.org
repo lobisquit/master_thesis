@@ -28,38 +28,37 @@ one (if any) resets the server to IDLE and the last request is processed.
   hide empty description
   state INIT : # set A = -1 \l# set B = 0 \l# estimate RTT based on request packet
   state IDLE #f6ff9b
-  state DECIDE_TRANSMIT : B < A + N + 1?
-  state TRANSMIT : # transmit packet B + 1 \l# set B = B + 1
-  state SCHEDULE_RETX : set B = A
 
-  state "    PROCESS   ARRIVAL" as PROCESS_ARRIVAL {
-    state "compute Round Trip Time \lof the last ACKed packets" as RECV
+  state TRANSMIT {
+    state TRANSMIT_DECIDE : B < A + N + 1?
+    state TRANSMIT_PACKET : # transmit packet B + 1 \l# set B = B + 1
+    state WAIT
+    state "TRASMIT_REPEAT" as SCHEDULE_RETX : set B = A
+  }
+
+  state RECEIVE {
     state "P = L?" as CHECK_FINISH
-    state "A = max{A, P}\nB= max{B, A}" as UPDATE_A
+    state RECEIVE_UPDATE : # compute Round Trip Time \lof the last ACKed packets \l# set A = max{A, P}\l# set B= max{B, A}
   }
   state "IDLE" as FINISH #f6ff9b
 
-  IDLE -> INIT : Page request \n with window size N
 
-  INIT --> DECIDE_TRANSMIT
+   IDLE -> INIT : Page request \n with window size N
+   INIT --> TRANSMIT_DECIDE
 
-  DECIDE_TRANSMIT --> WAIT : NO
-  DECIDE_TRANSMIT -left> TRANSMIT : YES
+   TRANSMIT_DECIDE --> WAIT : NO
+   TRANSMIT_DECIDE -> TRANSMIT_PACKET : YES
+   TRANSMIT_PACKET -> TRANSMIT_DECIDE : Timeout of RTT/2
 
-  TRANSMIT -> DECIDE_TRANSMIT : Timeout of RTT/2
-  TRANSMIT --> RECV : ACK(P) received
-
-  SCHEDULE_RETX -> DECIDE_TRANSMIT
+  SCHEDULE_RETX -> TRANSMIT_DECIDE
 
   WAIT -> SCHEDULE_RETX : Timeout of t<sub>0</sub>
-  WAIT --> RECV : ACK(P) received
+  TRANSMIT --> RECEIVE_UPDATE : ACK(P) received
 
-  RECV --> CHECK_FINISH
+  RECEIVE_UPDATE -> CHECK_FINISH
 
   CHECK_FINISH --> FINISH : YES
-  CHECK_FINISH -> UPDATE_A : NO
-
-  UPDATE_A --> DECIDE_TRANSMIT
+  CHECK_FINISH -> TRANSMIT_DECIDE: NO
 
   legend
   ,* A is the ID of the last packet known to be received by the user
@@ -79,34 +78,45 @@ one (if any) resets the server to IDLE and the last request is processed.
   skinparam defaultTextAlignment center
   hide empty description
 
-  state INIT : # Transmit page request\l# Initialize arrived array
+  state REQUEST {
+    state REQUEST_INIT : # pick unique session id \l# initialize arrived array
+    state REQUEST_WAIT : Transmit page request
+  }
   state IDLE #f6ff9b
-  state ACK_L as "Send ACK(L)"
-  state "# estimate RTT on last packets\l# set arrived(P) = True\l# set K=argmin{arrived(i)=False}" as RECV
-  state "Send ACK(K)" as SEND_ACK
-  state "K = L?" as CHECK_FINISH
+  state RECEIVE {
+    state DATA_UPDATE : # update channel metrics\l# set arrived(P) = True\l# set K=argmin{arrived(i)=False}
+    state DATA_ACK : Send ACK(K)
+    state "K = L?" as CHECK_FINISH
+    state DATA_WAIT
+  }
   state "IDLE" as FINISH #f6ff9b
-  state "Evaluate QoE" as JUDGE
+  state EVALUATE : Compute QoS and QoE
+  state UNUSABLE : Mark service as unusable
 
-  IDLE --> INIT : User requests a page
+  IDLE --> REQUEST_INIT : User requests a page
   IDLE -> ACK_L : Packet P of L arrives
-
   ACK_L -> IDLE : \n
 
-  INIT -> INIT : Timeout of t<sub>0</sub>
-  INIT --> RECV : Packet P of L arrives
+  REQUEST --> UNUSABLE : N × t<sub>0</sub>
+  REQUEST_INIT -> REQUEST_WAIT
 
-  RECV -> SEND_ACK
+  REQUEST_WAIT -> REQUEST_WAIT : t<sub>0</sub>
+  REQUEST_WAIT --> DATA_UPDATE : Packet P of L arrives
 
-  SEND_ACK --> CHECK_FINISH
+  DATA_UPDATE -> DATA_ACK
 
-  WAIT --> RECV : \nPacket P of L arrives
-  WAIT -> SEND_ACK : Timeout of RTT\n
+  DATA_ACK --> CHECK_FINISH
 
-  CHECK_FINISH --> JUDGE : YES
-  CHECK_FINISH --> WAIT : NO
+  DATA_WAIT --> UNUSABLE : N × t<sub>0</sub>
+  DATA_WAIT -up-> DATA_UPDATE : Packet P of L arrives
+  DATA_WAIT -left> DATA_ACK : RTT
 
-  JUDGE --> FINISH
+  CHECK_FINISH --> EVALUATE : YES
+  CHECK_FINISH -> DATA_WAIT : NO
+
+  UNUSABLE -left> EVALUATE
+
+  EVALUATE --> FINISH
 
   legend
   ,* t<sub>0</sub> is a multiple of the supposed Round Trip Time of the connection
@@ -134,7 +144,7 @@ based on serial numbers.
     state REQUEST_INIT : # Pick unique session number for the stream\n# Start unusability timeout
     state REQUEST_WAIT : Send DATA request to server
   }
-  state "DATA   " as DATA {
+  state "RECEIVE   " as DATA {
     state DATA_INIT : # Clear all previous timeouts \n# Start new unusability timeout
     state DATA_WAIT
     state DATA_UPDATE : Update stream metrics
