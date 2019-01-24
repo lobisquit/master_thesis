@@ -1,316 +1,404 @@
-// use crate::core::*;
-// use crate::Message::*;
+use crate::core::*;
+use crate::Message::*;
 
-// #[derive(Debug, Clone)]
-// pub enum TcpClientStatus {
-//     Idle,
+#[derive(Debug, Clone)]
+pub enum TcpClientStatus {
+    Idle,
 
-//     RequestInit,
-//     RequestWait { session_id: usize },
+    RequestInit,
+    RequestWait { session_id: usize },
 
-//     DataWait { session_id: usize },
-//     DataUpdate { session_id: usize, new_packet: Packet },
+    DataInit { session_id: usize, new_packet: Packet },
+    DataUpdate { session_id: usize, new_packet: Packet },
+    DataWait {
+        session_id: usize,
+        sequence_num: usize,
+        sequence_end: usize
+    },
+    DataACK {
+        session_id: usize,
+        sequence_num: usize,
+        sequence_end: usize
+    },
+    Unusable { session_id: usize },
+    Evaluate { session_id: usize }
+}
 
-//     FinishWait { session_id: usize },
-//     Unusable { session_id: usize },
-//     Evaluate { session_id: usize, file_size: u64 }
-// }
+impl Default for TcpClientStatus {
+    fn default() -> Self {
+        TcpClientStatus::Idle
+    }
+}
 
-// impl Default for TcpClientStatus {
-//     fn default() -> Self {
-//         TcpClientStatus::Idle
-//     }
-// }
+impl TcpClientStatus {
+    fn get_session_id(&self) -> Option<usize> {
+        use TcpClientStatus::*;
 
-// impl TcpClientStatus {
-//     fn get_session_id(&self) -> Option<usize> {
-//         use TcpClientStatus::*;
+        match *self {
+            Idle => None,
 
-//         match *self {
-//             Idle => None,
+            RequestInit => None,
+            RequestWait { session_id } => Some(session_id),
 
-//             RequestInit => None,
-//             RequestWait { session_id } => Some(session_id),
-//             DataWait { session_id } => Some(session_id),
-//             DataUpdate { session_id, .. } => Some(session_id),
+            DataInit { session_id, .. } => Some(session_id),
+            DataWait { session_id, .. } => Some(session_id),
+            DataUpdate { session_id, .. } => Some(session_id),
+            DataACK { session_id, .. } => Some(session_id),
 
+            Unusable { session_id } => Some(session_id),
+            Evaluate { session_id, .. } => Some(session_id)
+        }
+    }
+}
 
-//             FinishWait { session_id } => Some(session_id),
-//             Unusable { session_id } => Some(session_id),
-//             Evaluate { session_id, .. } => Some(session_id)
-//         }
-//     }
-// }
+#[derive(Debug, Builder)]
+#[builder(setter(into))]
+pub struct TcpClient {
+    node_id: NodeId,
 
-// #[derive(Debug, Builder)]
-// #[builder(setter(into))]
-// pub struct TcpClient {
-//     node_id: NodeId,
+    #[builder(setter(skip))]
+    status: TcpClientStatus,
 
-//     #[builder(setter(skip))]
-//     status: TcpClientStatus,
+    next_hop_id: NodeId,
+    dst_id: NodeId,
 
-//     next_hop_id: NodeId,
-//     dst_id: NodeId,
+    window_size: usize,
+    t_repeat: f64,
+    t_unusable: f64,
 
-//     bitrate: f64,
-//     t0: f64,
-//     n: u64,
+    #[builder(setter(skip))]
+    timeouts: Vec<usize>,
 
-//     #[builder(setter(skip))]
-//     timeouts: Vec<usize>
-// }
+    #[builder(setter(skip))]
+    received_chunks: Vec<bool>
+}
 
-// impl Node for TcpClient {
-//     fn get_id(&self) -> NodeId {
-//         self.node_id
-//     }
+impl Node for TcpClient {
+    fn get_id(&self) -> NodeId {
+        self.node_id
+    }
 
-//     fn process_message(&mut self, message: Message, current_time: f64) -> Vec<Event> {
-//         use TcpClientStatus::*;
-//         use PacketType::*;
+    fn process_message(&mut self, message: Message, current_time: f64) -> Vec<Event> {
+        use TcpClientStatus::*;
+        use PacketType::*;
 
-//         // first of all, handle timeouts if they are still active
-//         match message {
-//             Timeout { expire_message, id } => {
-//                 if self.timeouts.contains(&id) {
-//                     vec![ self.new_event(current_time,
-//                                          *expire_message,
-//                                          self.get_id()) ]
-//                 }
-//                 else {
-//                     vec![]
-//                 }
-//             },
-//             MoveToStatus(new_status) => {
-//                 if let Some(tcp_status) = new_status.as_any().downcast_ref::<TcpClientStatus>() {
-//                     self.status = tcp_status.clone();
-//                     match &self.status {
-//                         Idle => vec![],
+        // first of all, handle timeouts if they are still active
+        match message {
+            Timeout { expire_message, id } => {
+                if self.timeouts.contains(&id) {
+                    vec![ self.new_event(current_time,
+                                         *expire_message,
+                                         self.get_id()) ]
+                }
+                else {
+                    vec![]
+                }
+            },
+            MoveToStatus(new_status) => {
+                if let Some(tcp_status) = new_status.as_any().downcast_ref::<TcpClientStatus>() {
+                    // move to the specified status and apply its operations
+                    self.status = tcp_status.clone();
 
-//                         RequestInit => {
-//                             // immediately send DATA request
-//                             let session_id = Message::new_session_id();
+                    match self.status {
+                        Idle => vec![],
 
-//                             // start longer timeout, after which the ser vice is
-//                             // considered unusable
-//                             let unusable_timeout = Message::new_timeout(
-//                                 MoveToStatus(Box::new( Unusable { session_id } ))
-//                             );
-//                             self.timeouts.push(
-//                                 unusable_timeout.get_id().unwrap()
-//                             );
-//                             let timeout_delay = self.n as f64 * self.t0;
+                        RequestInit => {
+                            // immediately send DATA request
+                            let session_id = Message::new_session_id();
 
-//                             // immediately send DATA request
-//                             let new_status = RequestWait { session_id };
-//                             vec![
-//                                 self.new_event(current_time,
-//                                                MoveToStatus(Box::new(new_status)),
-//                                                self.node_id),
+                            // start longer timeout, after which the ser vice is
+                            // considered unusable
+                            let unusable_timeout = Message::new_timeout(
+                                MoveToStatus(Box::new( Unusable { session_id } ))
+                            );
+                            self.timeouts.push(
+                                unusable_timeout.get_id().unwrap()
+                            );
 
-//                                 self.new_event(current_time + timeout_delay,
-//                                                unusable_timeout,
-//                                                self.node_id)
-//                             ]
-//                         },
-//                         RequestWait { session_id } => {
-//                             // size in byte of ethernet frame with empty tcp packet
-//                             let request_size = 24 * 8;
+                            // immediately send DATA request
+                            let new_status = RequestWait { session_id };
+                            vec![
+                                self.new_event(current_time,
+                                               MoveToStatus(Box::new(new_status)),
+                                               self.node_id),
 
-//                             let pkt_type = TcpDataRequest {
-//                                 bitrate: self.bitrate
-//                             };
-//                             let request = Message::new_packet(*session_id,
-//                                                              request_size,
-//                                                              pkt_type,
-//                                                              current_time,
-//                                                              self.node_id,
-//                                                              self.dst_id);
+                                self.new_event(current_time + self.t_unusable,
+                                               unusable_timeout,
+                                               self.node_id)
+                            ]
+                        },
+                        RequestWait { session_id } => {
+                            // size in byte of ethernet frame with empty tcp packet
+                            let request_size = 24 * 8;
 
-//                             // repeat the request after a timeout
-//                             let repeat_timeout = Message::new_timeout(
-//                                 MoveToStatus(Box::new(self.status.clone()))
-//                             );
-//                             self.timeouts.push(
-//                                 repeat_timeout.get_id().unwrap()
-//                             );
+                            let pkt_type = TcpDataRequest {
+                                window_size: self.window_size
+                            };
+                            let request = Message::new_packet(session_id,
+                                                             request_size,
+                                                             pkt_type,
+                                                             current_time,
+                                                             self.node_id,
+                                                             self.dst_id);
 
-//                             vec![
-//                                 self.new_event(current_time,
-//                                                request,
-//                                                self.next_hop_id),
-//                                 self.new_event(current_time + self.t0,
-//                                                repeat_timeout,
-//                                                self.node_id),
-//                             ]
-//                         },
-//                         DataUpdate { session_id, new_packet } => {
-//                             // invalidate all previous timeouts: communication is
-//                             // still alive
-//                             self.timeouts.clear();
+                            // repeat the request after a timeout
+                            let repeat_timeout = Message::new_timeout(
+                                MoveToStatus(Box::new(self.status.clone()))
+                            );
+                            self.timeouts.push(
+                                repeat_timeout.get_id().unwrap()
+                            );
 
-//                             // TODO use new_packet to update the metrics
-//                             dbg!(new_packet);
+                            vec![
+                                self.new_event(current_time,
+                                               request,
+                                               self.next_hop_id),
+                                self.new_event(current_time + self.t_repeat,
+                                               repeat_timeout,
+                                               self.node_id),
+                            ]
+                        },
+                        DataInit { session_id, new_packet } => {
+                            if let TcpData { sequence_end, .. } = new_packet.pkt_type {
+                                self.timeouts.clear();
 
-//                             let new_status = DataWait {
-//                                 session_id: *session_id
-//                             };
-//                             vec![
-//                                 self.new_event(current_time,
-//                                                MoveToStatus(Box::new(new_status)),
-//                                                self.node_id)
-//                             ]
-//                         },
-//                         DataWait { session_id } => {
-//                             let new_status = Unusable {
-//                                 session_id: *session_id
-//                             };
-//                             let unusable_timeout = Message::new_timeout(
-//                                 MoveToStatus(Box::new(new_status))
-//                             );
-//                             self.timeouts.push(
-//                                 unusable_timeout.get_id().unwrap()
-//                             );
+                                self.received_chunks = vec![false; sequence_end];
 
-//                             let long_delay = self.n as f64 * self.t0;
-//                             vec![ self.new_event(current_time + long_delay,
-//                                                  unusable_timeout,
-//                                                  self.node_id) ]
-//                         },
-//                         FinishWait { session_id } => {
-//                             // communicate the server that it has to stop sending
-//                             // packets
-//                             let request_size = 24 * 8;
-//                             let request = Message::new_packet(*session_id,
-//                                                              request_size,
-//                                                              TcpFinishRequest,
-//                                                              current_time,
-//                                                              self.node_id,
-//                                                              self.dst_id);
+                                let new_status = DataUpdate {
+                                    session_id,
+                                    new_packet
+                                };
+                                vec![
+                                    self.new_event(current_time,
+                                                   MoveToStatus(Box::new(new_status)),
+                                                   self.node_id)
+                                ]
+                            }
+                            else {
+                                panic!("Invalid packet type {:?} in {:?}",
+                                       new_packet.pkt_type, self)
+                            }
+                        },
+                        DataUpdate { session_id, new_packet } => {
+                            // invalidate all previous timeouts: communication is
+                            // still alive
+                            self.timeouts.clear();
 
-//                             // repeat the FINISH request after a timeout
-//                             let new_status = FinishWait {
-//                                 session_id: *session_id
-//                             };
-//                             let repeat_timeout = Message::new_timeout(
-//                                 MoveToStatus(Box::new(new_status))
-//                             );
-//                             self.timeouts.push(repeat_timeout.get_id().unwrap());
+                            // TODO use new_packet to update the metrics
+                            dbg!(new_packet);
 
-//                             vec![ self.new_event(current_time,
-//                                                  request,
-//                                                  self.next_hop_id),
-//                                   self.new_event(current_time + self.t0,
-//                                                  repeat_timeout,
-//                                                  self.node_id) ]
-//                         },
-//                         Unusable { session_id } => {
-//                             // invalidate previous timeouts: connection is
-//                             // considered dead
-//                             self.timeouts.clear();
+                            if let TcpData { sequence_num, sequence_end } = new_packet.pkt_type {
+                                self.received_chunks[sequence_num] = true;
 
-//                             // TODO mark connection as unusable in metrics
-//                             let new_status = FinishWait {
-//                                 session_id: *session_id
-//                             };
-//                             vec![
-//                                 self.new_event(current_time,
-//                                                MoveToStatus(Box::new(new_status)),
-//                                                self.node_id)
-//                             ]
-//                         },
-//                         Evaluate { session_id, file_size } => {
-//                             // FINISH packet received: connection is closed
-//                             self.timeouts.clear();
+                                // k is the next needed element index
+                                let k = {
+                                    let mut tx_index = sequence_end;
+                                    for (index, element) in self.received_chunks.iter().enumerate() {
+                                        if !element {
+                                            tx_index = index
 
-//                             // TODO use obtained metrics to compute QoS, QoE
-//                             dbg!(session_id);
-//                             dbg!(file_size);
+                                        }
+                                    }
+                                    tx_index
+                                };
 
-//                             vec![ self.new_event(current_time,
-//                                                  MoveToStatus(Box::new(Idle)),
-//                                                  self.node_id) ]
-//                         }
-//                     }
-//                 }
-//                 else {
-//                     panic!("Invalid status {:?} for {:?}", new_status, self)
-//                 }
-//             },
-//             // external events
-//             UserSwitchOn => {
-//                 if let Idle = self.status {
-//                     vec![
-//                         self.new_event(current_time,
-//                                        MoveToStatus(Box::new( RequestInit )),
-//                                        self.node_id)
-//                     ]
-//                 }
-//                 else {
-//                     panic!("User request in {:?} received while in status {:?}",
-//                            self, self.status)
-//                 }
-//             },
-//             UserSwitchOff => {
-//                 // stop the server (request FINISH packet) to exit gracefully
-//                 match self.status.get_session_id() {
-//                     None => vec![],
-//                     Some(number) => {
-//                         let new_status = FinishWait {
-//                             session_id: number
-//                         };
-//                         vec![ self.new_event(current_time,
-//                                              MoveToStatus(Box::new(new_status)),
-//                                              self.node_id)
-//                         ]
-//                     }
-//                 }
-//             },
-//             Data(packet) => {
-//                 match self.status.get_session_id() {
-//                     // no active connection: this is an old packet,
-//                     // received out of order wrt the FINISH packet
-//                     None => vec![],
+                                // immediately send ACK
+                                let new_status = DataACK {
+                                    session_id,
+                                    sequence_num: k,
+                                    sequence_end
+                                };
+                                vec![
+                                    self.new_event(current_time,
+                                                   MoveToStatus(Box::new(new_status)),
+                                                   self.node_id)
+                                ]
+                            }
+                            else {
+                                panic!("Invalid packet type {:?} in {:?}", new_packet.pkt_type, self)
+                            }
+                        },
+                        DataACK { session_id, sequence_num, sequence_end } => {
+                            let mut events = vec![];
 
-//                     Some(number) => {
-//                         if number == packet.session_id {
-//                             match packet.pkt_type {
-//                                 TcpData => {
-//                                     let new_status = DataUpdate {
-//                                         session_id: packet.session_id,
-//                                         new_packet: packet
-//                                     };
-//                                     vec![ self.new_event(current_time,
-//                                                          MoveToStatus(
-//                                                              Box::new(new_status)
-//                                                          ),
-//                                                          self.node_id) ]
-//                                 },
-//                                 TcpFinish { file_size }=> {
-//                                     let new_status = Evaluate {
-//                                         session_id: number,
-//                                         file_size: file_size
-//                                     };
-//                                     vec![ self.new_event(current_time,
-//                                                          MoveToStatus(
-//                                                              Box::new(new_status)
-//                                                          ),
-//                                                          self.node_id) ]
-//                                 },
-//                                 _ => panic!("Unexpected packet {:?} in {:?}",
-//                                            packet, self)
-//                             }
-//                         }
-//                         else {
-//                             // packet belongs to an old session and arrived after
-//                             // its FINISH packet: ignore
-//                             vec![]
-//                         }
-//                     }
-//                 }
-//             },
-//             _ => vec![]
-//         }
-//     }
-// }
+                            // send ACK to next_hop
+                            let pkt_type = TcpACK {
+                                sequence_num: sequence_num
+                            };
+
+                            // size in byte of ethernet frame with empty tcp packet
+                            let ack_size = 24 * 8;
+                            let ack = Message::new_packet(session_id,
+                                                         ack_size,
+                                                         pkt_type,
+                                                         current_time,
+                                                         self.node_id,
+                                                         self.dst_id);
+
+                            events.push(self.new_event(current_time,
+                                                       ack,
+                                                       self.next_hop_id));
+
+                            // if finished evaluate, else wait
+                            let new_status = if sequence_num == sequence_end {
+                                Evaluate { session_id }
+                            }
+                            else {
+                                DataWait {
+                                    session_id,
+                                    sequence_num,
+                                    sequence_end
+                                }
+                            };
+
+                            events.push(
+                                self.new_event(current_time,
+                                               MoveToStatus(Box::new(new_status)),
+                                               self.next_hop_id)
+                            );
+
+                            events
+                        },
+                        DataWait { session_id, sequence_num, sequence_end } => {
+                            let mut events = vec![];
+
+                            // long timeout
+                            let new_status = Unusable {
+                                session_id: session_id
+                            };
+                            let unusable_timeout = Message::new_timeout(
+                                MoveToStatus(Box::new(new_status))
+                            );
+                            self.timeouts.push(
+                                unusable_timeout.get_id().unwrap()
+                            );
+
+                            events.push(
+                                self.new_event(current_time + self.t_unusable,
+                                               unusable_timeout,
+                                               self.node_id));
+
+                            // repeat timeout
+                            let new_status = DataWait {
+                                session_id,
+                                sequence_num,
+                                sequence_end
+                            };
+                            let repeat_timeout = Message::new_timeout(
+                                MoveToStatus(Box::new(new_status))
+                            );
+                            self.timeouts.push(
+                                repeat_timeout.get_id().unwrap()
+                            );
+
+                            events.push(
+                                self.new_event(current_time + self.t_repeat,
+                                               repeat_timeout,
+                                               self.node_id));
+
+                            events
+                        },
+                        Unusable { session_id } => {
+                            // invalidate previous timeouts: connection is
+                            // considered dead
+                            self.timeouts.clear();
+
+                            // TODO mark connection as unusable in metrics
+                            let new_status = Evaluate { session_id };
+                            vec![
+                                self.new_event(current_time,
+                                               MoveToStatus(Box::new(new_status)),
+                                               self.node_id)
+                            ]
+                        },
+                        Evaluate { session_id } => {
+                            // TODO use obtained metrics to compute QoS, QoE
+                            dbg!(session_id);
+
+                            vec![ self.new_event(current_time,
+                                                 MoveToStatus(Box::new(Idle)),
+                                                 self.node_id) ]
+                        }
+                    }
+                }
+                else {
+                    panic!("Invalid status {:?} for {:?}", new_status, self)
+                }
+            },
+            // external events
+            UserSwitchOn => {
+                if let Idle = self.status {
+                    vec![
+                        self.new_event(current_time,
+                                       MoveToStatus(Box::new( RequestInit )),
+                                       self.node_id)
+                    ]
+                }
+                else {
+                    panic!("User request in {:?} received while in status {:?}",
+                           self, self.status)
+                }
+            },
+            UserSwitchOff => {
+                // stop the server (request FINISH packet) to exit gracefully
+                match self.status.get_session_id() {
+                    None => vec![],
+                    Some(number) => {
+                        let new_status = Evaluate {
+                            session_id: number
+                        };
+                        vec![ self.new_event(current_time,
+                                             MoveToStatus(Box::new(new_status)),
+                                             self.node_id)
+                        ]
+                    }
+                }
+            },
+            Data(packet) => {
+                match self.status {
+                    Idle => {
+                        // server retransmit: say stop
+                        let ack_size = 24 * 8;
+                        let ack = Message::new_packet(packet.session_id,
+                                                     ack_size,
+                                                     packet.pkt_type,
+                                                     current_time,
+                                                     self.node_id,
+                                                     self.dst_id);
+
+                        vec![ self.new_event(current_time,
+                                             ack,
+                                             self.next_hop_id) ]
+                    },
+                    RequestWait { session_id } => {
+                        self.timeouts.clear();
+
+                        let new_status = DataInit {
+                            session_id,
+                            new_packet: packet
+                        };
+                        vec![ self.new_event(current_time,
+                                             MoveToStatus(Box::new(new_status)),
+                                             self.node_id)
+                        ]
+                    },
+                    DataWait { session_id, sequence_num, sequence_end } => {
+                        self.timeouts.clear();
+
+                        let new_status = DataUpdate {
+                            session_id,
+                            new_packet: packet
+                        };
+                        vec![ self.new_event(current_time,
+                                             MoveToStatus(Box::new(new_status)),
+                                             self.node_id)
+                        ]
+                    },
+                    _ => panic!("Packet {:?} received in an unexpected status of {:?}",
+                           packet, self)
+                }
+            },
+            _ => vec![]
+        }
+    }
+}

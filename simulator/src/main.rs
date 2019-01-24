@@ -14,17 +14,17 @@ use self::core::*;
 use self::tcp::*;
 
 fn main() {
-    // let x = TcpClientBuilder::default()
-    //     .node_id(4)
-    //     .next_hop_id(12)
-    //     .dst_id(64)
-    //     .bitrate(10.0)
-    //     .t0(14.0)
-    //     .n(12 as u64)
-    //     .build()
-    //     .unwrap();
+    let x = TcpClientBuilder::default()
+        .node_id(0)
+        .next_hop_id(0)
+        .dst_id(0)
+        .window_size(0 as usize)
+        .t_repeat(0.9)
+        .t_unusable(0.10)
+        .build()
+        .unwrap();
 
-    // dbg!(x);
+    dbg!(x);
 
     let y = TcpServerBuilder::default()
         .node_id(0)

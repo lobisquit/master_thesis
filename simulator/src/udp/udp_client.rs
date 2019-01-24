@@ -84,7 +84,9 @@ impl Node for UdpClient {
             },
             MoveToStatus(new_status) => {
                 if let Some(udp_status) = new_status.as_any().downcast_ref::<UdpClientStatus>() {
+                    // move to the specified status and apply its operations
                     self.status = udp_status.clone();
+
                     match self.status {
                         Idle => vec![],
 

@@ -15,6 +15,8 @@ In order for this protocols to work, each page request has to have
 
 We suppose a on-off user activity process, with exponential off times, 10s mean.
 
+# TODO mind the indices A, B, K, ...
+
 * TCP like protocol
 Description of a Go-Back-N ARQ protocol that is similar enough to TCP for our
 purposes.
@@ -79,11 +81,12 @@ one (if any) resets the server to IDLE and the last request is processed.
   hide empty description
 
   state REQUEST {
-    state REQUEST_INIT : # pick unique session id \l# initialize arrived array
+    state REQUEST_INIT : Pick unique session id
     state REQUEST_WAIT : Transmit page request
   }
   state IDLE #f6ff9b
   state RECEIVE {
+    state DATA_INIT : Initialize arrived array of length L
     state DATA_UPDATE : # update channel metrics\l# set arrived(P) = True\l# set K=argmin{arrived(i)=False}
     state DATA_ACK : Send ACK(K)
     state "K = L?" as CHECK_FINISH
@@ -101,8 +104,8 @@ one (if any) resets the server to IDLE and the last request is processed.
   REQUEST_INIT -> REQUEST_WAIT
 
   REQUEST_WAIT -> REQUEST_WAIT : t<sub>0</sub>
-  REQUEST_WAIT --> DATA_UPDATE : Packet P of L arrives
-
+  REQUEST_WAIT --> DATA_INIT : Packet P of L arrives
+  DATA_INIT --> DATA_UPDATE
   DATA_UPDATE -> DATA_ACK
 
   DATA_ACK --> CHECK_FINISH
