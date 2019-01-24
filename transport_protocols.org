@@ -26,19 +26,19 @@ one (if any) resets the server to IDLE and the last request is processed.
   <<plantuml_skin>>
   skinparam defaultTextAlignment center
   hide empty description
-  state INIT : # set A = -1 \l# set B = 0 \l# estimate RTT based on request packet
+  state INIT : # set A = 0 \l# set B = 0 \l# estimate RTT based on request packet
   state IDLE #f6ff9b
 
   state TRANSMIT {
-    state TRANSMIT_DECIDE : B < A + N + 1?
-    state TRANSMIT_PACKET : # transmit packet B + 1 \l# set B = B + 1
+    state TRANSMIT_DECIDE : B < A + N?
+    state TRANSMIT_PACKET : # transmit packet B \l# set B = B + 1
     state WAIT
     state "TRASMIT_REPEAT" as SCHEDULE_RETX : set B = A
   }
 
   state RECEIVE {
     state "P = L?" as CHECK_FINISH
-    state RECEIVE_UPDATE : # compute Round Trip Time \lof the last ACKed packets \l# set A = max{A, P}\l# set B= max{B, A}
+    state RECEIVE_UPDATE : # compute Round Trip Time \lof the last ACKed packets \l# set A = max{A, P}\l# set B = max{B, A}
   }
   state "IDLE" as FINISH #f6ff9b
 
@@ -61,7 +61,7 @@ one (if any) resets the server to IDLE and the last request is processed.
   CHECK_FINISH -> TRANSMIT_DECIDE: NO
 
   legend
-  ,* A is the ID of the last packet known to be received by the user
+  ,* A is the ID of the first non-ACKed packet
   ,* B is the ID of the last packet sent by the server
   ,* L is the ID of the last packet of current page request
   ,* ρ is the current (estimated) throughput of the connection

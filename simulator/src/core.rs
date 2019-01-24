@@ -43,21 +43,26 @@ impl<T: 'static + Debug> MachineStatus for T {
 }
 
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub enum PacketType {
+    TcpDataRequest {
+        window_size: usize
+    },
     TcpData {
         sequence_num: usize, // sequence number of current packet
         sequence_end: usize, // sequence number of last packet (total)
+    },
+    TcpACK {
+        sequence_num: usize
     },
     UdpDataRequest { bitrate: f64 },
     UdpData,
     UdpFinishRequest,
     UdpFinish { file_size: u64 },
-    DataStop,
-    ACK(usize),
+    DataStop
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub struct Packet {
     id: usize,            // unique packet ID across all packets
     pub session_id: usize,    // current session  ID

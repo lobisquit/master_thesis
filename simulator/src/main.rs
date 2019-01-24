@@ -8,30 +8,31 @@ mod core;
 mod counters;
 mod queue;
 mod switch;
-mod udp;
+mod tcp;
 
 use self::core::*;
-use self::udp::*;
+use self::tcp::*;
 
 fn main() {
-    let x = UdpClientBuilder::default()
-        .node_id(4)
-        .next_hop_id(12)
-        .dst_id(64)
-        .bitrate(10.0)
-        .t0(14.0)
-        .n(12 as u64)
-        .build()
-        .unwrap();
+    // let x = TcpClientBuilder::default()
+    //     .node_id(4)
+    //     .next_hop_id(12)
+    //     .dst_id(64)
+    //     .bitrate(10.0)
+    //     .t0(14.0)
+    //     .n(12 as u64)
+    //     .build()
+    //     .unwrap();
 
-    dbg!(x);
+    // dbg!(x);
 
-    let y = UdpServerBuilder::default()
-        .node_id(15)
-        .next_hop_id(17)
-        .dst_id(18)
-        .file_size(14000 as u64)
-        .mtu_size(53 as u64)
+    let y = TcpServerBuilder::default()
+        .node_id(0)
+        .next_hop_id(0)
+        .dst_id(0)
+        .total_n_packets(0 as usize)
+        .mtu_size(0 as u64)
+        .t0(0)
         .build()
         .unwrap();
 
