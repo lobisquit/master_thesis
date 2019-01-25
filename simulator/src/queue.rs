@@ -48,7 +48,7 @@ impl Node for BlockingQueue {
                     // tx the first packet in the queue
                     let mut events = vec![ self.new_event(current_time + tx_time,
                                                           next_pkt,
-                                                          self.node_id) ];
+                                                          self.dest_id) ];
 
                     // schedule next one if queue is still not empty
                     if self.queue.len() > 0 {

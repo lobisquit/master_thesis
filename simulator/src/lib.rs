@@ -17,4 +17,4 @@ mod udp;
 pub use self::core::*;
 pub use self::tcp::*;
 pub use self::udp::*;
-pub use self::core::*;
+pub use self::queue::*;
