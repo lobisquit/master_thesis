@@ -86,5 +86,6 @@ fn main() {
 
         event_queue.extend(new_events);
     }
-    println!("{:?}", start.elapsed() / n_events);
+    let duration = start.elapsed();
+    println!("{:?} for each one of the {} events", duration / n_events, n_events);
 }
