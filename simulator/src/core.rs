@@ -1,6 +1,6 @@
 use crate::counters::*;
-use std::any::Any;
 
+use std::any::Any;
 use std::cmp::Ordering;
 use std::fmt::Debug;
 use std::sync::atomic::Ordering as AtomicOrdering;

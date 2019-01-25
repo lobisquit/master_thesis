@@ -1,3 +1,4 @@
+
 # -*- mode: Org; -*-
 
 #+STARTUP: indent
@@ -34,27 +35,28 @@ one (if any) resets the server to IDLE and the last request is processed.
   state TRANSMIT {
     state TRANSMIT_DECIDE : B < A + N?
     state TRANSMIT_PACKET : # transmit packet B \l# set B = B + 1
-    state WAIT
+    state TRANSMIT_WAIT
     state "TRASMIT_REPEAT" as SCHEDULE_RETX : set B = A
   }
 
   state RECEIVE {
-    state "P = L?" as CHECK_FINISH
+    ' in this case user is implicitly confirm it has all the sequence
+    state "P = L + 1?" as CHECK_FINISH
     state RECEIVE_UPDATE : # compute Round Trip Time \lof the last ACKed packets \l# set A = max{A, P}\l# set B = max{B, A}
   }
   state "IDLE" as FINISH #f6ff9b
 
 
-   IDLE -> INIT : Page request \n with window size N
-   INIT --> TRANSMIT_DECIDE
+  IDLE -> INIT : Page request \n with window size N
+  INIT --> TRANSMIT_DECIDE
 
-   TRANSMIT_DECIDE --> WAIT : NO
-   TRANSMIT_DECIDE -> TRANSMIT_PACKET : YES
-   TRANSMIT_PACKET -> TRANSMIT_DECIDE : Timeout of RTT/2
+  TRANSMIT_DECIDE --> TRANSMIT_WAIT : NO
+  TRANSMIT_DECIDE -> TRANSMIT_PACKET : YES
+  TRANSMIT_PACKET -> TRANSMIT_DECIDE : Timeout of t<sub>0</sub> / 2
 
   SCHEDULE_RETX -> TRANSMIT_DECIDE
 
-  WAIT -> SCHEDULE_RETX : Timeout of t<sub>0</sub>
+  TRANSMIT_WAIT -> SCHEDULE_RETX : Timeout of t<sub>0</sub>
   TRANSMIT --> RECEIVE_UPDATE : ACK(P) received
 
   RECEIVE_UPDATE -> CHECK_FINISH
@@ -64,7 +66,7 @@ one (if any) resets the server to IDLE and the last request is processed.
 
   legend
   ,* A is the ID of the first non-ACKed packet
-  ,* B is the ID of the last packet sent by the server
+  ,* B is the ID of the next packet to be sent by the server
   ,* L is the ID of the last packet of current page request
   ,* ρ is the current (estimated) throughput of the connection
   ,* t<sub>0</sub> is a multiple of the estimated Round Trip Time
@@ -89,7 +91,7 @@ one (if any) resets the server to IDLE and the last request is processed.
     state DATA_INIT : Initialize arrived array of length L
     state DATA_UPDATE : # update channel metrics\l# set arrived(P) = True\l# set K=argmin{arrived(i)=False}
     state DATA_ACK : Send ACK(K)
-    state "K = L?" as CHECK_FINISH
+    state "K = L + 1?" as CHECK_FINISH
     state DATA_WAIT
   }
   state "IDLE" as FINISH #f6ff9b
@@ -112,7 +114,7 @@ one (if any) resets the server to IDLE and the last request is processed.
 
   DATA_WAIT --> UNUSABLE : N × t<sub>0</sub>
   DATA_WAIT -up-> DATA_UPDATE : Packet P of L arrives
-  DATA_WAIT -left> DATA_ACK : RTT
+  DATA_WAIT -left> DATA_ACK : t<sub>0</sub>
 
   CHECK_FINISH --> EVALUATE : YES
   CHECK_FINISH -> DATA_WAIT : NO
@@ -122,8 +124,10 @@ one (if any) resets the server to IDLE and the last request is processed.
   EVALUATE --> FINISH
 
   legend
-  ,* t<sub>0</sub> is a multiple of the supposed Round Trip Time of the connection
-  ,* each data packet contains its ID, P, and the ID of the last one, L
+  ,* t<sub>0</sub> is equal to or bigger than the supposed Round Trip Time of the connection
+  ,* N × t<sub>0</sub> is the maximum waiting time tolerable by the user
+  ,* each data packet contains its sequence number P and the sequence number L of the last one
+  ,* K is the next packet that is required to the server
   end legend
 
 #+END_SRC

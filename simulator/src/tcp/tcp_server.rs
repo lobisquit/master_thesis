@@ -10,7 +10,7 @@ enum TcpServerStatus {
     TransmitDecide { session_id: usize, n: usize, a: usize, b: usize },
     TransmitPacket { session_id: usize, n: usize, a: usize, b: usize },
     TransmitRepeat { session_id: usize, n: usize, a: usize, b: usize },
-    Wait           { session_id: usize, n: usize, a: usize, b: usize },
+    TransmitWait   { session_id: usize, n: usize, a: usize, b: usize },
     ReceiveUpdate  { session_id: usize, n: usize, a: usize, b: usize, packet: Packet }
 }
 
@@ -30,7 +30,7 @@ impl TcpServerStatus {
             TransmitDecide { session_id, n, a, b, .. } => Some([session_id, n, a, b]),
             TransmitPacket { session_id, n, a, b, .. } => Some([session_id, n, a, b]),
             TransmitRepeat { session_id, n, a, b, .. } => Some([session_id, n, a, b]),
-            Wait           { session_id, n, a, b, .. } => Some([session_id, n, a, b]),
+            TransmitWait   { session_id, n, a, b, .. } => Some([session_id, n, a, b]),
             ReceiveUpdate  { session_id, n, a, b, .. } => Some([session_id, n, a, b]),
         }
     }
@@ -82,18 +82,6 @@ impl Node for TcpServer {
 
                     match self.status {
                         Idle => vec![],
-                        Wait { session_id, n, a, b } => {
-                            let timeout = Message::new_timeout(
-                                MoveToStatus(Box::new(
-                                    TransmitRepeat { session_id, n, a, b }
-                                ))
-                            );
-                            self.timeouts.push(timeout.get_id().unwrap());
-
-                            vec![ self.new_event(current_time + self.t0,
-                                                 timeout,
-                                                 self.node_id) ]
-                        },
                         Init { session_id, n } => {
                             let new_status = TransmitDecide {
                                 session_id: session_id,
@@ -110,7 +98,10 @@ impl Node for TcpServer {
                         },
                         TransmitDecide { session_id, n, a, b } => {
                             if b < a + n {
-                                let new_status = TransmitPacket { session_id, n, a, b };
+                                let new_status = TransmitPacket { session_id,
+                                                                  n,
+                                                                  a,
+                                                                  b };
 
                                 vec![
                                     self.new_event(current_time,
@@ -119,7 +110,10 @@ impl Node for TcpServer {
                                 ]
                             }
                             else {
-                                let new_status = Wait { session_id, n, a: 0, b: 0 };
+                                let new_status = TransmitWait { session_id,
+                                                                n,
+                                                                a,
+                                                                b };
 
                                 vec![
                                     self.new_event(current_time,
@@ -129,8 +123,6 @@ impl Node for TcpServer {
                             }
                         },
                         TransmitPacket { session_id, n, a, b } => {
-                            let new_status = TransmitDecide { session_id, n, a, b: b + 1 };
-
                             let data_packet = Message::new_packet(
                                 session_id,
                                 self.mtu_size,
@@ -143,9 +135,20 @@ impl Node for TcpServer {
                                 self.dst_id
                             );
 
+                            // prepare retransmission
+                            let repeat_timeout = Message::new_timeout(
+                                MoveToStatus(Box::new(
+                                    TransmitDecide { session_id,
+                                                     n,
+                                                     a,
+                                                     b: b + 1 }
+                                ))
+                            );
+                            self.timeouts.push(repeat_timeout.get_id().unwrap());
+
                             vec![
-                                self.new_event(current_time,
-                                               MoveToStatus(Box::new(new_status)),
+                                self.new_event(current_time + self.t0 / 2.,
+                                               repeat_timeout,
                                                self.get_id()),
 
                                 self.new_event(current_time,
@@ -153,9 +156,24 @@ impl Node for TcpServer {
                                                self.next_hop_id)
                             ]
                         },
+                        TransmitWait { session_id, n, a, b } => {
+                            let timeout = Message::new_timeout(
+                                MoveToStatus(Box::new(
+                                    TransmitRepeat { session_id, n, a, b }
+                                ))
+                            );
+                            self.timeouts.push(timeout.get_id().unwrap());
+
+                            vec![ self.new_event(current_time + self.t0,
+                                                 timeout,
+                                                 self.node_id) ]
+                        },
                         TransmitRepeat { session_id, n, a, .. } => {
                             // reset sent window, to send unACKed packets again
-                            let new_status = TransmitDecide { session_id, n, a, b: a };
+                            let new_status = TransmitDecide { session_id,
+                                                              n,
+                                                              a,
+                                                              b: a };
 
                             vec![
                                 self.new_event(current_time,
@@ -169,11 +187,14 @@ impl Node for TcpServer {
                                 pkt_type: TcpACK { sequence_num },
                                 ..
                             } = packet {
-                                if sequence_num > a {
-                                    // evaluate only if it contains new info
+                                if session_id != pkt_session_id || sequence_num <= a {
+                                    // ignore previus ACKs
+                                    vec![]
+                                }
+                                else {
                                     self.timeouts.clear();
 
-                                    if sequence_num == self.total_n_packets {
+                                    if sequence_num == self.total_n_packets + 1 {
                                         // final ACK
                                         vec![
                                             self.new_event(current_time,
@@ -199,13 +220,9 @@ impl Node for TcpServer {
                                         ]
                                     }
                                 }
-                                else {
-                                    // ignore old ACKs of current session
-                                    vec![]
-                                }
                             }
                             else {
-                                vec![]
+                                panic!("Wrong setup of current state of {:?}: invalid packet", self)
                             }
                         }
                     }
@@ -215,9 +232,12 @@ impl Node for TcpServer {
                 }
             },
             Data(packet) => {
-                // always drop current session if user is requesting another
-                // round
+                assert!(packet.dst_node == self.node_id);
+                assert!(packet.src_node == self.dst_id);
+
                 match packet.pkt_type {
+                    // always drop current session if user is requesting another
+                    // round
                     TcpDataRequest { window_size } => {
                         let new_status = Init {
                             session_id: packet.session_id,
@@ -232,26 +252,22 @@ impl Node for TcpServer {
                     },
                     TcpACK { sequence_num } => {
                         if let Some([session_id, n, a, b]) = self.status.get_conn_params() {
-                            assert!(packet.dst_node == self.node_id);
-                            assert!(packet.src_node == self.dst_id);
+                            // checks on wheater the packet is useful or not will
+                            // be performed in ReceiveUpdate
+                            let new_status = ReceiveUpdate { session_id,
+                                                             n,
+                                                             a,
+                                                             b,
+                                                             packet };
 
-                            if packet.session_id == session_id {
-                                // if packet is of the current active session
-                                let new_status = ReceiveUpdate { session_id, n, a, b, packet };
-
-                                vec![
-                                    self.new_event(current_time,
-                                                   MoveToStatus(Box::new(new_status)),
-                                                   self.get_id())
-                                ]
-                            }
-                            else {
-                                // ignore old ACKs when dealing with new connection
-                                vec![]
-                            }
+                            vec![
+                                self.new_event(current_time,
+                                               MoveToStatus(Box::new(new_status)),
+                                               self.get_id())
+                            ]
                         }
                         else {
-                            // ignore old ACKs when IDLE
+                            // ignore when IDLE: old packets
                             vec![]
                         }
                     },
