@@ -20,6 +20,8 @@ impl Default for TcpServerStatus {
     }
 }
 
+impl MachineStatus for TcpServerStatus {}
+
 impl TcpServerStatus {
     fn get_conn_params(&self) -> Option<[usize; 4]> {
         use TcpServerStatus::*;
@@ -77,7 +79,7 @@ impl Node for TcpServer {
                 }
             },
             MoveToStatus(new_status) => {
-                if let Some(tcp_status) = new_status.as_any().downcast_ref::<TcpServerStatus>() {
+                if let Some(tcp_status) = new_status.downcast_ref::<TcpServerStatus>() {
                     self.status = tcp_status.clone();
 
                     match self.status {

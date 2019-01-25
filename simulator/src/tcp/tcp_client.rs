@@ -1,5 +1,6 @@
 use crate::core::*;
 use crate::Message::*;
+use std::any::Any;
 
 #[derive(Debug, Clone)]
 pub enum TcpClientStatus {
@@ -29,6 +30,8 @@ impl Default for TcpClientStatus {
         TcpClientStatus::Idle
     }
 }
+
+impl MachineStatus for TcpClientStatus {}
 
 impl TcpClientStatus {
     fn get_session_id(&self) -> Option<usize> {
@@ -95,7 +98,7 @@ impl Node for TcpClient {
                 }
             },
             MoveToStatus(new_status) => {
-                if let Some(tcp_status) = new_status.as_any().downcast_ref::<TcpClientStatus>() {
+                if let Some(tcp_status) = new_status.downcast_ref::<TcpClientStatus>() {
                     // move to the specified status and apply its operations
                     self.status = tcp_status.clone();
 

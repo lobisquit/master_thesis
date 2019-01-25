@@ -2,6 +2,9 @@
 extern crate env_logger;
 
 #[macro_use]
+extern crate downcast_rs;
+
+#[macro_use]
 extern crate derive_builder;
 
 mod core;

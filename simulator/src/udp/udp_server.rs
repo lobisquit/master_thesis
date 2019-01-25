@@ -17,6 +17,8 @@ impl Default for UdpServerStatus {
     }
 }
 
+impl MachineStatus for UdpClientStatus {}
+
 impl UdpServerStatus {
     fn get_session_id(&self) -> Option<usize> {
         use UdpServerStatus::*;
@@ -72,7 +74,7 @@ impl Node for UdpServer {
                 }
             },
             MoveToStatus(new_status) => {
-                if let Some(udp_status) = new_status.as_any().downcast_ref::<UdpServerStatus>() {
+                if let Some(udp_status) = new_status.downcast_ref::<UdpServerStatus>() {
                     self.status = udp_status.clone();
 
                     match self.status {

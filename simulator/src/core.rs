@@ -5,6 +5,8 @@ use std::cmp::Ordering;
 use std::fmt::Debug;
 use std::sync::atomic::Ordering as AtomicOrdering;
 
+use downcast_rs::Downcast;
+
 #[derive(Debug, Eq, PartialEq, PartialOrd, Ord, Clone, Copy, Hash)]
 pub struct NodeId(pub usize);
 
@@ -32,16 +34,8 @@ impl Default for NodeId {
     }
 }
 
-pub trait MachineStatus : Debug {
-    fn as_any(&self) -> &dyn Any;
-}
-
-impl<T: 'static + Debug> MachineStatus for T {
-    fn as_any(&self) -> &dyn Any {
-        self
-    }
-}
-
+pub trait MachineStatus : Debug + Downcast {}
+impl_downcast!(MachineStatus);
 
 #[derive(Debug, Clone, Copy)]
 pub enum PacketType {
@@ -170,15 +164,6 @@ pub trait Node: Debug {
             msg:      msg,
             sender: self.get_id(),
             recipient: recipient
-        }
-    }
-
-    fn handle_timeout(&mut self, time: f64, message: Message) -> Vec<Event> {
-        if let Message::Timeout { expire_message, .. } = message {
-            vec![ self.new_event(time, *expire_message, self.get_id()) ]
-        }
-        else {
-            panic!("Timeout message expected, got {:?}", message)
         }
     }
 }
