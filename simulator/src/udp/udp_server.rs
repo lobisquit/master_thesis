@@ -161,6 +161,9 @@ impl Node for UdpServer {
                 }
             },
             Data(packet) => {
+                assert!(packet.dst_node == self.node_id);
+                assert!(packet.src_node == self.dst_id);
+
                 match packet.pkt_type {
                     // only answer to data requests
                     UdpDataRequest { bitrate } => {

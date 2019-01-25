@@ -270,6 +270,9 @@ impl Node for UdpClient {
                 }
             },
             Data(packet) => {
+                assert!(packet.dst_node == self.node_id);
+                assert!(packet.src_node == self.dst_id);
+
                 match self.status.get_session_id() {
                     // no active connection: this is an old packet,
                     // received out of order wrt the FINISH packet
