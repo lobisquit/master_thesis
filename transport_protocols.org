@@ -33,36 +33,42 @@ one (if any) resets the server to IDLE and the last request is processed.
   state IDLE #f6ff9b
 
   state TRANSMIT {
-    state TRANSMIT_DECIDE : B < A + N?
+    state TRANSMIT_DECIDE {
+      state "B = L?" as FIRST_STEP
+      state "B < A + N?" as SECOND_STEP
+    }
     state TRANSMIT_PACKET : # transmit packet B \l# set B = B + 1
     state TRANSMIT_WAIT
-    state "TRASMIT_REPEAT" as SCHEDULE_RETX : set B = A
+    state TRASMIT_REPEAT : set B = A
   }
 
   state RECEIVE {
     ' in this case user is implicitly confirm it has all the sequence
-    state "P = L + 1?" as CHECK_FINISH
+    state "P = L?" as CHECK_FINISH
     state RECEIVE_UPDATE : # compute Round Trip Time \lof the last ACKed packets \l# set A = max{A, P}\l# set B = max{B, A}
   }
   state "IDLE" as FINISH #f6ff9b
 
-
   IDLE -> INIT : Page request \n with window size N
-  INIT --> TRANSMIT_DECIDE
+  INIT --> FIRST_STEP
 
-  TRANSMIT_DECIDE --> TRANSMIT_WAIT : NO
-  TRANSMIT_DECIDE -> TRANSMIT_PACKET : YES
-  TRANSMIT_PACKET -> TRANSMIT_DECIDE : Timeout of t<sub>0</sub> / 2
+  FIRST_STEP --> TRANSMIT_WAIT : YES
+  FIRST_STEP -left> SECOND_STEP : NO
 
-  SCHEDULE_RETX -> TRANSMIT_DECIDE
+  SECOND_STEP --> TRANSMIT_WAIT : NO
+  SECOND_STEP -> TRANSMIT_PACKET : YES
 
-  TRANSMIT_WAIT -> SCHEDULE_RETX : Timeout of t<sub>0</sub>
+  TRANSMIT_PACKET --> FIRST_STEP : Timeout of t<sub>0</sub> / 2
+
+  TRASMIT_REPEAT --> FIRST_STEP
+
+  TRANSMIT_WAIT -> TRASMIT_REPEAT : Timeout of t<sub>0</sub>
   TRANSMIT --> RECEIVE_UPDATE : ACK(P) received
 
-  RECEIVE_UPDATE -> CHECK_FINISH
+  RECEIVE_UPDATE -left> CHECK_FINISH
 
   CHECK_FINISH --> FINISH : YES
-  CHECK_FINISH -> TRANSMIT_DECIDE: NO
+  CHECK_FINISH -> FIRST_STEP: NO
 
   legend
   ,* A is the ID of the first non-ACKed packet
@@ -91,7 +97,7 @@ one (if any) resets the server to IDLE and the last request is processed.
     state DATA_INIT : Initialize arrived array of length L
     state DATA_UPDATE : # update channel metrics\l# set arrived(P) = True\l# set K=argmin{arrived(i)=False}
     state DATA_ACK : Send ACK(K)
-    state "K = L + 1?" as CHECK_FINISH
+    state "K = L?" as CHECK_FINISH
     state DATA_WAIT
   }
   state "IDLE" as FINISH #f6ff9b

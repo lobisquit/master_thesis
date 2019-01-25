@@ -243,7 +243,7 @@ impl Node for TcpClient {
                             // check if sequence_num matches the length of the
                             // boolean array of received packets: in this case
                             // we are done, else continue
-                            let new_status = if sequence_num == sequence_end + 1 {
+                            let new_status = if sequence_num == sequence_end {
                                 Evaluate { session_id }
                             }
                             else {
@@ -257,7 +257,7 @@ impl Node for TcpClient {
                             events.push(
                                 self.new_event(current_time,
                                                MoveToStatus(Box::new(new_status)),
-                                               self.next_hop_id)
+                                               self.node_id)
                             );
 
                             events

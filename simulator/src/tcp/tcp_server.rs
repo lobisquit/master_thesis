@@ -5,7 +5,7 @@ use std::cmp::max;
 #[derive(Debug, Clone)]
 enum TcpServerStatus {
     Idle,
-    Init { session_id: usize, n: usize },
+    InitSession { session_id: usize, n: usize },
 
     TransmitDecide { session_id: usize, n: usize, a: usize, b: usize },
     TransmitPacket { session_id: usize, n: usize, a: usize, b: usize },
@@ -28,7 +28,7 @@ impl TcpServerStatus {
 
         match *self {
             Idle => None,
-            Init { .. } => None,
+            InitSession { .. } => None,
             TransmitDecide { session_id, n, a, b, .. } => Some([session_id, n, a, b]),
             TransmitPacket { session_id, n, a, b, .. } => Some([session_id, n, a, b]),
             TransmitRepeat { session_id, n, a, b, .. } => Some([session_id, n, a, b]),
@@ -84,7 +84,7 @@ impl Node for TcpServer {
 
                     match self.status {
                         Idle => vec![],
-                        Init { session_id, n } => {
+                        InitSession { session_id, n } => {
                             let new_status = TransmitDecide {
                                 session_id: session_id,
                                 n: n,
@@ -99,19 +99,8 @@ impl Node for TcpServer {
                             ]
                         },
                         TransmitDecide { session_id, n, a, b } => {
-                            if b < a + n {
-                                let new_status = TransmitPacket { session_id,
-                                                                  n,
-                                                                  a,
-                                                                  b };
-
-                                vec![
-                                    self.new_event(current_time,
-                                                   MoveToStatus(Box::new(new_status)),
-                                                   self.get_id())
-                                ]
-                            }
-                            else {
+                            if b == self.total_n_packets {
+                                // wait if all packets have been transmitted
                                 let new_status = TransmitWait { session_id,
                                                                 n,
                                                                 a,
@@ -122,6 +111,38 @@ impl Node for TcpServer {
                                                    MoveToStatus(Box::new(new_status)),
                                                    self.get_id())
                                 ]
+                            }
+                            else {
+                                if b < a + n {
+                                    let new_status = TransmitPacket {
+                                        session_id,
+                                        n,
+                                        a,
+                                        b
+                                    };
+
+                                    vec![
+                                        self.new_event(current_time,
+                                                       MoveToStatus(
+                                                           Box::new(new_status)
+                                                       ),
+                                                       self.get_id())
+                                    ]
+                                }
+                                else {
+                                    let new_status = TransmitWait { session_id,
+                                                                    n,
+                                                                    a,
+                                                                    b };
+
+                                    vec![
+                                        self.new_event(current_time,
+                                                       MoveToStatus(
+                                                           Box::new(new_status)
+                                                       ),
+                                                       self.get_id())
+                                    ]
+                                }
                             }
                         },
                         TransmitPacket { session_id, n, a, b } => {
@@ -184,11 +205,15 @@ impl Node for TcpServer {
                             ]
                         },
                         ReceiveUpdate { session_id, n, a, b, packet } => {
+                            dbg!(packet);
+
                             if let Packet {
                                 session_id: pkt_session_id,
                                 pkt_type: TcpACK { sequence_num },
                                 ..
                             } = packet {
+                                assert!(sequence_num <= self.total_n_packets);
+
                                 if session_id != pkt_session_id || sequence_num <= a {
                                     // ignore previus ACKs
                                     vec![]
@@ -196,7 +221,7 @@ impl Node for TcpServer {
                                 else {
                                     self.timeouts.clear();
 
-                                    if sequence_num == self.total_n_packets + 1 {
+                                    if sequence_num == self.total_n_packets {
                                         // final ACK
                                         vec![
                                             self.new_event(current_time,
@@ -241,7 +266,7 @@ impl Node for TcpServer {
                     // always drop current session if user is requesting another
                     // round
                     TcpDataRequest { window_size } => {
-                        let new_status = Init {
+                        let new_status = InitSession {
                             session_id: packet.session_id,
                             n: window_size
                         };
