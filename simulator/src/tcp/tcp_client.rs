@@ -359,54 +359,62 @@ impl Node for TcpClient {
                 assert!(packet.dst_node == self.node_id);
                 assert!(packet.src_node == self.dst_id);
 
-                match self.status {
-                    Idle | RequestInit => {
-                        // server is still retransmitting: say stop
-                        let ack_size = 24 * 8;
+                if let TcpData { sequence_end, .. } = packet.pkt_type {
+                    match self.status {
+                        Idle => {
+                            // server is still retransmitting: say stop
+                            let ack_size = 24 * 8;
 
-                        let pkt_type = TcpACK {
-                            sequence_num: packet.sequence_end
-                        };
+                            let pkt_type = TcpACK {
+                                sequence_num: sequence_end
+                            };
 
-                        let ack = Message::new_packet(session_id,
-                                                     ack_size,
-                                                     pkt_type,
-                                                     current_time,
-                                                     self.node_id,
-                                                     self.dst_id);
+                            let ack = Message::new_packet(packet.session_id,
+                                                         ack_size,
+                                                         pkt_type,
+                                                         current_time,
+                                                         self.node_id,
+                                                         self.dst_id);
 
-                        vec![ self.new_event(current_time,
-                                             ack,
-                                             self.next_hop_id) ]
-                    },
-                    RequestWait { session_id } => {
-                        self.timeouts.clear();
+                            vec![ self.new_event(current_time,
+                                                 ack,
+                                                 self.next_hop_id) ]
+                        },
+                        RequestWait { session_id } => {
+                            self.timeouts.clear();
 
-                        let new_status = DataInit {
-                            session_id,
-                            new_packet: packet
-                        };
-                        vec![ self.new_event(current_time,
-                                             MoveToStatus(Box::new(new_status)),
-                                             self.node_id)
-                        ]
-                    },
-                    DataWait { session_id, sequence_num, sequence_end } => {
-                        self.timeouts.clear();
+                            let new_status = DataInit {
+                                session_id,
+                                new_packet: packet
+                            };
+                            vec![ self.new_event(current_time,
+                                                 MoveToStatus(
+                                                     Box::new(new_status)),
+                                                 self.node_id)
+                            ]
+                        },
+                        DataWait { session_id, .. } => {
+                            self.timeouts.clear();
 
-                        let new_status = DataUpdate {
-                            session_id,
-                            new_packet: packet
-                        };
-                        vec![ self.new_event(current_time,
-                                             MoveToStatus(Box::new(new_status)),
-                                             self.node_id)
-                        ]
-                    },
-                    // reaching zero-time states can happen in an unfortunate
-                    // case of simulaneous events: debug only if actually needed
-                    _ => panic!("Packet {:?} received in wrong status at {:?}",
-                               packet, self)
+                            let new_status = DataUpdate {
+                                session_id,
+                                new_packet: packet
+                            };
+                            vec![ self.new_event(current_time,
+                                                 MoveToStatus(
+                                                     Box::new(new_status)),
+                                                 self.node_id)
+                            ]
+                        },
+                        // reaching zero-time states can happen in an unfortunate
+                        // case of simulaneous events: debug only if actually needed
+                        _ => panic!("Packet {:?} received in wrong status at {:?}",
+                                   packet, self)
+                    }
+                }
+                else {
+                    panic!("Wrong packet type {:?} received at {:?}",
+                           packet, self)
                 }
             },
             _ => vec![]

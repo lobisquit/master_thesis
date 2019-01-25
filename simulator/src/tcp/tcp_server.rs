@@ -250,7 +250,7 @@ impl Node for TcpServer {
                                            self.get_id())
                         ]
                     },
-                    TcpACK { sequence_num } => {
+                    TcpACK { .. } => {
                         if let Some([session_id, n, a, b]) = self.status.get_conn_params() {
                             // checks on wheater the packet is useful or not will
                             // be performed in ReceiveUpdate
