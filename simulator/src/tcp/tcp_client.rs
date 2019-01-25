@@ -106,7 +106,7 @@ impl Node for TcpClient {
                             // immediately send DATA request
                             let session_id = Message::new_session_id();
 
-                            // start longer timeout, after which the ser vice is
+                            // start longer timeout, after which the service is
                             // considered unusable
                             let unusable_timeout = Message::new_timeout(
                                 MoveToStatus(Box::new( Unusable { session_id } ))
@@ -131,23 +131,21 @@ impl Node for TcpClient {
                             // size in byte of ethernet frame with empty tcp packet
                             let request_size = 24 * 8;
 
-                            let pkt_type = TcpDataRequest {
+                            let request_type = TcpDataRequest {
                                 window_size: self.window_size
                             };
                             let request = Message::new_packet(session_id,
                                                              request_size,
-                                                             pkt_type,
+                                                             request_type,
                                                              current_time,
                                                              self.node_id,
                                                              self.dst_id);
 
                             // repeat the request after a timeout
                             let repeat_timeout = Message::new_timeout(
-                                MoveToStatus(Box::new(self.status.clone()))
+                                MoveToStatus(Box::new(RequestWait { session_id }))
                             );
-                            self.timeouts.push(
-                                repeat_timeout.get_id().unwrap()
-                            );
+                            self.timeouts.push(repeat_timeout.get_id().unwrap());
 
                             vec![
                                 self.new_event(current_time,
@@ -190,13 +188,14 @@ impl Node for TcpClient {
                             if let TcpData { sequence_num, sequence_end } = new_packet.pkt_type {
                                 self.received_chunks[sequence_num] = true;
 
-                                // k is the next needed element index
+                                // k is the next needed element index: first
+                                // non-true in array
                                 let k = {
                                     let mut tx_index = sequence_end;
                                     for (index, element) in self.received_chunks.iter().enumerate() {
                                         if !element {
-                                            tx_index = index
-
+                                            tx_index = index;
+                                            break;
                                         }
                                     }
                                     tx_index
@@ -239,8 +238,10 @@ impl Node for TcpClient {
                                                        ack,
                                                        self.next_hop_id));
 
-                            // if finished evaluate, else wait
-                            let new_status = if sequence_num == sequence_end {
+                            // check if sequence_num matches the length of the
+                            // boolean array of received packets: in this case
+                            // we are done, else continue
+                            let new_status = if sequence_num == sequence_end + 1 {
                                 Evaluate { session_id }
                             }
                             else {
@@ -279,7 +280,7 @@ impl Node for TcpClient {
                                                self.node_id));
 
                             // repeat timeout
-                            let new_status = DataWait {
+                            let new_status = DataACK {
                                 session_id,
                                 sequence_num,
                                 sequence_end
@@ -304,6 +305,7 @@ impl Node for TcpClient {
                             self.timeouts.clear();
 
                             // TODO mark connection as unusable in metrics
+
                             let new_status = Evaluate { session_id };
                             vec![
                                 self.new_event(current_time,
@@ -340,13 +342,12 @@ impl Node for TcpClient {
                 }
             },
             UserSwitchOff => {
-                // stop the server (request FINISH packet) to exit gracefully
                 match self.status.get_session_id() {
                     None => vec![],
                     Some(number) => {
-                        let new_status = Evaluate {
-                            session_id: number
-                        };
+                        // do not send final ACK, as it will be performed when in
+                        // IDLE state
+                        let new_status = Evaluate { session_id: number };
                         vec![ self.new_event(current_time,
                                              MoveToStatus(Box::new(new_status)),
                                              self.node_id)
@@ -355,13 +356,21 @@ impl Node for TcpClient {
                 }
             },
             Data(packet) => {
+                assert!(packet.dst_node == self.node_id);
+                assert!(packet.src_node == self.dst_id);
+
                 match self.status {
-                    Idle => {
-                        // server retransmit: say stop
+                    Idle | RequestInit => {
+                        // server is still retransmitting: say stop
                         let ack_size = 24 * 8;
-                        let ack = Message::new_packet(packet.session_id,
+
+                        let pkt_type = TcpACK {
+                            sequence_num: packet.sequence_end
+                        };
+
+                        let ack = Message::new_packet(session_id,
                                                      ack_size,
-                                                     packet.pkt_type,
+                                                     pkt_type,
                                                      current_time,
                                                      self.node_id,
                                                      self.dst_id);
@@ -394,8 +403,10 @@ impl Node for TcpClient {
                                              self.node_id)
                         ]
                     },
-                    _ => panic!("Packet {:?} received in an unexpected status of {:?}",
-                           packet, self)
+                    // reaching zero-time states can happen in an unfortunate
+                    // case of simulaneous events: debug only if actually needed
+                    _ => panic!("Packet {:?} received in wrong status at {:?}",
+                               packet, self)
                 }
             },
             _ => vec![]
