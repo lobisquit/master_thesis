@@ -1,20 +1,9 @@
-#[macro_use] extern crate log;
 extern crate env_logger;
-
-#[macro_use]
 extern crate downcast_rs;
-
-#[macro_use]
 extern crate derive_builder;
+extern crate simulator;
 
-mod core;
-mod counters;
-mod queue;
-mod switch;
-mod tcp;
-
-use self::core::*;
-use self::tcp::*;
+use simulator::*;
 
 fn main() {
     let x = TcpClientBuilder::default()
