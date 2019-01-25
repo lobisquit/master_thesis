@@ -185,8 +185,6 @@ impl Node for TcpClient {
                             self.timeouts.clear();
 
                             // TODO use new_packet to update the metrics
-                            dbg!(new_packet);
-
                             if let TcpData { sequence_num, sequence_end } = new_packet.pkt_type {
                                 self.received_chunks[sequence_num] = true;
 
@@ -317,8 +315,6 @@ impl Node for TcpClient {
                         },
                         Evaluate { session_id } => {
                             // TODO use obtained metrics to compute QoS, QoE
-                            dbg!(session_id);
-
                             vec![ self.new_event(current_time,
                                                  MoveToStatus(Box::new(Idle)),
                                                  self.node_id) ]
@@ -362,6 +358,8 @@ impl Node for TcpClient {
                 assert!(packet.src_node == self.dst_id);
 
                 if let TcpData { sequence_end, .. } = packet.pkt_type {
+                    info!("{:?} received by {:?}", packet, self);
+
                     match self.status {
                         Idle => {
                             // server is still retransmitting: say stop

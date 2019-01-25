@@ -205,8 +205,6 @@ impl Node for TcpServer {
                             ]
                         },
                         ReceiveUpdate { session_id, n, a, b, packet } => {
-                            dbg!(packet);
-
                             if let Packet {
                                 session_id: pkt_session_id,
                                 pkt_type: TcpACK { sequence_num },
@@ -261,6 +259,8 @@ impl Node for TcpServer {
             Data(packet) => {
                 assert!(packet.dst_node == self.node_id);
                 assert!(packet.src_node == self.dst_id);
+
+                info!("{:?} received by {:?}", packet, self);
 
                 match packet.pkt_type {
                     // always drop current session if user is requesting another

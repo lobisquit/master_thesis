@@ -72,8 +72,8 @@ fn main() {
     while let Some(event) = event_queue.pop() {
         n_events += 1;
 
-        info!(" ");
-        info!("{:?}", event);
+        debug!(" ");
+        debug!("{:?}", event);
 
         let Event { time, msg, recipient } = event;
 
@@ -81,7 +81,7 @@ fn main() {
         let new_events = destination.process_message(msg, time.into());
 
         for event in &new_events {
-            info!("-> {:?}", event);
+            debug!("-> {:?}", event);
         }
 
         event_queue.extend(new_events);
