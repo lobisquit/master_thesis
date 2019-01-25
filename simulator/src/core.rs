@@ -1,6 +1,5 @@
 use crate::counters::*;
 
-use std::any::Any;
 use std::cmp::Ordering;
 use std::fmt::Debug;
 use std::sync::atomic::Ordering as AtomicOrdering;
@@ -129,7 +128,7 @@ impl Message {
 pub struct Event {
     pub time: f64,
     pub msg: Message,
-    pub sender: NodeId,
+    // pub sender: NodeId,
     pub recipient: NodeId
 }
 
@@ -162,7 +161,7 @@ pub trait Node: Debug {
         Event {
             time:     time,
             msg:      msg,
-            sender: self.get_id(),
+            // sender: self.get_id(),
             recipient: recipient
         }
     }

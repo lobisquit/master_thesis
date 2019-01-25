@@ -1,6 +1,5 @@
 use crate::core::*;
 use crate::Message::*;
-use std::any::Any;
 
 #[derive(Debug, Clone)]
 pub enum TcpClientStatus {

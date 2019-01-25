@@ -125,7 +125,7 @@ impl Node for UdpClient {
                             let pkt_type = UdpDataRequest {
                                 bitrate: self.bitrate
                             };
-                            let request = Message::new_packet(*session_id,
+                            let request = Message::new_packet(session_id,
                                                              request_size,
                                                              pkt_type,
                                                              current_time,
@@ -158,7 +158,7 @@ impl Node for UdpClient {
                             dbg!(new_packet);
 
                             let new_status = DataWait {
-                                session_id: *session_id
+                                session_id: session_id
                             };
                             vec![
                                 self.new_event(current_time,
@@ -168,7 +168,7 @@ impl Node for UdpClient {
                         },
                         DataWait { session_id } => {
                             let new_status = Unusable {
-                                session_id: *session_id
+                                session_id: session_id
                             };
                             let unusable_timeout = Message::new_timeout(
                                 MoveToStatus(Box::new(new_status))
@@ -186,7 +186,7 @@ impl Node for UdpClient {
                             // communicate the server that it has to stop sending
                             // packets
                             let request_size = 24 * 8;
-                            let request = Message::new_packet(*session_id,
+                            let request = Message::new_packet(session_id,
                                                              request_size,
                                                              UdpFinishRequest,
                                                              current_time,
@@ -195,7 +195,7 @@ impl Node for UdpClient {
 
                             // repeat the FINISH request after a timeout
                             let new_status = FinishWait {
-                                session_id: *session_id
+                                session_id: session_id
                             };
                             let repeat_timeout = Message::new_timeout(
                                 MoveToStatus(Box::new(new_status))
@@ -216,7 +216,7 @@ impl Node for UdpClient {
 
                             // TODO mark connection as unusable in metrics
                             let new_status = FinishWait {
-                                session_id: *session_id
+                                session_id: session_id
                             };
                             vec![
                                 self.new_event(current_time,

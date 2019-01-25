@@ -17,7 +17,7 @@ impl Default for UdpServerStatus {
     }
 }
 
-impl MachineStatus for UdpClientStatus {}
+impl MachineStatus for UdpServerStatus {}
 
 impl UdpServerStatus {
     fn get_session_id(&self) -> Option<usize> {
