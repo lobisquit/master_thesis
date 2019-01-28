@@ -1,6 +1,7 @@
 use crate::core::*;
 use crate::Message::*;
 use std::cmp::max;
+use std::collections::HashMap;
 
 #[derive(Debug, Clone)]
 enum TcpServerStatus {
@@ -82,14 +83,12 @@ impl Node for TcpServer {
                             vec![]
                         },
                         InitSession => {
-                            let new_status = TransmitDecide;
-
                             self.conn_params.a = 0;
                             self.conn_params.b = 0;
 
                             vec![
                                 self.new_event(current_time,
-                                               MoveToStatus(Box::new(new_status)),
+                                               MoveToStatus(Box::new(TransmitDecide)),
                                                self.get_id())
                             ]
                         },
