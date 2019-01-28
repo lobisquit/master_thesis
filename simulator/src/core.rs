@@ -126,10 +126,10 @@ impl Message {
 
 #[derive(Debug)]
 pub struct Event {
+    pub recipient: NodeId,
     pub time: f64,
     pub msg: Message,
     // pub sender: NodeId,
-    pub recipient: NodeId
 }
 
 impl Eq for Event {}

@@ -39,7 +39,7 @@ fn main() {
         .node_id(3)
         .dest_id(2)
         .max_queue(100 as usize)
-        .conn_speed(1000.0)
+        .conn_speed(999.0)
         .build()
         .unwrap();
 
@@ -47,7 +47,7 @@ fn main() {
         .node_id(4)
         .dest_id(1)
         .max_queue(100 as usize)
-        .conn_speed(1000.0)
+        .conn_speed(999.0)
         .build()
         .unwrap();
 
