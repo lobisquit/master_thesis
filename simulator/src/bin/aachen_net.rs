@@ -1,4 +1,5 @@
 extern crate simulator;
+extern crate rand;
 
 #[macro_use]
 extern crate log;
@@ -10,6 +11,8 @@ use std::time::Instant;
 
 use env_logger::{Builder, Env};
 use simulator::*;
+
+pub static FLAG: bool = false;
 
 fn main() {
     let environment = Env::default().default_filter_or("error");
@@ -29,8 +32,8 @@ fn main() {
         .node_id(2)
         .next_hop_id(4)
         .dst_id(1)
-        .total_n_packets(3 as usize)
-        .mtu_size(1000 as u64)
+        .total_n_packets(30 as usize)
+        .mtu_size(10000 as u64)
         .t0(1.0)
         .build()
         .unwrap();
@@ -38,7 +41,7 @@ fn main() {
     let mut client_to_server = BlockingQueueBuilder::default()
         .node_id(3)
         .dest_id(2)
-        .max_queue(100 as usize)
+        .max_queue(40 as usize)
         .conn_speed(999.0)
         .build()
         .unwrap();
@@ -46,14 +49,15 @@ fn main() {
     let mut server_to_client = BlockingQueueBuilder::default()
         .node_id(4)
         .dest_id(1)
-        .max_queue(100 as usize)
-        .conn_speed(999.0)
+        .max_queue(40 as usize)
+        .conn_speed(1001.0)
         .build()
         .unwrap();
 
     let fire_event = Event {
+        sender: NodeId(1),
         time: 0.0,
-        msg: Message::UserSwitchOn,
+        message: Message::UserSwitchOn,
         recipient: NodeId(1)
     };
 
@@ -70,22 +74,53 @@ fn main() {
     let mut n_events = 0;
 
     while let Some(event) = event_queue.pop() {
+        if !FLAG {
+            debug!(" ");
+            debug!("{:?}", event);
+        }
+
         n_events += 1;
 
-        debug!(" ");
-        debug!("{:?}", event);
+        let new_events = expand_event(event, &mut nodes);
 
-        let Event { time, msg, recipient } = event;
-
-        let destination = nodes.get_mut(&recipient).unwrap();
-        let new_events = destination.process_message(msg, time.into());
-
-        for event in &new_events {
-            debug!("-> {:?}", event);
+        if !FLAG {
+            for e in &new_events {
+                debug!("-> {:?}", e);
+            }
         }
 
         event_queue.extend(new_events);
     }
     let duration = start.elapsed();
     println!("{:?} for each one of the {} events", duration / n_events, n_events);
+}
+
+fn expand_event(original_event: Event, nodes: &mut HashMap<NodeId, &mut Node>) -> Vec<Event> {
+    if FLAG {
+        debug!(" ");
+        debug!("{:?}", original_event);
+    }
+
+    let Event { time, message, recipient, .. } = original_event;
+
+    let destination = nodes.get_mut(&recipient).unwrap();
+    let output_events = destination.process_message(message, time.into());
+
+    if FLAG {
+        for e in &output_events {
+            debug!("-> {:?}", e);
+        }
+    }
+
+    output_events.into_iter().flat_map(
+        |event| {
+            // check if the event is in the same place and time wrt the original one
+            if event.recipient == recipient && event.time == time {
+                expand_event(event, nodes)
+            }
+            else {
+                vec![event]
+            }
+        }
+    ).collect()
 }

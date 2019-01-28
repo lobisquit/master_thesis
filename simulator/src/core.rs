@@ -127,8 +127,8 @@ impl Message {
 pub struct Event {
     pub recipient: NodeId,
     pub time: f64,
-    pub msg: Message,
-    // pub sender: NodeId,
+    pub message: Message,
+    pub sender: NodeId,
 }
 
 impl Eq for Event {}
@@ -152,10 +152,10 @@ impl PartialOrd for Event {
 
         if let Ordering::Equal = time_order {
             // in doubt, give less priority to external data packets
-            if let Message::Data(_) = self.msg {
+            if let Message::Data(_) = self.message {
                 return Some(Ordering::Less);
             }
-            if let Message::Data(_) = other.msg {
+            if let Message::Data(_) = other.message {
                 return Some(Ordering::Greater);
             }
         }
@@ -169,11 +169,11 @@ pub trait Node: Debug {
 
     fn process_message(&mut self, message: Message, current_time: f64) -> Vec<Event>;
 
-    fn new_event(&self, time: f64, msg: Message, recipient: NodeId) -> Event {
+    fn new_event(&self, time: f64, message: Message, recipient: NodeId) -> Event {
         Event {
-            time:     time,
-            msg:      msg,
-            // sender: self.get_id(),
+            time: time,
+            message: message,
+            sender: self.get_id(),
             recipient: recipient
         }
     }
