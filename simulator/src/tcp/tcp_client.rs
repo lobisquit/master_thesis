@@ -313,7 +313,7 @@ impl Node for TcpClient {
                                                self.node_id)
                             ]
                         },
-                        Evaluate { session_id } => {
+                        Evaluate { .. } => {
                             // TODO use obtained metrics to compute QoS, QoE
                             vec![ self.new_event(current_time,
                                                  MoveToStatus(Box::new(Idle)),
@@ -358,7 +358,7 @@ impl Node for TcpClient {
                 assert!(packet.src_node == self.dst_id);
 
                 if let TcpData { sequence_end, .. } = packet.pkt_type {
-                    info!("{:?} received by {:?}", packet, self);
+                    info!("{}: {:?} received by {:?}", current_time, packet, self);
 
                     match self.status {
                         Idle => {

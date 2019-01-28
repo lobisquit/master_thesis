@@ -10,8 +10,7 @@ enum TcpServerStatus {
     TransmitDecide { session_id: usize, n: usize, a: usize, b: usize },
     TransmitPacket { session_id: usize, n: usize, a: usize, b: usize },
     TransmitRepeat { session_id: usize, n: usize, a: usize, b: usize },
-    TransmitWait   { session_id: usize, n: usize, a: usize, b: usize },
-    ReceiveUpdate  { session_id: usize, n: usize, a: usize, b: usize, packet: Packet }
+    TransmitWait   { session_id: usize, n: usize, a: usize, b: usize }
 }
 
 impl Default for TcpServerStatus {
@@ -32,8 +31,7 @@ impl TcpServerStatus {
             TransmitDecide { session_id, n, a, b, .. } => Some([session_id, n, a, b]),
             TransmitPacket { session_id, n, a, b, .. } => Some([session_id, n, a, b]),
             TransmitRepeat { session_id, n, a, b, .. } => Some([session_id, n, a, b]),
-            TransmitWait   { session_id, n, a, b, .. } => Some([session_id, n, a, b]),
-            ReceiveUpdate  { session_id, n, a, b, .. } => Some([session_id, n, a, b]),
+            TransmitWait   { session_id, n, a, b, .. } => Some([session_id, n, a, b])
         }
     }
 }
@@ -83,7 +81,10 @@ impl Node for TcpServer {
                     self.status = tcp_status.clone();
 
                     match self.status {
-                        Idle => vec![],
+                        Idle => {
+                            self.timeouts.clear();
+                            vec![]
+                        },
                         InitSession { session_id, n } => {
                             let new_status = TransmitDecide {
                                 session_id: session_id,
@@ -99,6 +100,9 @@ impl Node for TcpServer {
                             ]
                         },
                         TransmitDecide { session_id, n, a, b } => {
+                            // time to decide: cancel everything else
+                            self.timeouts.clear();
+
                             if b == self.total_n_packets {
                                 // wait if all packets have been transmitted
                                 let new_status = TransmitWait { session_id,
@@ -169,7 +173,10 @@ impl Node for TcpServer {
                             );
                             self.timeouts.push(repeat_timeout.get_id().unwrap());
 
-                            self.status = TransmitPacket { session_id, n, a, b: b +1 };
+                            // update state, in case an ACK invalidates the
+                            // upgrade timeout
+                            self.status = TransmitPacket { session_id, n, a,
+                                                           b: b + 1 };
 
                             vec![
                                 self.new_event(current_time + self.t0 / 2.,
@@ -205,52 +212,6 @@ impl Node for TcpServer {
                                                MoveToStatus(Box::new(new_status)),
                                                self.get_id())
                             ]
-                        },
-                        ReceiveUpdate { session_id, n, a, b, packet } => {
-                            if let Packet {
-                                session_id: pkt_session_id,
-                                pkt_type: TcpACK { sequence_num },
-                                ..
-                            } = packet {
-                                assert!(sequence_num <= self.total_n_packets);
-
-                                if session_id != pkt_session_id || sequence_num <= a {
-                                    // ignore previus ACKs
-                                    vec![]
-                                }
-                                else {
-                                    self.timeouts.clear();
-
-                                    if sequence_num == self.total_n_packets {
-                                        // final ACK
-                                        vec![
-                                            self.new_event(current_time,
-                                                           MoveToStatus(
-                                                               Box::new(Idle)
-                                                           ),
-                                                           self.get_id())
-                                        ]
-                                    }
-                                    else {
-                                        let new_status = TransmitDecide {
-                                            session_id,
-                                            n,
-                                            a: max(a, sequence_num),
-                                            b: max(b, a)
-                                        };
-                                        vec![
-                                            self.new_event(current_time,
-                                                           MoveToStatus(
-                                                               Box::new(new_status)
-                                                           ),
-                                                           self.get_id())
-                                        ]
-                                    }
-                                }
-                            }
-                            else {
-                                panic!("Wrong setup of current state of {:?}: invalid packet", self)
-                            }
                         }
                     }
                 }
@@ -262,7 +223,7 @@ impl Node for TcpServer {
                 assert!(packet.dst_node == self.node_id);
                 assert!(packet.src_node == self.dst_id);
 
-                info!("{:?} received by {:?}", packet, self);
+                info!("{}: {:?} received by {:?}", current_time, packet, self);
 
                 match packet.pkt_type {
                     // always drop current session if user is requesting another
@@ -279,21 +240,51 @@ impl Node for TcpServer {
                                            self.get_id())
                         ]
                     },
-                    TcpACK { .. } => {
+                    TcpACK { sequence_num, .. } => {
                         if let Some([session_id, n, a, b]) = self.status.get_conn_params() {
-                            // checks on wheater the packet is useful or not will
-                            // be performed in ReceiveUpdate
-                            let new_status = ReceiveUpdate { session_id,
-                                                             n,
-                                                             a,
-                                                             b,
-                                                             packet };
+                            if session_id != packet.session_id || sequence_num <= a {
+                                // ignore old ACKs
+                                vec![]
+                            }
+                            else {
+                                assert!(sequence_num <= self.total_n_packets);
 
-                            vec![
-                                self.new_event(current_time,
-                                               MoveToStatus(Box::new(new_status)),
-                                               self.get_id())
-                            ]
+                                if sequence_num == self.total_n_packets {
+
+                                    // final ACK
+                                    vec![
+                                        self.new_event(current_time,
+                                                       MoveToStatus(
+                                                           Box::new(Idle)
+                                                       ),
+                                                       self.get_id())
+                                    ]
+                                }
+                                else {
+                                    if let TransmitWait { .. } = self.status {
+                                        // move to decide only when waiting:
+                                        // leave the repeat timeout of packet
+                                        // transmissions untouched
+
+                                        let new_status = TransmitDecide {
+                                            session_id,
+                                            n,
+                                            a: max(a, sequence_num),
+                                            b: max(b, a)
+                                        };
+                                        vec![
+                                            self.new_event(current_time,
+                                                           MoveToStatus(
+                                                               Box::new(new_status)
+                                                           ),
+                                                           self.get_id())
+                                        ]
+                                    }
+                                    else {
+                                        vec![]
+                                    }
+                                }
+                            }
                         }
                         else {
                             // ignore when IDLE: old packets
