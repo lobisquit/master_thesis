@@ -7,11 +7,11 @@ enum TcpServerStatus {
     Idle,
     InitSession { session_id: usize, n: usize },
 
-    TransmitDecide { session_id: usize, n: usize, a: usize },
-    TransmitPacket { session_id: usize, n: usize, a: usize },
-    TransmitRepeat { session_id: usize, n: usize, a: usize },
-    TransmitWait   { session_id: usize, n: usize, a: usize },
-    ReceiveUpdate  { session_id: usize, n: usize, a: usize, packet: Packet }
+    TransmitDecide { session_id: usize, n: usize, a: usize, b: usize },
+    TransmitPacket { session_id: usize, n: usize, a: usize, b: usize },
+    TransmitRepeat { session_id: usize, n: usize, a: usize, b: usize },
+    TransmitWait   { session_id: usize, n: usize, a: usize, b: usize },
+    ReceiveUpdate  { session_id: usize, n: usize, a: usize, b: usize, packet: Packet }
 }
 
 impl Default for TcpServerStatus {
@@ -23,17 +23,17 @@ impl Default for TcpServerStatus {
 impl MachineStatus for TcpServerStatus {}
 
 impl TcpServerStatus {
-    fn get_conn_params(&self) -> Option<[usize; 3]> {
+    fn get_conn_params(&self) -> Option<[usize; 4]> {
         use TcpServerStatus::*;
 
         match *self {
             Idle => None,
             InitSession { .. } => None,
-            TransmitDecide { session_id, n, a, .. } => Some([session_id, n, a]),
-            TransmitPacket { session_id, n, a, .. } => Some([session_id, n, a]),
-            TransmitRepeat { session_id, n, a, .. } => Some([session_id, n, a]),
-            TransmitWait   { session_id, n, a, .. } => Some([session_id, n, a]),
-            ReceiveUpdate  { session_id, n, a, .. } => Some([session_id, n, a]),
+            TransmitDecide { session_id, n, a, b, .. } => Some([session_id, n, a, b]),
+            TransmitPacket { session_id, n, a, b, .. } => Some([session_id, n, a, b]),
+            TransmitRepeat { session_id, n, a, b, .. } => Some([session_id, n, a, b]),
+            TransmitWait   { session_id, n, a, b, .. } => Some([session_id, n, a, b]),
+            ReceiveUpdate  { session_id, n, a, b, .. } => Some([session_id, n, a, b]),
         }
     }
 }
@@ -42,9 +42,6 @@ impl TcpServerStatus {
 #[builder(setter(into))]
 pub struct TcpServer {
     node_id: NodeId,
-
-    #[builder(setter(skip))]
-    b: usize,
 
     #[builder(setter(skip))]
     status: TcpServerStatus,
@@ -91,7 +88,8 @@ impl Node for TcpServer {
                             let new_status = TransmitDecide {
                                 session_id: session_id,
                                 n: n,
-                                a: 0
+                                a: 0,
+                                b: 0
                             };
 
                             vec![
@@ -100,12 +98,13 @@ impl Node for TcpServer {
                                                self.get_id())
                             ]
                         },
-                        TransmitDecide { session_id, n, a } => {
-                            if self.b == self.total_n_packets {
+                        TransmitDecide { session_id, n, a, b } => {
+                            if b == self.total_n_packets {
                                 // wait if all packets have been transmitted
                                 let new_status = TransmitWait { session_id,
                                                                 n,
-                                                                a };
+                                                                a,
+                                                                b };
 
                                 vec![
                                     self.new_event(current_time,
@@ -114,11 +113,12 @@ impl Node for TcpServer {
                                 ]
                             }
                             else {
-                                if self.b < a + n {
+                                if b < a + n {
                                     let new_status = TransmitPacket {
                                         session_id,
                                         n,
-                                        a
+                                        a,
+                                        b
                                     };
 
                                     vec![
@@ -132,7 +132,8 @@ impl Node for TcpServer {
                                 else {
                                     let new_status = TransmitWait { session_id,
                                                                     n,
-                                                                    a };
+                                                                    a,
+                                                                    b };
 
                                     vec![
                                         self.new_event(current_time,
@@ -144,14 +145,12 @@ impl Node for TcpServer {
                                 }
                             }
                         },
-                        TransmitPacket { session_id, n, a } => {
-                            assert!(self.b < self.total_n_packets);
-
+                        TransmitPacket { session_id, n, a, b } => {
                             let data_packet = Message::new_packet(
                                 session_id,
                                 self.mtu_size,
                                 TcpData {
-                                    sequence_num: self.b,
+                                    sequence_num: b,
                                     sequence_end: self.total_n_packets
                                 },
                                 current_time,
@@ -159,19 +158,18 @@ impl Node for TcpServer {
                                 self.dst_id
                             );
 
-                            // update value of b
-                            self.b = self.b + 1;
-
                             // prepare retransmission
                             let repeat_timeout = Message::new_timeout(
                                 MoveToStatus(Box::new(
                                     TransmitDecide { session_id,
                                                      n,
-                                                     a }
+                                                     a,
+                                                     b: b + 1 }
                                 ))
                             );
                             self.timeouts.push(repeat_timeout.get_id().unwrap());
 
+                            self.status = TransmitPacket { session_id, n, a, b: b +1 };
 
                             vec![
                                 self.new_event(current_time + self.t0 / 2.,
@@ -183,10 +181,10 @@ impl Node for TcpServer {
                                                self.next_hop_id)
                             ]
                         },
-                        TransmitWait { session_id, n, a } => {
+                        TransmitWait { session_id, n, a, b } => {
                             let timeout = Message::new_timeout(
                                 MoveToStatus(Box::new(
-                                    TransmitRepeat { session_id, n, a }
+                                    TransmitRepeat { session_id, n, a, b }
                                 ))
                             );
                             self.timeouts.push(timeout.get_id().unwrap());
@@ -197,10 +195,10 @@ impl Node for TcpServer {
                         },
                         TransmitRepeat { session_id, n, a, .. } => {
                             // reset sent window, to send unACKed packets again
-                            self.b = a;
                             let new_status = TransmitDecide { session_id,
                                                               n,
-                                                              a };
+                                                              a,
+                                                              b: a };
 
                             vec![
                                 self.new_event(current_time,
@@ -208,7 +206,7 @@ impl Node for TcpServer {
                                                self.get_id())
                             ]
                         },
-                        ReceiveUpdate { session_id, n, a, packet } => {
+                        ReceiveUpdate { session_id, n, a, b, packet } => {
                             if let Packet {
                                 session_id: pkt_session_id,
                                 pkt_type: TcpACK { sequence_num },
@@ -234,12 +232,11 @@ impl Node for TcpServer {
                                         ]
                                     }
                                     else {
-                                        self.b = max(self.b, a);
-
                                         let new_status = TransmitDecide {
                                             session_id,
                                             n,
                                             a: max(a, sequence_num),
+                                            b: max(b, a)
                                         };
                                         vec![
                                             self.new_event(current_time,
@@ -283,12 +280,13 @@ impl Node for TcpServer {
                         ]
                     },
                     TcpACK { .. } => {
-                        if let Some([session_id, n, a]) = self.status.get_conn_params() {
+                        if let Some([session_id, n, a, b]) = self.status.get_conn_params() {
                             // checks on wheater the packet is useful or not will
                             // be performed in ReceiveUpdate
                             let new_status = ReceiveUpdate { session_id,
                                                              n,
                                                              a,
+                                                             b,
                                                              packet };
 
                             vec![
