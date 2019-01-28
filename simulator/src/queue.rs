@@ -2,18 +2,34 @@ use crate::core::*;
 use std::collections::VecDeque;
 use crate::Message::*;
 
-#[derive(Debug, Builder)]
+#[derive(Debug, Builder, Clone)]
 #[builder(setter(into))]
 pub struct BlockingQueue {
     node_id: NodeId,
     dest_id: NodeId,
 
-    #[builder(setter(skip))]
-    queue: VecDeque<Message>,
     max_queue: usize,
+
+    #[builder(setter(skip))]
+    status: BlockingQueueStatus,
 
     conn_speed: f64
 }
+
+#[derive(Debug, Clone)]
+enum BlockingQueueStatus {
+    Idle,
+    Transmitting(VecDeque<Packet>),
+    Decide(VecDeque<Packet>)
+}
+
+impl Default for BlockingQueueStatus {
+    fn default() -> Self {
+        BlockingQueueStatus::Idle
+    }
+}
+
+impl MachineStatus for BlockingQueueStatus {}
 
 impl Node for BlockingQueue {
     fn get_id(&self) -> NodeId {
@@ -21,53 +37,78 @@ impl Node for BlockingQueue {
     }
 
     fn process_message(&mut self, message: Message, current_time: f64) -> Vec<Event> {
+        use BlockingQueueStatus::*;
+
         match message {
-            Data { .. } => {
-                // put packet in the queue if there is space for it
-                if self.queue.len() < self.max_queue {
-                    self.queue.push_back(message);
+            Data(packet) => {
+                match &mut self.status {
+                    Idle => {
+                        let mut new_queue = VecDeque::new();
+                        new_queue.push_back(packet);
+                        let new_status = Transmitting(new_queue);
 
-                    // schedule its transmission if it is the queue was empty
-                    if self.queue.len() == 1 {
-                        return vec![ self.new_event(current_time,
-                                                    QueueTransmitPacket,
-                                                    self.node_id) ]
-                    }
+                        vec![
+                            self.new_event(current_time,
+                                           MoveToStatus(Box::new(new_status)),
+                                           self.get_id())
+                        ]
+                    },
+                    Transmitting(queue) => {
+                        // put packet in the queue if there is space for it
+                        if queue.len() < self.max_queue {
+                            queue.push_back(packet);
+                        }
+                        vec![]
+                    },
+                    _ => panic!("{:?} arrived in wrong state at {:?}", packet, self)
                 }
-
-                vec![]
             },
+            MoveToStatus(new_status) => {
+                if let Some(status) = new_status.downcast_ref::<BlockingQueueStatus>() {
+                    self.status = status.clone();
 
-            QueueTransmitPacket => {
-                let next_pkt = self.queue.pop_front().expect("Empty queue");
+                    match status {
+                        Idle => vec![],
+                        Transmitting(queue) => {
+                            let mut new_queue = queue.clone();
+                            let next_pkt = new_queue.pop_front().expect("Empty queue");
 
-                if let Data(Packet { size: pkt_size, .. }) = next_pkt {
-                    // service time is given by connection speed
-                    let tx_time = pkt_size as f64 / self.conn_speed;
+                            // service time is given by connection speed
+                            // let delta: f64 = (self.rng.gen::<f64>() - 0.5) / 10.0;
+                            // let tx_time = pkt_size as f64 / (self.conn_speed + delta);
+                            let tx_time = next_pkt.size as f64 / self.conn_speed;
 
-                    // tx the first packet in the queue
-                    let mut events = vec![ self.new_event(current_time + tx_time,
-                                                          next_pkt,
-                                                          self.dest_id) ];
+                            // tx the first packet in the queue
+                            vec![ self.new_event(current_time + tx_time,
+                                                 Data(next_pkt),
+                                                 self.dest_id),
 
-                    // schedule next one if queue is still not empty
-                    if self.queue.len() > 0 {
-                        events.push(
-                            self.new_event(current_time + tx_time,
-                                           QueueTransmitPacket,
-                                           self.node_id)
-                        )
+                                  self.new_event(current_time + tx_time,
+                                                 MoveToStatus(Box::new(Decide(new_queue))),
+                                                 self.get_id())
+                            ]
+                        },
+                        Decide(queue) => {
+                            if queue.len() == 0 {
+                                vec![ self.new_event(current_time,
+                                                     MoveToStatus(Box::new(Idle)),
+                                                     self.get_id()) ]
+                            }
+                            else {
+                                vec![ self.new_event(current_time,
+                                                     MoveToStatus(Box::new(
+                                                         Transmitting(queue.clone())
+                                                     )),
+                                                     self.get_id()) ]
+                            }
+                        }
                     }
-
-                    events
                 }
                 else {
-                    panic!("Invalid element in pkt queue of node {:?}: {:?}", self, next_pkt)
+                    panic!("Invalid status {:?} for {:?}", new_status, self)
                 }
             },
-
-            _ => panic!("Wrong message type received in node {:?}: {:?}",
-                       self.node_id, message)
+            _ => panic!("Invalid message {:?} for {:?}", message, self)
         }
     }
 }
