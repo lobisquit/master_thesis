@@ -49,7 +49,38 @@ pub struct TcpServer {
     t0: f64,
 
     #[builder(setter(skip))]
-    timeouts: Vec<usize>
+    timeouts: Vec<usize>,
+
+    creation_times: HashMap<usize, f64>,
+    ack_times: HashMap<usize, f64>
+}
+
+impl TcpServer {
+    fn update_rtt(&mut self, current_time: f64, window: f64) {
+        let mut cumulative_delay = 0.;
+        let mut n_packets = 0;
+
+        for (sequence_num, creation_time) in &self.creation_times {
+            // if close to us
+            if *creation_time > current_time + window {
+                // if it has been ACKed
+                match self.ack_times.get(&sequence_num) {
+                    None => {},
+                    Some(ack_time) => {
+                        cumulative_delay += ack_time - creation_time;
+                        n_packets += 1;
+                    }
+                }
+            }
+        }
+
+        if n_packets == 0 {
+            self.t0 = 2.0 * self.t0;
+        }
+        else {
+            self.t0 = cumulative_delay / n_packets as f64;
+        }
+    }
 }
 
 impl Node for TcpServer {
