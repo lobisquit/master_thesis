@@ -3,7 +3,6 @@ use crate::counters::*;
 use std::cmp::Ordering;
 use std::fmt::Debug;
 use std::sync::atomic::Ordering as AtomicOrdering;
-
 use downcast_rs::Downcast;
 
 #[derive(Debug, Eq, PartialEq, PartialOrd, Ord, Clone, Copy, Hash)]
@@ -148,7 +147,20 @@ impl Ord for Event {
 
 impl PartialOrd for Event {
     fn partial_cmp(&self, other: &Event) -> Option<Ordering> {
-        other.time.partial_cmp(&self.time)
+        let time_order = other.time.partial_cmp(&self.time)
+            .expect("NaN in events times?");
+
+        if let Ordering::Equal = time_order {
+            // in doubt, give less priority to external data packets
+            if let Message::Data(_) = self.msg {
+                return Some(Ordering::Less);
+            }
+            if let Message::Data(_) = other.msg {
+                return Some(Ordering::Greater);
+            }
+        }
+
+        Some(time_order)
     }
 }
 
