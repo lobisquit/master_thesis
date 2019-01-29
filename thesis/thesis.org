@@ -236,6 +236,19 @@ LaTeX support for svg files sucks.
 #+END_SRC
 * State of the art
 
+#+BEGIN_SRC org :exports none
+  One subsection for each of the macro-areas
+
+  - maps -> network topology
+    - Steiner tree
+    - ...
+
+  - flow control
+    - fairness in network management ~> Nash arbitration point
+
+  - heuristic control of the network
+#+END_SRC
+
 * Methodology
 :PROPERTIES:
 :CUSTOM_ID: methodology
@@ -1032,8 +1045,20 @@ they will prove to be good ones, i.e. to be close to the theoretical optimum.
 :CUSTOM_ID: methodology-flow_optimization
 :END:
 
-# TODO using machine learning to control TBFs
-WIP
+#+BEGIN_SRC org :exports none
+  - network structure
+    - flow control only viable tuning of the logical network
+    - components in deeper focus, mention TBF
+  - TBF theory
+    - params
+    - expected behaviour
+    - common practice
+  - training approach
+    - definition of objective function <~ game theory applied
+    - genetic algorithm and/or simulated annhealing
+      - why an heuristic ~> dynamic solution hopefully
+      - "theory" of the tecnique
+#+END_SRC
 
 * Results
 This chapter follows the what was presented in [[autoref:methodology]] and shows

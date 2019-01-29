@@ -89,6 +89,25 @@ users.
 
 NOTE other arbitration schemes are equivalent to Nash one are equivalent in our case.
 
+* traditional QoS vs novel QoE
+** QoS
+Table with written what matters for each one of the services.
+
+|               | Bandwidth | Delay | Jitter | Packet loss |
+|---------------+-----------+-------+--------+-------------|
+| Web browsing  | X         | X     |        | (tcp)       |
+| File download | X         |       |        | (tcp)       |
+| Streaming     | X         |       | X      | (codecs)    |
+| VoIP          |           | X     | X      | X           |
+
+** QoE
+Each of the user profiles is assigned a utility function, namely
+
+- Web browsing   ~> loading page time
+- File download  ~> file download time
+- Streaming      ~> ??
+- VoIP           ~> acheivable audio quality [[https://www.voip-info.org/qos/]]
+
 
 * COMMENT Local variables
 # Local Variables:
