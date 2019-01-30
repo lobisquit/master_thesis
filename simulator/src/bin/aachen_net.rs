@@ -20,7 +20,7 @@ fn main() {
 
     let mut client = TcpClientBuilder::default()
         .node_id(1)
-        .next_hop_id(3)
+        .next_hop_id(5)
         .dst_id(2)
         .window_size(10 as usize)
         .t_repeat(2.0)
@@ -30,7 +30,7 @@ fn main() {
 
     let mut server = TcpServerBuilder::default()
         .node_id(2)
-        .next_hop_id(4)
+        .next_hop_id(6)
         .dst_id(1)
         .total_n_packets(30 as usize)
         .mtu_size(10000 as u64)
@@ -54,6 +54,24 @@ fn main() {
         .build()
         .unwrap();
 
+    let mut client_to_server_tbf = TokenBucketQueueBuilder::default()
+        .node_id(5)
+        .dest_id(3)
+        .max_queue(40 as usize)
+        .max_tokens(100000.0)
+        .token_rate(1000.0)
+        .build()
+        .unwrap();
+
+    let mut server_to_client_tbf = TokenBucketQueueBuilder::default()
+        .node_id(6)
+        .dest_id(4)
+        .max_queue(40 as usize)
+        .max_tokens(100000.0)
+        .token_rate(1000.0)
+        .build()
+        .unwrap();
+
     let fire_event = Event {
         sender: NodeId(1),
         time: 0.0,
@@ -64,8 +82,12 @@ fn main() {
     let mut nodes: HashMap<NodeId, &mut Node> = HashMap::new();
     nodes.insert(client.get_id(), &mut client);
     nodes.insert(server.get_id(), &mut server);
+
     nodes.insert(client_to_server.get_id(), &mut client_to_server);
     nodes.insert(server_to_client.get_id(), &mut server_to_client);
+
+    nodes.insert(client_to_server_tbf.get_id(), &mut client_to_server_tbf);
+    nodes.insert(server_to_client_tbf.get_id(), &mut server_to_client_tbf);
 
     let mut event_queue: BinaryHeap<Event> = BinaryHeap::new();
     event_queue.push(fire_event);
@@ -92,10 +114,9 @@ fn main() {
         event_queue.extend(new_events);
     }
 
-    dbg!(nodes.get(&1.into()));
-    dbg!(nodes.get(&2.into()));
-    dbg!(nodes.get(&3.into()));
-    dbg!(nodes.get(&4.into()));
+    for node in nodes {
+        dbg!(node);
+    }
 
     let duration = start.elapsed();
     println!("{:?} for each one of the {} events", duration / n_events, n_events);
