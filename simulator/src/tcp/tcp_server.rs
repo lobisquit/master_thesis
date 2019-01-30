@@ -244,7 +244,7 @@ impl Node for TcpServer {
                                     self.rtts.pop_front();
                                 }
 
-                                self.t0 = 0.5 * median(self.rtts.iter());
+                                self.t0 = 0.5 * median(&self.rtts);
                             }
 
                             assert!(sequence_num <= self.total_n_packets);

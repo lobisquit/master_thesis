@@ -205,7 +205,7 @@ impl Node for TcpClient {
                                     self.packet_delays.pop_front();
                                 }
 
-                                self.t_repeat = 0.5 * median(self.packet_delays.iter());
+                                self.t_repeat = 0.5 * median(&self.packet_delays);
                                 self.t_unusable = 10.0 * self.t_repeat;
 
                                 // k is the next needed element index: first

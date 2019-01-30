@@ -4,7 +4,6 @@ use std::cmp::Ordering;
 use std::fmt::Debug;
 use std::sync::atomic::Ordering as AtomicOrdering;
 use downcast_rs::Downcast;
-use std::collections::VecDeque;
 use std::iter::Iterator;
 
 #[derive(Debug, Eq, PartialEq, PartialOrd, Ord, Clone, Copy, Hash)]
@@ -181,8 +180,8 @@ pub trait Node: Debug {
     }
 }
 
-pub fn median<'a, T: Iterator<Item=&'a f64>>(data: T) -> f64 {
-    let mut data_vec: Vec<f64> = data.map(|x| *x).collect();
+pub fn median<'a, T: IntoIterator<Item=&'a f64>>(data: T) -> f64 {
+    let mut data_vec: Vec<f64> = data.into_iter().map(|x| *x).collect();
     data_vec.sort_by(|a, b| a.partial_cmp(b).unwrap());
 
     let mid = data_vec.len() / 2;
