@@ -72,7 +72,10 @@ pub struct TcpClient {
     timeouts: Vec<usize>,
 
     #[builder(setter(skip))]
-    received_chunks: Vec<bool>
+    received_chunks: Vec<bool>,
+
+    #[builder(setter(skip))]
+    packet_delays: Vec<f64>
 }
 
 impl Node for TcpClient {
@@ -102,7 +105,10 @@ impl Node for TcpClient {
                     self.status = tcp_status.clone();
 
                     match self.status {
-                        Idle => vec![],
+                        Idle => {
+                            self.packet_delays.clear();
+                            vec![]
+                        },
 
                         RequestInit => {
                             // immediately send DATA request
@@ -187,6 +193,16 @@ impl Node for TcpClient {
                             // TODO use new_packet to update the metrics
                             if let TcpData { sequence_num, sequence_end } = new_packet.pkt_type {
                                 self.received_chunks[sequence_num] = true;
+
+                                // update estimated RTT
+                                self.packet_delays.push(
+                                    current_time -
+                                        new_packet.creation_time
+                                );
+
+                                self.t_repeat = 0.5 *
+                                    self.packet_delays.iter().sum::<f64>()
+                                    / self.packet_delays.len() as f64;
 
                                 // k is the next needed element index: first
                                 // non-true in array
