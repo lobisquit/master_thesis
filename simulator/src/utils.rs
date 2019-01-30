@@ -8,13 +8,6 @@ pub struct DelayTracker {
 }
 
 impl DelayTracker {
-    pub fn new(n_max: usize) -> DelayTracker {
-        DelayTracker {
-            queue: VecDeque::new(),
-            n_max: n_max
-        }
-    }
-
     pub fn push(&mut self, delay: f64) {
         self.queue.push_back(delay);
         if self.queue.len() == self.n_max {
