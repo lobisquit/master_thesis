@@ -91,6 +91,12 @@ fn main() {
 
         event_queue.extend(new_events);
     }
+
+    dbg!(nodes.get(&1.into()));
+    dbg!(nodes.get(&2.into()));
+    dbg!(nodes.get(&3.into()));
+    dbg!(nodes.get(&4.into()));
+
     let duration = start.elapsed();
     println!("{:?} for each one of the {} events", duration / n_events, n_events);
 }
