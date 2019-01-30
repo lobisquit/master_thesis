@@ -13,6 +13,7 @@ mod queue;
 mod switch;
 mod tcp;
 mod udp;
+mod utils;
 
 pub use self::core::*;
 pub use self::tcp::*;

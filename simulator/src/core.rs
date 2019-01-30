@@ -4,7 +4,6 @@ use std::cmp::Ordering;
 use std::fmt::Debug;
 use std::sync::atomic::Ordering as AtomicOrdering;
 use downcast_rs::Downcast;
-use std::iter::Iterator;
 
 #[derive(Debug, Eq, PartialEq, PartialOrd, Ord, Clone, Copy, Hash)]
 pub struct NodeId(pub usize);
@@ -44,6 +43,7 @@ pub enum PacketType {
     TcpData {
         sequence_num: usize, // sequence number of current packet
         sequence_end: usize, // sequence number of last packet (total)
+        rtt: Option<f64>     // RTT measured by the server
     },
     TcpACK {
         sequence_num: usize
@@ -177,17 +177,5 @@ pub trait Node: Debug {
             sender: self.get_id(),
             recipient: recipient
         }
-    }
-}
-
-pub fn median<'a, T: IntoIterator<Item=&'a f64>>(data: T) -> f64 {
-    let mut data_vec: Vec<f64> = data.into_iter().map(|x| *x).collect();
-    data_vec.sort_by(|a, b| a.partial_cmp(b).unwrap());
-
-    let mid = data_vec.len() / 2;
-    if data_vec.len() % 2 == 0 {
-        (data_vec[mid - 1] + data_vec[mid]) / 2.0
-    } else {
-        data_vec[mid]
     }
 }
