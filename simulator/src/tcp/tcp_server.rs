@@ -78,7 +78,8 @@ impl TcpServer {
         }
 
         if n_packets == 0 {
-            self.t0 = 2.0 * self.t0;
+            // self.t0 = 2.0 * self.t0;
+            self.t0 = 2.0;
         }
         else {
             self.t0 = cumulative_delay / n_packets as f64;
@@ -114,6 +115,8 @@ impl Node for TcpServer {
                     match self.status {
                         Idle => {
                             self.timeouts.clear();
+                            self.creation_times.clear();
+                            self.ack_times.clear();
                             vec![]
                         },
                         InitSession => {
@@ -172,6 +175,12 @@ impl Node for TcpServer {
                                 self.dst_id
                             );
 
+                            // register first departure time for frame b
+                            if !self.creation_times.contains_key(&self.conn_params.b) {
+                                self.creation_times.insert(self.conn_params.b,
+                                                           current_time);
+                            }
+
                             self.conn_params.b = self.conn_params.b + 1;
 
                             // prepare retransmission
@@ -181,6 +190,7 @@ impl Node for TcpServer {
                             self.timeouts.push(repeat_timeout.get_id().unwrap());
 
                             vec![
+                                // here t0 / 2 tries to estimate the packet delay
                                 self.new_event(current_time + self.t0 / 2.,
                                                repeat_timeout,
                                                self.get_id()),
@@ -244,6 +254,15 @@ impl Node for TcpServer {
                             vec![]
                         }
                         else {
+                            // register packet arrival and update RTT
+                            if !self.ack_times.contains_key(&sequence_num) {
+                                self.ack_times.insert(sequence_num,
+                                                      current_time);
+                            }
+
+                            // use a fixed window of 10 seconds
+                            self.update_rtt(current_time, 10.0);
+
                             assert!(sequence_num <= self.total_n_packets);
 
                             self.conn_params.a = max(self.conn_params.a, sequence_num);
