@@ -1,5 +1,6 @@
 use crate::core::*;
 use crate::Message::*;
+use std::collections::VecDeque;
 
 #[derive(Debug, Clone)]
 pub enum TcpClientStatus {
@@ -75,7 +76,7 @@ pub struct TcpClient {
     received_chunks: Vec<bool>,
 
     #[builder(setter(skip))]
-    packet_delays: Vec<f64>
+    packet_delays: VecDeque<f64>
 }
 
 impl Node for TcpClient {
@@ -195,14 +196,17 @@ impl Node for TcpClient {
                                 self.received_chunks[sequence_num] = true;
 
                                 // update estimated RTT
-                                self.packet_delays.push(
+                                // limit the number of elements in queue
+                                self.packet_delays.push_back(
                                     current_time -
                                         new_packet.creation_time
                                 );
+                                if self.packet_delays.len() > 10 {
+                                    self.packet_delays.pop_front();
+                                }
 
-                                self.t_repeat = 0.5 *
-                                    self.packet_delays.iter().sum::<f64>()
-                                    / self.packet_delays.len() as f64;
+                                self.t_repeat = 0.5 * median(self.packet_delays.iter());
+                                self.t_unusable = 10.0 * self.t_repeat;
 
                                 // k is the next needed element index: first
                                 // non-true in array

@@ -1,7 +1,7 @@
 use crate::core::*;
 use crate::Message::*;
 use std::cmp::max;
-use std::collections::HashMap;
+use std::collections::{HashMap, VecDeque};
 
 #[derive(Debug, Clone)]
 enum TcpServerStatus {
@@ -55,36 +55,10 @@ pub struct TcpServer {
     creation_times: HashMap<usize, f64>,
 
     #[builder(setter(skip))]
-    ack_times: HashMap<usize, f64>
-}
+    ack_times: HashMap<usize, f64>,
 
-impl TcpServer {
-    fn update_rtt(&mut self, current_time: f64, window: f64) {
-        let mut cumulative_delay = 0.;
-        let mut n_packets = 0;
-
-        for (sequence_num, creation_time) in &self.creation_times {
-            // if close to us
-            if *creation_time > current_time + window {
-                // if it has been ACKed
-                match self.ack_times.get(&sequence_num) {
-                    None => {},
-                    Some(ack_time) => {
-                        cumulative_delay += ack_time - creation_time;
-                        n_packets += 1;
-                    }
-                }
-            }
-        }
-
-        if n_packets == 0 {
-            // self.t0 = 2.0 * self.t0;
-            self.t0 = 2.0;
-        }
-        else {
-            self.t0 = cumulative_delay / n_packets as f64;
-        }
-    }
+    #[builder(setter(skip))]
+    rtts: VecDeque<f64>
 }
 
 impl Node for TcpServer {
@@ -115,8 +89,8 @@ impl Node for TcpServer {
                     match self.status {
                         Idle => {
                             self.timeouts.clear();
-                            self.creation_times.clear();
                             self.ack_times.clear();
+                            self.creation_times.clear();
                             vec![]
                         },
                         InitSession => {
@@ -254,14 +228,24 @@ impl Node for TcpServer {
                             vec![]
                         }
                         else {
-                            // register packet arrival and update RTT
+                            // register first packet ACK and update RTT
                             if !self.ack_times.contains_key(&sequence_num) {
-                                self.ack_times.insert(sequence_num,
+                                self.ack_times.insert(self.conn_params.b,
                                                       current_time);
-                            }
 
-                            // use a fixed window of 10 seconds
-                            self.update_rtt(current_time, 10.0);
+                                let creation_time = self.creation_times.get(&(sequence_num - 1))
+                                    .expect("Received ACK for unsent packet");
+
+                                self.rtts.push_back(
+                                    current_time - creation_time
+                                );
+
+                                if self.rtts.len() > 10 {
+                                    self.rtts.pop_front();
+                                }
+
+                                self.t0 = 0.5 * median(self.rtts.iter());
+                            }
 
                             assert!(sequence_num <= self.total_n_packets);
 
