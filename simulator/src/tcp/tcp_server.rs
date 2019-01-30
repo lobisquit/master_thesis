@@ -67,6 +67,31 @@ pub struct TcpServer {
     pkt_tx_duration: DelayTracker,
 }
 
+impl TcpServer {
+    fn remove_old_info(&mut self) {
+        // remove old creation times: for "old" I mean
+        // before the last packet window
+        let mut old_nums: Vec<usize> = vec![];
+        for sequence_num in self.creation_times.keys() {
+            if *sequence_num < self.conn_params.a - self.conn_params.n {
+                old_nums.push(*sequence_num);
+            }
+        }
+
+        for sequence_num in old_nums {
+            self.creation_times.remove(&sequence_num);
+        }
+
+        // remove old acked packets: their ACKs will be ignored later
+        self.acked_pkts = self.acked_pkts.iter()
+            .filter(|sequence_num| {
+                **sequence_num > self.conn_params.a - self.conn_params.n * 4
+            })
+            .map(|x| *x)
+            .collect();
+    }
+}
+
 impl Node for TcpServer {
     fn get_id(&self) -> NodeId {
         self.node_id
@@ -143,6 +168,9 @@ impl Node for TcpServer {
                             }
                         },
                         TransmitPacket => {
+                            // cleanup delay measurements before assessing RTT
+                            self.remove_old_info();
+
                             let estimated_rtt = match (self.pkt_tx_duration.median(),
                                                        self.ack_tx_duration.median()) {
                                 (Some(a), Some(b)) => Some(a + b),
@@ -246,23 +274,24 @@ impl Node for TcpServer {
                             if !self.acked_pkts.contains(&sequence_num) {
                                 let ack_creation = packet.creation_time;
 
-                                let packet_creation = self.creation_times
-                                    .get(&(sequence_num - 1))
-                                    .expect("Received ACK for unsent packet");
+                                if let Some(packet_creation) = self.creation_times.get(&(sequence_num - 1)) {
+                                    // evaluate transmission time for uplink and
+                                    // downlink
+                                    let tx_ack = current_time - ack_creation;
+                                    let tx_pkt = ack_creation - packet_creation;
 
-                                // evaluate transmission time for uplink and
-                                // downlink
-                                let tx_ack = current_time - ack_creation;
-                                let tx_pkt = ack_creation - packet_creation;
+                                    // track transmission times
+                                    self.ack_tx_duration.push(tx_ack);
+                                    self.pkt_tx_duration.push(tx_pkt);
 
-                                // track transmission times
-                                self.ack_tx_duration.push(tx_ack);
-                                self.pkt_tx_duration.push(tx_pkt);
+                                    // mark packet as received
+                                    self.acked_pkts.push(self.conn_params.b);
 
-                                // mark packet as received
-                                self.acked_pkts.push(self.conn_params.b);
+                                    // cleanup delay measurements before assessing the median
+                                    self.remove_old_info();
 
-                                self.t0 = self.pkt_tx_duration.median().unwrap_or(1.0);
+                                    self.t0 = self.pkt_tx_duration.median().unwrap_or(1.0);
+                                }
                             }
 
                             assert!(sequence_num <= self.total_n_packets);

@@ -11,7 +11,7 @@ impl Default for DelayTracker {
     fn default() -> DelayTracker {
         DelayTracker {
             queue: VecDeque::new(),
-            n_max: 10
+            n_max: 100
         }
     }
 }
