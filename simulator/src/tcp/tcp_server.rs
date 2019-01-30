@@ -262,7 +262,7 @@ impl Node for TcpServer {
                                 // mark packet as received
                                 self.acked_pkts.push(self.conn_params.b);
 
-                                self.t0 =  self.pkt_tx_duration.median().unwrap_or(1.0);
+                                self.t0 = self.pkt_tx_duration.median().unwrap_or(1.0);
                             }
 
                             assert!(sequence_num <= self.total_n_packets);
