@@ -9,6 +9,7 @@ pub struct BlockingQueue {
     dest_id: NodeId,
 
     max_queue: usize,
+    conn_speed: f64,
 
     #[builder(setter(skip))]
     status: BlockingQueueStatus,
@@ -16,7 +17,11 @@ pub struct BlockingQueue {
     #[builder(setter(skip))]
     queue: VecDeque<Packet>,
 
-    conn_speed: f64
+    #[builder(setter(skip))]
+    n_pkt_served: usize,
+
+    #[builder(setter(skip))]
+    n_pkt_lost: usize,
 }
 
 #[derive(Debug, Clone)]
@@ -59,6 +64,10 @@ impl Node for BlockingQueue {
                         if self.queue.len() < self.max_queue {
                             self.queue.push_back(packet);
                         }
+                        else {
+                            // track lost packets
+                            self.n_pkt_lost += 1;
+                        }
                         vec![]
                     },
                     _ => panic!("{:?} arrived in wrong state at {:?}", packet, self)
@@ -72,6 +81,9 @@ impl Node for BlockingQueue {
                         Idle => vec![],
                         Transmitting => {
                             let next_pkt = self.queue.pop_front().expect("Empty queue");
+
+                            // track delivered packet
+                            self.n_pkt_served += 1;
 
                             // service time is given by connection speed
                             // let delta: f64 = (self.rng.gen::<f64>() - 0.5) / 10.0;
