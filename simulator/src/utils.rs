@@ -1,16 +1,25 @@
 use std::iter::Iterator;
 use std::collections::VecDeque;
 
-#[derive(Default, Debug)]
+#[derive(Debug)]
 pub struct DelayTracker {
     queue: VecDeque<f64>,
     n_max: usize
 }
 
+impl Default for DelayTracker {
+    fn default() -> DelayTracker {
+        DelayTracker {
+            queue: VecDeque::new(),
+            n_max: 10
+        }
+    }
+}
+
 impl DelayTracker {
     pub fn push(&mut self, delay: f64) {
         self.queue.push_back(delay);
-        if self.queue.len() == self.n_max {
+        if self.queue.len() >= self.n_max {
             self.queue.pop_front();
         }
     }
