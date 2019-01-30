@@ -5,6 +5,9 @@ use std::fmt::Debug;
 use std::sync::atomic::Ordering as AtomicOrdering;
 use downcast_rs::Downcast;
 
+/// Time required by each node to process a single event
+pub static PROC_TIME: f64 = 1e-8;
+
 #[derive(Debug, Eq, PartialEq, PartialOrd, Ord, Clone, Copy, Hash)]
 pub struct NodeId(pub usize);
 
