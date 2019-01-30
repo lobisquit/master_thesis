@@ -51,7 +51,10 @@ pub struct TcpServer {
     #[builder(setter(skip))]
     timeouts: Vec<usize>,
 
+    #[builder(setter(skip))]
     creation_times: HashMap<usize, f64>,
+
+    #[builder(setter(skip))]
     ack_times: HashMap<usize, f64>
 }
 

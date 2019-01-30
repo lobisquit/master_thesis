@@ -13,14 +13,17 @@ pub struct BlockingQueue {
     #[builder(setter(skip))]
     status: BlockingQueueStatus,
 
+    #[builder(setter(skip))]
+    queue: VecDeque<Packet>,
+
     conn_speed: f64
 }
 
 #[derive(Debug, Clone)]
 enum BlockingQueueStatus {
     Idle,
-    Transmitting(VecDeque<Packet>),
-    Decide(VecDeque<Packet>)
+    Transmitting,
+    Decide
 }
 
 impl Default for BlockingQueueStatus {
@@ -43,20 +46,18 @@ impl Node for BlockingQueue {
             Data(packet) => {
                 match &mut self.status {
                     Idle => {
-                        let mut new_queue = VecDeque::new();
-                        new_queue.push_back(packet);
-                        let new_status = Transmitting(new_queue);
+                        self.queue.push_back(packet);
 
                         vec![
                             self.new_event(current_time,
-                                           MoveToStatus(Box::new(new_status)),
+                                           MoveToStatus(Box::new(Transmitting)),
                                            self.get_id())
                         ]
                     },
-                    Transmitting(queue) => {
+                    Transmitting => {
                         // put packet in the queue if there is space for it
-                        if queue.len() < self.max_queue {
-                            queue.push_back(packet);
+                        if self.queue.len() < self.max_queue {
+                            self.queue.push_back(packet);
                         }
                         vec![]
                     },
@@ -69,9 +70,8 @@ impl Node for BlockingQueue {
 
                     match status {
                         Idle => vec![],
-                        Transmitting(queue) => {
-                            let mut new_queue = queue.clone();
-                            let next_pkt = new_queue.pop_front().expect("Empty queue");
+                        Transmitting => {
+                            let next_pkt = self.queue.pop_front().expect("Empty queue");
 
                             // service time is given by connection speed
                             // let delta: f64 = (self.rng.gen::<f64>() - 0.5) / 10.0;
@@ -84,12 +84,12 @@ impl Node for BlockingQueue {
                                                  self.dest_id),
 
                                   self.new_event(current_time + tx_time,
-                                                 MoveToStatus(Box::new(Decide(new_queue))),
+                                                 MoveToStatus(Box::new(Decide)),
                                                  self.get_id())
                             ]
                         },
-                        Decide(queue) => {
-                            if queue.len() == 0 {
+                        Decide => {
+                            if self.queue.len() == 0 {
                                 vec![ self.new_event(current_time,
                                                      MoveToStatus(Box::new(Idle)),
                                                      self.get_id()) ]
@@ -97,7 +97,7 @@ impl Node for BlockingQueue {
                             else {
                                 vec![ self.new_event(current_time,
                                                      MoveToStatus(Box::new(
-                                                         Transmitting(queue.clone())
+                                                         Transmitting
                                                      )),
                                                      self.get_id()) ]
                             }
