@@ -1,4 +1,6 @@
 use crate::core::*;
+use crate::utils::*;
+
 use crate::Message::*;
 use std::collections::VecDeque;
 
@@ -73,10 +75,7 @@ pub struct TcpClient {
     timeouts: Vec<usize>,
 
     #[builder(setter(skip))]
-    received_chunks: Vec<bool>,
-
-    #[builder(setter(skip))]
-    packet_delays: VecDeque<f64>
+    received_chunks: Vec<bool>
 }
 
 impl Node for TcpClient {
@@ -107,7 +106,6 @@ impl Node for TcpClient {
 
                     match self.status {
                         Idle => {
-                            self.packet_delays.clear();
                             vec![]
                         },
 
@@ -192,21 +190,15 @@ impl Node for TcpClient {
                             self.timeouts.clear();
 
                             // TODO use new_packet to update the metrics
-                            if let TcpData { sequence_num, sequence_end } = new_packet.pkt_type {
+                            if let TcpData { sequence_num, sequence_end, rtt } = new_packet.pkt_type {
                                 self.received_chunks[sequence_num] = true;
 
-                                // update estimated RTT
-                                // limit the number of elements in queue
-                                self.packet_delays.push_back(
-                                    current_time -
-                                        new_packet.creation_time
-                                );
-                                if self.packet_delays.len() > 10 {
-                                    self.packet_delays.pop_front();
-                                }
+                                // read (if any) the RTT from the server
 
-                                self.t_repeat = 0.5 * median(&self.packet_delays);
-                                self.t_unusable = 10.0 * self.t_repeat;
+                                if let Some(time) = rtt {
+                                    self.t_repeat = time;
+                                    self.t_unusable = 10.0 * time;
+                                }
 
                                 // k is the next needed element index: first
                                 // non-true in array

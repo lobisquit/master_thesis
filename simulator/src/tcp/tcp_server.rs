@@ -1,7 +1,9 @@
 use crate::core::*;
+use crate::utils::*;
 use crate::Message::*;
 use std::cmp::max;
 use std::collections::{HashMap, VecDeque};
+use crate::utils::*;
 
 #[derive(Debug, Clone)]
 enum TcpServerStatus {
@@ -51,14 +53,19 @@ pub struct TcpServer {
     #[builder(setter(skip))]
     timeouts: Vec<usize>,
 
+    // monitor the channel using packets as probes
+
     #[builder(setter(skip))]
     creation_times: HashMap<usize, f64>,
 
     #[builder(setter(skip))]
-    ack_times: HashMap<usize, f64>,
+    acked_pkts: Vec<usize>,
 
     #[builder(setter(skip))]
-    rtts: VecDeque<f64>
+    ack_tx_duration: DelayTracker,
+
+    #[builder(setter(skip))]
+    pkt_tx_duration: DelayTracker,
 }
 
 impl Node for TcpServer {
@@ -89,7 +96,7 @@ impl Node for TcpServer {
                     match self.status {
                         Idle => {
                             self.timeouts.clear();
-                            self.ack_times.clear();
+                            self.acked_pkts.clear();
                             self.creation_times.clear();
                             vec![]
                         },
@@ -137,12 +144,19 @@ impl Node for TcpServer {
                             }
                         },
                         TransmitPacket => {
+                            let estimated_rtt = match (self.pkt_tx_duration.median(),
+                                                       self.ack_tx_duration.median()) {
+                                (Some(a), Some(b)) => Some(a + b),
+                                _ => None
+                            };
+
                             let data_packet = Message::new_packet(
                                 self.conn_params.session_id,
                                 self.mtu_size,
                                 TcpData {
                                     sequence_num: self.conn_params.b,
-                                    sequence_end: self.total_n_packets
+                                    sequence_end: self.total_n_packets,
+                                    rtt: estimated_rtt
                                 },
                                 current_time,
                                 self.node_id,
@@ -223,28 +237,33 @@ impl Node for TcpServer {
                             // ignore when connection has ended
                             vec![]
                         }
-                        else if self.conn_params.session_id != packet.session_id || sequence_num <= self.conn_params.a {
+                        else if self.conn_params.session_id != packet.session_id
+                            || sequence_num <= self.conn_params.a {
                             // ignore old ACKs
                             vec![]
                         }
                         else {
                             // register first packet ACK and update RTT
-                            if !self.ack_times.contains_key(&sequence_num) {
-                                self.ack_times.insert(self.conn_params.b,
-                                                      current_time);
+                            if !self.acked_pkts.contains(&sequence_num) {
+                                let ack_creation = packet.creation_time;
 
-                                let creation_time = self.creation_times.get(&(sequence_num - 1))
+                                let packet_creation = self.creation_times
+                                    .get(&(sequence_num - 1))
                                     .expect("Received ACK for unsent packet");
 
-                                self.rtts.push_back(
-                                    current_time - creation_time
-                                );
+                                // evaluate transmission time for uplink and
+                                // downlink
+                                let tx_ack = current_time - ack_creation;
+                                let tx_pkt = ack_creation - packet_creation;
 
-                                if self.rtts.len() > 10 {
-                                    self.rtts.pop_front();
-                                }
+                                // track transmission times
+                                self.ack_tx_duration.push(tx_ack);
+                                self.pkt_tx_duration.push(tx_pkt);
 
-                                self.t0 = 0.5 * median(&self.rtts);
+                                // mark packet as received
+                                self.acked_pkts.push(self.conn_params.b);
+
+                                self.t0 =  self.pkt_tx_duration.median().unwrap_or(1.0);
                             }
 
                             assert!(sequence_num <= self.total_n_packets);
