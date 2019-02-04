@@ -57,6 +57,12 @@ pub struct UdpClient {
     n: u64,
 
     #[builder(setter(skip))]
+    delays: Vec<f64>,
+
+    #[builder(setter(skip))]
+    received_data: u64,
+
+    #[builder(setter(skip))]
     status: UdpClientStatus,
 
     #[builder(setter(skip))]
@@ -154,8 +160,12 @@ impl Node for UdpClient {
                             // still alive
                             self.timeouts.clear();
 
-                            // TODO use new_packet to update the metrics
-                            // dbg!(new_packet);
+                            // remember packet delay
+                            let delay = current_time - new_packet.creation_time;
+                            self.delays.push(delay);
+
+                            // mark the portion of data as received
+                            self.received_data += new_packet.size;
 
                             let new_status = DataWait {
                                 session_id: session_id
@@ -229,8 +239,18 @@ impl Node for UdpClient {
                             self.timeouts.clear();
 
                             // TODO use obtained metrics to compute QoS, QoE
-                            // dbg!(session_id);
-                            // dbg!(file_size);
+                            let pkt_loss = 1.0 -
+                                self.received_data as f64 /
+                                file_size as f64;
+
+                            let avg_delay = self.delays
+                                .iter()
+                                .sum::<f64>() / self.delays.len() as f64;
+
+                            let jitter = self.delays
+                                .iter()
+                                .map(|x| (*x - avg_delay).powf(2.0))
+                                .sum::<f64>() / self.delays.len() as f64;
 
                             vec![ self.new_event(current_time,
                                                  MoveToStatus(Box::new(Idle)),
