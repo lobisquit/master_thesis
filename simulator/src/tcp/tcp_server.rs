@@ -242,10 +242,10 @@ impl Node for TcpServer {
                 }
             },
             Data(packet) => {
+                info!("{}: {:?} received by {:?}", current_time, packet, self);
+
                 assert!(packet.dst_node == self.node_id);
                 assert!(packet.src_node == self.dst_id);
-
-                info!("{}: {:?} received by {:?}", current_time, packet, self);
 
                 match packet.pkt_type {
                     // always drop current session if user is requesting another

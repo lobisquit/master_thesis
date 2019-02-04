@@ -49,15 +49,15 @@ impl UdpClientStatus {
 pub struct UdpClient {
     node_id: NodeId,
 
-    #[builder(setter(skip))]
-    status: UdpClientStatus,
-
     next_hop_id: NodeId,
     dst_id: NodeId,
 
     bitrate: f64,
     t0: f64,
     n: u64,
+
+    #[builder(setter(skip))]
+    status: UdpClientStatus,
 
     #[builder(setter(skip))]
     timeouts: Vec<usize>
@@ -155,7 +155,7 @@ impl Node for UdpClient {
                             self.timeouts.clear();
 
                             // TODO use new_packet to update the metrics
-                            dbg!(new_packet);
+                            // dbg!(new_packet);
 
                             let new_status = DataWait {
                                 session_id: session_id
@@ -229,8 +229,8 @@ impl Node for UdpClient {
                             self.timeouts.clear();
 
                             // TODO use obtained metrics to compute QoS, QoE
-                            dbg!(session_id);
-                            dbg!(file_size);
+                            // dbg!(session_id);
+                            // dbg!(file_size);
 
                             vec![ self.new_event(current_time,
                                                  MoveToStatus(Box::new(Idle)),
@@ -272,6 +272,8 @@ impl Node for UdpClient {
                 }
             },
             Data(packet) => {
+                info!("{}: {:?} received by {:?}", current_time, packet, self);
+
                 assert!(packet.dst_node == self.node_id);
                 assert!(packet.src_node == self.dst_id);
 

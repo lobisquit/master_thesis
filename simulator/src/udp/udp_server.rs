@@ -39,14 +39,14 @@ impl UdpServerStatus {
 pub struct UdpServer {
     node_id: NodeId,
 
-    #[builder(setter(skip))]
-    status: UdpServerStatus,
-
     next_hop_id: NodeId,
     dst_id: NodeId,
 
     file_size: u64,
     mtu_size: u64,
+
+    #[builder(setter(skip))]
+    status: UdpServerStatus,
 
     #[builder(setter(skip))]
     timeouts: Vec<usize>
@@ -163,6 +163,8 @@ impl Node for UdpServer {
                 }
             },
             Data(packet) => {
+                info!("{}: {:?} received by {:?}", current_time, packet, self);
+
                 assert!(packet.dst_node == self.node_id);
                 assert!(packet.src_node == self.dst_id);
 
