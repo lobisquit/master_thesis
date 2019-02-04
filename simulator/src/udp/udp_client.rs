@@ -97,7 +97,13 @@ impl Node for UdpClient {
                     self.status = udp_status.clone();
 
                     match self.status {
-                        Idle => vec![],
+                        Idle => {
+                            self.delays.clear();
+                            self.received_data = 0;
+                            self.timeouts.clear();
+
+                            vec![]
+                        },
 
                         RequestInit => {
                             // immediately send DATA request
