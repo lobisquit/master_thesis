@@ -149,7 +149,7 @@ impl Node for UdpServer {
                             vec![
                                 self.new_event(current_time,
                                                finish_packet,
-                                               self.get_id()),
+                                               self.next_hop_id),
 
                                 self.new_event(current_time,
                                                MoveToStatus(Box::new(Idle)),
