@@ -1,3 +1,4 @@
+use crate::utils::variance;
 use crate::core::*;
 use crate::Message::*;
 
@@ -238,19 +239,12 @@ impl Node for UdpClient {
                             // FINISH packet received: connection is closed
                             self.timeouts.clear();
 
-                            // TODO use obtained metrics to compute QoS, QoE
+                            // TODO use obtained metrics to compute QoE
                             let pkt_loss = 1.0 -
                                 self.received_data as f64 /
                                 file_size as f64;
 
-                            let avg_delay = self.delays
-                                .iter()
-                                .sum::<f64>() / self.delays.len() as f64;
-
-                            let jitter = self.delays
-                                .iter()
-                                .map(|x| (*x - avg_delay).powf(2.0))
-                                .sum::<f64>() / self.delays.len() as f64;
+                            let jitter = variance(&self.delays);
 
                             vec![ self.new_event(current_time,
                                                  MoveToStatus(Box::new(Idle)),
