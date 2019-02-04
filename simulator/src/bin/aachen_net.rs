@@ -18,23 +18,22 @@ fn main() {
     let environment = Env::default().default_filter_or("error");
     Builder::from_env(environment).init();
 
-    let mut client = TcpClientBuilder::default()
+    let mut client = UdpClientBuilder::default()
         .node_id(1)
         .next_hop_id(5)
         .dst_id(2)
-        .window_size(10 as usize)
-        .t_repeat(2.0)
-        .t_unusable(20.0)
+        .bitrate(10000)
+        .t0(2.)
+        .n(10 as u64)
         .build()
         .unwrap();
 
-    let mut server = TcpServerBuilder::default()
+    let mut server = UdpServerBuilder::default()
         .node_id(2)
         .next_hop_id(6)
         .dst_id(1)
-        .total_n_packets(30 as usize)
-        .mtu_size(10000 as u64)
-        .t0(1.0)
+        .file_size(1e5 as u64)
+        .mtu_size(1500 as u64)
         .build()
         .unwrap();
 
@@ -115,7 +114,7 @@ fn main() {
     }
 
     for node in nodes {
-        dbg!(node);
+        // dbg!(node);
     }
 
     let duration = start.elapsed();
