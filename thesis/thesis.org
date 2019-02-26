@@ -1072,36 +1072,38 @@ they will prove to be good ones, i.e. to be close to the theoretical optimum.
 
   rc('text', usetex=True)
 
-  fig = plt.figure(frameon=False, figsize=(4, 4))
+  fig = plt.figure(frameon=False, figsize=(3, 3))
   ax = plt.gca()
 
+  alpha=0.2
+  beta=0.8
   x = np.linspace(0, 0.3, 100)
-  y = 1 - np.exp(- x * 1.19)
+  y = 1 - np.exp(- x * 0.74)
 
   ax.plot(x, y,
           linestyle='-',
           color='black')
 
   x = np.linspace(0.3, 1, 100)
-  y = 1 - np.exp(- (x + 0.1) * 4.02)
+  y = 1 - np.exp(- (x - 0.2) * 16.09)
 
   ax.plot(x, y,
           linestyle='-',
           color='black')
 
-  ax.plot([0.3, 0.3], [0.3, 0.8],
+  ax.plot([0.3, 0.3], [alpha, beta],
           linestyle='-',
           color='grey',
           zorder=-5)
 
   ax.annotate(r"($x_{lim},\, \alpha$)",
-              (0.3, 0.3),
-              (0.3 + 0.02, 0.3 - 0.02),
+              (0.3, alpha),
+              (0.3 + 0.025, alpha - 0.025),
               fontsize=14)
 
   ax.annotate(r"($x_{lim},\, \beta$)",
-              (0.3, 0.8),
-              (0.3 - 0.24, 0.8 - 0.02),
+              (0.3, beta),
+              (0.3 + 0.025, beta - 0.025),
               fontsize=14)
 
   ax.plot([0, 1], [1, 1],
@@ -1112,7 +1114,7 @@ they will prove to be good ones, i.e. to be close to the theoretical optimum.
 
   ax.annotate("1",
               (0, 1),
-              (0 - 0.08, 1 - 0.02),
+              (1 + 0.05, 1 - 0.025),
               fontsize=16)
 
   ## remove default axes: set "mathematical" ones
@@ -1155,7 +1157,7 @@ they will prove to be good ones, i.e. to be close to the theoretical optimum.
            head_width=yhw, head_length=yhl, overhang = ohg,
            length_includes_head= True, clip_on = False)
 
-  plt.tight_layout(pad=0, rect=(0.03, 0, 1, 1))
+  plt.tight_layout(pad=0, rect=(0.025, 0, 1, 1))
 
   # plt.show()
 
@@ -1164,10 +1166,10 @@ they will prove to be good ones, i.e. to be close to the theoretical optimum.
   print(out_path, end='')
 #+END_SRC
 
-#+CAPTION: Utility function with threshold on $x_{lim}$, minimum value for $x$ to be acceptable.
-#+ATTR_LATEX: :height 4in
+#+CAPTION: Utility function with threshold on $x_{lim}$, minimum value for quantity $x$ to be acceptable.
+#+ATTR_LATEX: :height 3in
 #+LABEL: utility_example
-#+RESULTS[a1b8cfbd3adc1faf21a613384c4cb8fdf05dee35]: utility_example
+#+RESULTS[c72e3ceecee817f650db1aabab8458d1e407f438]: utility_example
 [[file:../figures/utility_examples.eps]]
 
 
