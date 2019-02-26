@@ -7,6 +7,7 @@
 
 #+LaTeX_CLASS: article
 #+LATEX_HEADER: \usepackage{charter}
+#+LATEX_HEADER: \usepackage[charter]{mathdesign}
 
 #+LATEX_HEADER: \usepackage{geometry}
 #+LATEX_HEADER: \usepackage{etoolbox}
@@ -58,7 +59,8 @@
 #+LATEX_HEADER:   }
 #+LATEX_HEADER: \makeatother
 
-
+* Utility code :ignore:
+** PlantUML common style :ignore:
 #+BEGIN_COMMENT
 PlantUML skin, reusable for all diagrams
 #+END_COMMENT
@@ -153,6 +155,7 @@ PlantUML skin, reusable for all diagrams
   }
 #+END_SRC
 
+** Download university logos :ignore:
 #+BEGIN_COMMENT
 Download all needed files for titlepage and convert them.
 LaTeX support for svg files sucks.
@@ -170,6 +173,7 @@ LaTeX support for svg files sucks.
   inkscape ../figures/logo_rwth.svg --export-pdf=../figures/logo_rwth.pdf
 #+END_SRC
 
+** Latex title page :ignore:
 #+BEGIN_EXPORT latex
 \newgeometry{top=1in, bottom=1in, inner=1in, outer=1in}
 \begin{titlepage}
@@ -488,7 +492,7 @@ task is to aggregate all the traffic further and further.
 #+LABEL: fig:network_tree
 #+CAPTION: A layered tree access network connects users (circles) to the Internet backbone
 #+ATTR_LATEX: :height 3.5in
-#+RESULTS[d2aed76d599a21954d5c3ff79a5030fd90a959fd]:
+#+RESULTS[523cd5a337d1346008f38f33ce7943a529710011]:
 [[file:../figures/network_tree.eps]]
 
 From a technological point of view the network is considered to be relatively
@@ -634,7 +638,7 @@ simplified setting of autoref:fig:network_tree_simplified.
 #+LABEL: fig:network_tree_simplified
 #+CAPTION: Each /head/ aggregates the traffic of all nodes in its /cluster/.
 #+ATTR_LATEX: :height 2.5in
-#+RESULTS[1aeae82b46a3422b121cba576d8d6c20dc52a89c]:
+#+RESULTS[788af81242e64321fe0a0d689c0856e95e9909fe]:
 [[file:../figures/network_tree_simplified.eps]]
 
 As apparent in the diagram the solver must now take into consideration the cost
@@ -830,11 +834,8 @@ With this setup our network access configuration will simply be a direct tree, o
 #+LABEL: fig:tree_network
 #+CAPTION: In the final solution, additional arcs $(r,\, i)$ connect artifical node $r$ to all the roots, making the whole structure an arborescence, instead of a forest.
 #+ATTR_LATEX: :width \linewidth
-#+RESULTS[fe1eb5e3a44dd6ff6e0ccc2d64f3d36dd92b1d62]:
+#+RESULTS[bea2596847324dc90f1d87a0dbcf112c22b2589b]:
 [[file:../figures/ilp_graph_reduced.eps]]
-As customary in this type of optimization problems, the optimal solution will
-eventually be returned by the solver as the sequence of indicator variables
-$\{ x_e \}_{e \in A}$ where $x_e$ is equal to 1 only if the arc $e$ has been selected.
 
 Because of the system requirements we also have to keep track of the distance
 $d_i$ of each node $i \in V \cup \{r\}$ from its head and the number of users $n_e$ served
@@ -1227,7 +1228,6 @@ bibliography:biblio.bib
 * COMMENT Local variables
 # Local Variables:
 # org-latex-tables-booktabs: t
-# eval: (add-hook 'after-save-hook 'org-render-latex-fragments t t)
 # eval: (flyspell-mode)
 # ispell-local-dictionary: "en"
 # End:
