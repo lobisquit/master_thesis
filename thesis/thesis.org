@@ -1061,6 +1061,116 @@ they will prove to be good ones, i.e. to be close to the theoretical optimum.
       - "theory" of the tecnique
 #+END_SRC
 
+#+NAME: utility_example
+#+BEGIN_SRC python :results output file :exports results
+  import matplotlib.pyplot as plt
+  import numpy as np
+
+  from matplotlib import rc
+  rc('font',**{'family':'serif'})
+  plt.rcParams['mathtext.fontset'] = 'dejavusans'
+
+  rc('text', usetex=True)
+
+  fig = plt.figure(frameon=False, figsize=(4, 4))
+  ax = plt.gca()
+
+  x = np.linspace(0, 0.3, 100)
+  y = 1 - np.exp(- x * 1.19)
+
+  ax.plot(x, y,
+          linestyle='-',
+          color='black')
+
+  x = np.linspace(0.3, 1, 100)
+  y = 1 - np.exp(- (x + 0.1) * 4.02)
+
+  ax.plot(x, y,
+          linestyle='-',
+          color='black')
+
+  ax.plot([0.3, 0.3], [0.3, 0.8],
+          linestyle='-',
+          color='grey',
+          zorder=-5)
+
+  ax.annotate(r"($x_{lim},\, \alpha$)",
+              (0.3, 0.3),
+              (0.3 + 0.02, 0.3 - 0.02),
+              fontsize=14)
+
+  ax.annotate(r"($x_{lim},\, \beta$)",
+              (0.3, 0.8),
+              (0.3 - 0.24, 0.8 - 0.02),
+              fontsize=14)
+
+  ax.plot([0, 1], [1, 1],
+          linestyle='--',
+          color='grey',
+          linewidth=1,
+          zorder=-5)
+
+  ax.annotate("1",
+              (0, 1),
+              (0 - 0.08, 1 - 0.02),
+              fontsize=16)
+
+  ## remove default axes: set "mathematical" ones
+
+  xmin, xmax = ax.get_xlim()
+  ymin, ymax = ax.get_ylim()
+
+  # removing the default axis on all sides:
+  for side in ['bottom','right','top','left']:
+      ax.spines[side].set_visible(False)
+
+  # removing the axis ticks
+  plt.xticks([]) # labels
+  plt.yticks([])
+  ax.xaxis.set_ticks_position('none') # tick markers
+  ax.yaxis.set_ticks_position('none')
+
+  # get width and height of axes object to compute
+  # matching arrowhead length and width
+  dps = fig.dpi_scale_trans.inverted()
+  bbox = ax.get_window_extent().transformed(dps)
+  width, height = bbox.width, bbox.height
+
+  # manual arrowhead width and length
+  hw = 1./20.*(ymax-ymin)
+  hl = 1./20.*(xmax-xmin)
+  lw = 1. # axis line width
+  ohg = 0.3 # arrow overhang
+
+  # compute matching arrowhead length and width
+  yhw = hw/(ymax-ymin)*(xmax-xmin)* height/width
+  yhl = hl/(xmax-xmin)*(ymax-ymin)* width/height
+
+  # draw x and y axis
+  ax.arrow(xmin, 0, xmax-xmin, 0., fc='k', ec='k', lw = lw,
+           head_width=hw, head_length=hl, overhang = ohg,
+           length_includes_head= True, clip_on = False)
+
+  ax.arrow(0, ymin, 0., ymax-ymin, fc='k', ec='k', lw = lw,
+           head_width=yhw, head_length=yhl, overhang = ohg,
+           length_includes_head= True, clip_on = False)
+
+  plt.tight_layout(pad=0, rect=(0.03, 0, 1, 1))
+
+  # plt.show()
+
+  out_path = '../figures/utility_examples.eps'
+  plt.savefig(out_path)
+  print(out_path, end='')
+#+END_SRC
+
+#+CAPTION: Utility function with threshold on $x_{lim}$, minimum value for $x$ to be acceptable.
+#+ATTR_LATEX: :height 4in
+#+LABEL: utility_example
+#+RESULTS[a1b8cfbd3adc1faf21a613384c4cb8fdf05dee35]: utility_example
+[[file:../figures/utility_examples.eps]]
+
+
 * Results
 This chapter follows the what was presented in [[autoref:methodology]] and shows
 what can be obtained using those theoretical frameworks and tools.
