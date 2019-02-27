@@ -1062,116 +1062,71 @@ they will prove to be good ones, i.e. to be close to the theoretical optimum.
 #+END_SRC
 
 #+NAME: utility_example
-#+BEGIN_SRC python :results output file :exports results
-  import matplotlib.pyplot as plt
-  import numpy as np
+#+BEGIN_SRC asymptote :file ../figures/utility_example.pdf
+  settings.outformat="pdf";
+  texpreamble("\usepackage[charter]{mathdesign}");
 
-  from matplotlib import rc
-  rc('font',**{'family':'serif'})
-  plt.rcParams['mathtext.fontset'] = 'dejavusans'
+  size(8cm);
 
-  rc('text', usetex=True)
+  real m = 0.15;
+  real deltax = 0.2;
+  real xcenter = 0.6;
 
-  fig = plt.figure(frameon=False, figsize=(3, 3))
-  ax = plt.gca()
+  real padding = 0.2;
+  real xmax = xcenter + 0.6;
+  real xmin = 0;
 
-  alpha=0.2
-  beta=0.8
-  x = np.linspace(0, 0.3, 100)
-  y = 1 - np.exp(- x * 0.74)
+  real ymax = 1;
+  real ymin = 0;
 
-  ax.plot(x, y,
-          linestyle='-',
-          color='black')
+  draw((xmin, 0) -- (xmax + padding, 0), arrow=Arrow);
+  draw((0, ymin - padding) -- (0, ymax + padding), arrow=Arrow);
 
-  x = np.linspace(0.3, 1, 100)
-  y = 1 - np.exp(- (x - 0.2) * 16.09)
+  label("$x$", (xmax + padding, 0), align=E);
+  label("$y$", (0, ymax + padding), align=N);
 
-  ax.plot(x, y,
-          linestyle='-',
-          color='black')
+  draw((0, 1) -- (xmax, 1), dashed + grey);
+  label("$1$", (0, 1), align=NW);
+  label("$0$", (0, 0), align=NW);
 
-  ax.plot([0.3, 0.3], [alpha, beta],
-          linestyle='-',
-          color='grey',
-          zorder=-5)
+  import graph;
+  real f(real x) {
+    return 1/(1 + ((1-m)/m)^((x - xcenter)/deltax));
+  }
 
-  ax.annotate(r"($x_{lim},\, \alpha$)",
-              (0.3, alpha),
-              (0.3 + 0.025, alpha - 0.025),
-              fontsize=14)
+  path g = graph(f, xmin, xmax);
+  draw(g);
 
-  ax.annotate(r"($x_{lim},\, \beta$)",
-              (0.3, beta),
-              (0.3 + 0.025, beta - 0.025),
-              fontsize=14)
+  path p1 = (xcenter + deltax, 0) -- (xcenter + deltax, m);
+  draw(p1, grey, arrow=Arrows);
+  label("$m$", p1, align=W);
 
-  ax.plot([0, 1], [1, 1],
-          linestyle='--',
-          color='grey',
-          linewidth=1,
-          zorder=-5)
+  path p2 = (xcenter + 0, -padding/4) -- (xcenter + deltax, -padding/4);
+  draw(p2, grey, arrow=Arrows);
+  label("$\Delta x$", p2, align=S);
 
-  ax.annotate("1",
-              (0, 1),
-              (1 + 0.05, 1 - 0.025),
-              fontsize=16)
+  path p3 = (xcenter -deltax, 0) -- (xcenter -deltax, 1 - m);
+  draw(p3, grey, arrow=Arrows);
+  label("$1 - m$", p3, align=W);
 
-  ## remove default axes: set "mathematical" ones
+  path p4 = (xcenter - deltax, -padding/4) -- (xcenter + 0, -padding/4);
+  draw(p4, grey, arrow=Arrows);
+  label("$\Delta x$", p4, align=S);
 
-  xmin, xmax = ax.get_xlim()
-  ymin, ymax = ax.get_ylim()
+  // path p5 = (xcenter, -padding) -- (xcenter, 1 + padding);
+  path p5 = (xcenter, -padding*1.2) -- (xcenter, 0);
+  draw(p5, black);
+  label("$x_c$", (xcenter, -padding*1.2), align=S);
 
-  # removing the default axis on all sides:
-  for side in ['bottom','right','top','left']:
-      ax.spines[side].set_visible(False)
-
-  # removing the axis ticks
-  plt.xticks([]) # labels
-  plt.yticks([])
-  ax.xaxis.set_ticks_position('none') # tick markers
-  ax.yaxis.set_ticks_position('none')
-
-  # get width and height of axes object to compute
-  # matching arrowhead length and width
-  dps = fig.dpi_scale_trans.inverted()
-  bbox = ax.get_window_extent().transformed(dps)
-  width, height = bbox.width, bbox.height
-
-  # manual arrowhead width and length
-  hw = 1./20.*(ymax-ymin)
-  hl = 1./20.*(xmax-xmin)
-  lw = 1. # axis line width
-  ohg = 0.3 # arrow overhang
-
-  # compute matching arrowhead length and width
-  yhw = hw/(ymax-ymin)*(xmax-xmin)* height/width
-  yhl = hl/(xmax-xmin)*(ymax-ymin)* width/height
-
-  # draw x and y axis
-  ax.arrow(xmin, 0, xmax-xmin, 0., fc='k', ec='k', lw = lw,
-           head_width=hw, head_length=hl, overhang = ohg,
-           length_includes_head= True, clip_on = False)
-
-  ax.arrow(0, ymin, 0., ymax-ymin, fc='k', ec='k', lw = lw,
-           head_width=yhw, head_length=yhl, overhang = ohg,
-           length_includes_head= True, clip_on = False)
-
-  plt.tight_layout(pad=0, rect=(0.025, 0, 1, 1))
-
-  # plt.show()
-
-  out_path = '../figures/utility_examples.eps'
-  plt.savefig(out_path)
-  print(out_path, end='')
+  dot( (xcenter + deltax, m) );
+  dot( (xcenter - deltax, 1-m) );
 #+END_SRC
 
 #+CAPTION: Utility function with threshold on $x_{lim}$, minimum value for quantity $x$ to be acceptable.
-#+ATTR_LATEX: :height 3in
+#+ATTR_LATEX: :width 8cm
 #+LABEL: utility_example
-#+RESULTS[c72e3ceecee817f650db1aabab8458d1e407f438]: utility_example
-[[file:../figures/utility_examples.eps]]
-
+#+RESULTS[ac4b60ee7b8930d753616329d9a167d550f6ba3a]: utility_example
+[[file:../figures/utility_example.pdf]]
 
 * Results
 This chapter follows the what was presented in [[autoref:methodology]] and shows
