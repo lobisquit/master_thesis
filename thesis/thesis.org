@@ -1086,8 +1086,8 @@ they will prove to be good ones, i.e. to be close to the theoretical optimum.
   label("$y$", (0, ymax + padding), align=N);
 
   draw((0, 1) -- (xmax, 1), dashed + grey);
-  label("$1$", (0, 1), align=NW);
-  label("$0$", (0, 0), align=NW);
+  label("$1$", (0, 1), align=W);
+  label("$0$", (0, 0), align=W);
 
   import graph;
   real f(real x) {
@@ -1125,7 +1125,7 @@ they will prove to be good ones, i.e. to be close to the theoretical optimum.
 #+CAPTION: Utility function with threshold on $x_{lim}$, minimum value for quantity $x$ to be acceptable.
 #+ATTR_LATEX: :width 8cm
 #+LABEL: utility_example
-#+RESULTS[ac4b60ee7b8930d753616329d9a167d550f6ba3a]: utility_example
+#+RESULTS[25a3522030b79e80661ed13e6cb805ac76932be5]: utility_example
 [[file:../figures/utility_example.pdf]]
 
 * Results
