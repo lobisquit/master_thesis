@@ -37,6 +37,7 @@
 #+LATEX_HEADER_EXTRA: \newacronym{dslam}{DSLAM}{Digital Subscriber Line Access Multiplexer}
 #+latex_header_extra: \newacronym{qos}{QoS}{Quality of Service}
 #+latex_header_extra: \newacronym{ilp}{ILP}{Integer Linear Programming}
+#+latex_header_extra: \newacronym{tbf}{TBF}{Token Bucket Filter}
 
 #+LATEX_HEADER: \makeatletter
 #+LATEX_HEADER: \newenvironment{bigalgorithm}
@@ -1061,6 +1062,228 @@ they will prove to be good ones, i.e. to be close to the theoretical optimum.
       - "theory" of the tecnique
 #+END_SRC
 
+Previous optimization steps returned a plausible topology for Aachen city access
+network.
+
+*** Network structure
+As presented in autoref:methodology-network_design, obtained network topology is
+organized in a hierarchical tree of switches, whose task is to merge all flows
+towards the mainframe.
+
+This structure resembles what was previously described in
+autoref:fig:network_tree, and is further detailed in
+autoref:fig:simulator_uplink and autoref:fig:simulator_downlink. As shown in
+these diagrams, each outgoing flow passes through a [[ac:tbf][TBF]]: this unit controls the
+rate of the packets before they enter the transmitting interface, labeled as
+``NIC''.
+
+The central network controller will use these [[acp:tbf][TBF]] to give or revoke priority
+from a given source, with the ultimate goal of keeping the network balanced.
+They will be described in their functioning in upcoming autoref:methodology-tbf.
+
+#+NAME: fig:simulator_downlink
+#+BEGIN_SRC plantuml :file ../figures/simulator_downlink.eps :noweb yes
+  skinparam nodesep 10
+  skinparam ranksep 30
+  <<plantuml_skin>>
+  left to right direction
+
+  node "DSLAM" as dslam1
+  node "DSLAM" as dslam2
+  node "DSLAM" as dslam3
+
+  node ROUTER {
+  queue "TBF" as ROUTER_tbf1 #f6ff9b
+  queue "TBF" as ROUTER_tbf2 #f6ff9b
+  queue "TBF" as ROUTER_tbf3 #f6ff9b
+  queue "NIC" as ROUTER_queue
+  queue "NIC" as interface1
+  queue "NIC" as interface2
+  queue "NIC" as interface3
+  }
+
+  database "Server" as server1
+  database "Server" as server2
+
+  node "Mainframe" as mf
+  dslam1 <-- interface1
+  dslam2 <-- interface2
+  dslam3 <-- interface3
+
+  interface1 <-- ROUTER_tbf1
+  interface2 <-- ROUTER_tbf2
+  interface3 <-- ROUTER_tbf3
+
+  ROUTER_tbf1 <-- ROUTER_queue
+  ROUTER_tbf2 <-- ROUTER_queue
+  ROUTER_tbf3 <-- ROUTER_queue
+
+  ROUTER_queue <-- mf
+
+  cloud "Public\nInternet" as internet
+  mf <-- internet
+
+  internet <-- server1
+  internet <-- server2
+#+END_SRC
+
+# #+ATTR_LATEX: :width 8cm
+#+CAPTION: Logical node structure for downlink traffic.
+#+LABEL: fig:simulator_downlink
+#+RESULTS[b87efdfcd70ed6f32f723d0cbadcc0a77b2cd8ab]: fig:simulator_downlink
+[[file:../figures/simulator_downlink.eps]]
+
+#+NAME: fig:simulator_uplink
+#+BEGIN_SRC plantuml :file ../figures/simulator_uplink.eps :noweb yes
+  skinparam nodesep 10
+  skinparam ranksep 30
+  <<plantuml_skin>>
+  left to right direction
+
+  node "DSLAM" as dslam1
+  node "DSLAM" as dslam2
+  node "DSLAM" as dslam3
+
+  node ROUTER {
+  queue "TBF" as ROUTER_tbf #f6ff9b
+  queue "NIC" as ROUTER_queue
+  queue "NIC" as interface1
+  queue "NIC" as interface2
+  queue "NIC" as interface3
+  }
+
+  database "Server" as server1
+  database "Server" as server2
+
+  node "Mainframe" as mf
+  dslam1 --> interface1
+  dslam2 --> interface2
+  dslam3 --> interface3
+
+  interface1 --> ROUTER_tbf
+  interface2 --> ROUTER_tbf
+  interface3 --> ROUTER_tbf
+
+  ROUTER_tbf --> ROUTER_queue
+
+  ROUTER_queue --> mf
+
+  cloud "Public\nInternet" as internet
+  mf --> internet
+
+  internet --> server1
+  internet --> server2
+#+END_SRC
+
+# #+ATTR_LATEX: :width 8cm
+#+CAPTION: Logical node structure for uplink traffic.
+#+LABEL: fig:simulator_uplink
+#+RESULTS[1cf142fbce7974ddda86f326c04f993d5aad73f5]: fig:simulator_uplink
+[[file:../figures/simulator_uplink.eps]]
+
+
+*** Token Bucket Filters
+:PROPERTIES:
+:CUSTOM_ID: methodology-tbf
+:END:
+
+\glsreset{tbf}
+
+The [[ac:tbf][TBF]] is a classless discipline for packet queues that can be put in place to
+limit bandwidth and burstiness of data flow.
+
+#+NAME: fig:tbf_diagram
+#+BEGIN_SRC asymptote :file ../figures/tbf_diagram.pdf
+  settings.outformat="pdf";
+  texpreamble("\usepackage[charter]{mathdesign}");
+  texpreamble("\usepackage{charter}");
+
+  size(10cm);
+
+  // params
+
+  real r = 1;
+  real x = 4*r;
+
+  real token_size = r/4;
+  int[] packet_sizes = {3, 2, 1, 3, 2};
+
+  pen highlighter = mediumyellow;
+  int n_tokens = 3;
+
+  real tq_height = 5*token_size;
+  real tq_padding = r/6;
+
+  // traffic queue
+  draw((0, 0) -- (x, 0));
+  draw((x, 0) -- (x, 2*r));
+  draw((0, 2*r) -- (x, 2*r));
+
+  // token queue
+  draw(box((x + r, 3*r), (x + 3*r, 3*r + tq_height)));
+  real bar_x = x + r - tq_padding * 2;
+  draw((bar_x, 3*r) -- (bar_x, 3*r + tq_height),
+       bar=Bars,
+       L=Label("Bucket size", align=W));
+
+  // connectors
+  draw((x + 2*r, 3*r) -- (x + 2*r, 2*r), arrow=Arrow);
+  draw((x, r) -- (x + r, r), arrow=Arrow);
+
+  // circle
+  draw(circle((x + 2*r, r), r));
+
+  draw((x + 2*r + r*sin(pi/4), r - r*cos(pi/4)) -- (x + 2*r - r*sin(pi/4), r + r*cos(pi/4)));
+
+  draw(rotate(-45)*Label("1 token", align=NE), (x + 2*r, r));
+  draw(rotate(-45)*Label("1 byte", align=SW), (x + 2*r, r));
+
+  // input flows
+  draw((-2*r, r) -- (r, r),
+       arrow=Arrow,
+       L=Label("Input traffic", align=N));
+
+  real arrow_l = r;
+  draw((x + 2*r, 3*r + tq_height + arrow_l) -- (x + 2*r, 3*r + tq_height - tq_padding),
+       arrow=Arrow,
+       L=Label("Token generation", align=N, position=BeginPoint));
+
+  // output flow
+  draw((x + 2*r + r*sin(pi/4), r - r*cos(pi/4)) -- (x + 2*r + r*tan(pi/4), 0) -- (x + 4.5*r, 0),
+       arrow=Arrow,
+       L=Label("NIC", align=E, position=EndPoint));
+
+  // draw tokens
+  for (int n = 0; n < n_tokens; ++n) {
+    real y = 3*r + n * token_size;
+
+    if (n < packet_sizes[0]) {
+      fill(box((x + r, y), (x + 3*r, y + token_size)), highlighter);
+    }
+    draw(box((x + r, y), (x + 3*r, y + token_size)));
+  }
+
+  // draw packets
+  for (int n = 0; n < packet_sizes.length; ++n) {
+    real packet_start = 0;
+    for (int j = 0; j < n; ++j) {
+      packet_start += packet_sizes[j];
+    }
+
+    real x1 = x - packet_start * token_size;
+    real x2 = x1 - packet_sizes[n] * token_size;
+
+    if (n == 0) {
+      fill(box((x1, 0), (x2, 2*r)), highlighter);
+    }
+    draw(box((x1, 0), (x2, 2*r)));
+  }
+#+END_SRC
+
+#+RESULTS[b93901e5097f793991de87557649d02f7ef63087]: fig:tbf_diagram
+[[file:../figures/tbf_diagram.pdf]]
+
+*** Optimization approach
 #+NAME: utility_example
 #+BEGIN_SRC asymptote :file ../figures/utility_example.pdf
   settings.outformat="pdf";
@@ -1122,7 +1345,7 @@ they will prove to be good ones, i.e. to be close to the theoretical optimum.
   dot( (xcenter - deltax, 1-m) );
 #+END_SRC
 
-#+CAPTION: Utility function with threshold on $x_{c}$, maximum value for quantity $x$ to be acceptable.
+#+CAPTION: Utility function with threshold on $x_{c}$, separating suitable and unsuitable values of $x$.
 #+ATTR_LATEX: :width 8cm
 #+LABEL: utility_example
 #+RESULTS[25a3522030b79e80661ed13e6cb805ac76932be5]: utility_example
