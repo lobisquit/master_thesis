@@ -1195,13 +1195,12 @@ limit bandwidth and burstiness of data flow.
 #+NAME: fig:tbf_diagram
 #+BEGIN_SRC asymptote :file ../figures/tbf_diagram.pdf
   settings.outformat="pdf";
-  texpreamble("\usepackage[charter]{mathdesign}");
-  texpreamble("\usepackage{charter}");
+  texpreamble("\usepackage[sfdefault]{Fira Sans}");
+  texpreamble("\usepackage{newtxsf}");
 
   size(10cm);
 
   // params
-
   real r = 1;
   real x = 4*r;
 
@@ -1224,7 +1223,7 @@ limit bandwidth and burstiness of data flow.
   real bar_x = x + r - tq_padding * 2;
   draw((bar_x, 3*r) -- (bar_x, 3*r + tq_height),
        bar=Bars,
-       L=Label("Bucket size", align=W));
+       L=Label("Bucket size $b$", align=W));
 
   // connectors
   draw((x + 2*r, 3*r) -- (x + 2*r, 2*r), arrow=Arrow);
@@ -1241,12 +1240,12 @@ limit bandwidth and burstiness of data flow.
   // input flows
   draw((-2*r, r) -- (r, r),
        arrow=Arrow,
-       L=Label("Input traffic", align=N));
+       L=Label("Input packets", align=N));
 
   real arrow_l = r;
   draw((x + 2*r, 3*r + tq_height + arrow_l) -- (x + 2*r, 3*r + tq_height - tq_padding),
        arrow=Arrow,
-       L=Label("Token generation", align=N, position=BeginPoint));
+       L=Label("Token generation $\lambda$", align=N, position=BeginPoint));
 
   // output flow
   draw((x + 2*r + r*sin(pi/4), r - r*cos(pi/4)) -- (x + 2*r + r*tan(pi/4), 0) -- (x + 4.5*r, 0),
@@ -1257,10 +1256,13 @@ limit bandwidth and burstiness of data flow.
   for (int n = 0; n < n_tokens; ++n) {
     real y = 3*r + n * token_size;
 
+    real x1 = x + r + tq_padding;
+    real x2 = x + 3*r - tq_padding;
+
     if (n < packet_sizes[0]) {
-      fill(box((x + r, y), (x + 3*r, y + token_size)), highlighter);
+      fill(box((x1, y), (x2, y + token_size)), highlighter);
     }
-    draw(box((x + r, y), (x + 3*r, y + token_size)));
+    draw(box((x1, y), (x2, y + token_size)));
   }
 
   // draw packets
@@ -1273,21 +1275,32 @@ limit bandwidth and burstiness of data flow.
     real x1 = x - packet_start * token_size;
     real x2 = x1 - packet_sizes[n] * token_size;
 
+    real y1 = tq_padding;
+    real y2 = 2*r - tq_padding;
+
     if (n == 0) {
-      fill(box((x1, 0), (x2, 2*r)), highlighter);
+      fill(box((x1, y1), (x2, y2)), highlighter);
     }
-    draw(box((x1, 0), (x2, 2*r)));
+    else {
+      fill(box((x1, y1), (x2, y2)), lightgrey);
+    }
+
+    draw(box((x1, y1), (x2, y2)));
   }
 #+END_SRC
 
-#+RESULTS[b93901e5097f793991de87557649d02f7ef63087]: fig:tbf_diagram
+#+CAPTION: Packets are forwarded once enough tokens are available in the bucket.
+#+ATTR_LATEX: :width 10cm
+#+LABEL: fig:tbf_diagram
+#+RESULTS[a19bf3c7d1499ff1f4886249b54f293f301e9c2f]: fig:tbf_diagram
 [[file:../figures/tbf_diagram.pdf]]
 
 *** Optimization approach
 #+NAME: utility_example
 #+BEGIN_SRC asymptote :file ../figures/utility_example.pdf
   settings.outformat="pdf";
-  texpreamble("\usepackage[charter]{mathdesign}");
+  texpreamble("\usepackage[sfdefault]{Fira Sans}");
+  texpreamble("\usepackage{newtxsf}");
 
   size(8cm);
 
@@ -1348,7 +1361,7 @@ limit bandwidth and burstiness of data flow.
 #+CAPTION: Utility function with threshold on $x_{c}$, separating suitable and unsuitable values of $x$.
 #+ATTR_LATEX: :width 8cm
 #+LABEL: utility_example
-#+RESULTS[25a3522030b79e80661ed13e6cb805ac76932be5]: utility_example
+#+RESULTS[f3c47ca7528a82b530ccb41071ef3afbd5f5a91f]: utility_example
 [[file:../figures/utility_example.pdf]]
 
 * Results
