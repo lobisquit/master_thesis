@@ -1122,7 +1122,7 @@ they will prove to be good ones, i.e. to be close to the theoretical optimum.
   dot( (xcenter - deltax, 1-m) );
 #+END_SRC
 
-#+CAPTION: Utility function with threshold on $x_{lim}$, minimum value for quantity $x$ to be acceptable.
+#+CAPTION: Utility function with threshold on $x_{c}$, maximum value for quantity $x$ to be acceptable.
 #+ATTR_LATEX: :width 8cm
 #+LABEL: utility_example
 #+RESULTS[25a3522030b79e80661ed13e6cb805ac76932be5]: utility_example
