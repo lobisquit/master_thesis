@@ -174,6 +174,20 @@ impl Node for TokenBucketQueue {
                     panic!("Invalid status {:?} for {:?}", new_status, self)
                 }
             },
+            SetParams(params_map) => {
+                let err_msg = "ERROR: param not found in SetParams";
+
+                self.max_queue = *params_map.get("max_queue".into())
+                    .expect("ERROR: param \"max_queue\" not found in SetParams") as usize;
+
+                self.max_tokens = *params_map.get("max_tokens".into())
+                    .expect("ERROR: param \"max_tokens\" not found in SetParams");
+
+                self.token_rate = *params_map.get("token_rate".into())
+                    .expect("ERROR: param \"token_rate\" not found in SetParams");
+
+                vec![]
+            },
             _ => panic!("Invalid message {:?} for {:?}", message, self)
         }
     }

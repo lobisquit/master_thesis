@@ -8,4 +8,4 @@ pub static LAST_TIMEOUT_ID: AtomicUsize = AtomicUsize::new(1);
 pub static LAST_SESSION_ID: AtomicUsize = AtomicUsize::new(1);
 
 pub static LAST_NODE_ID: AtomicUsize = AtomicUsize::new(1);
-pub static CORE_ID: NodeId = NodeId(0);
+pub static CONTROLLER_ID: NodeId = NodeId(0);

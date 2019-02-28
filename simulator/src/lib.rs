@@ -13,10 +13,12 @@ mod queue;
 mod switch;
 mod tcp;
 mod udp;
+mod controller;
+#[allow(dead_code)]
 mod utils;
-mod utility;
 
 pub use self::core::*;
 pub use self::tcp::*;
 pub use self::udp::*;
 pub use self::queue::*;
+pub use self::controller::*;

@@ -4,6 +4,7 @@ use std::cmp::Ordering;
 use std::fmt::Debug;
 use std::sync::atomic::Ordering as AtomicOrdering;
 use downcast_rs::Downcast;
+use std::collections::HashMap;
 
 /// Time required by each node to process a single event
 pub static PROC_TIME: f64 = 1e-8;
@@ -75,7 +76,7 @@ pub enum Message {
 
     Data(Packet),
 
-    // control messages
+    // internal messages
 
     Timeout { expire_message: Box<Message>, id: usize },
 
@@ -86,7 +87,10 @@ pub enum Message {
 
     QueueTransmitPacket,
 
-    ReportUtility(f64)
+    // messages to and from the controller
+    ReportUtility { utility: f64, node_id: NodeId },
+    SetParams(HashMap<String, f64>),
+    RecomputeParams,
 }
 
 impl Message {
