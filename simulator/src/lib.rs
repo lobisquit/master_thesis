@@ -14,6 +14,7 @@ mod switch;
 mod tcp;
 mod udp;
 mod utils;
+mod utility;
 
 pub use self::core::*;
 pub use self::tcp::*;

@@ -1,6 +1,10 @@
 use crate::core::*;
-
 use crate::Message::*;
+use crate::utility::*;
+use crate::counters::CORE_ID;
+
+static WAITING_TIME_TOLERANCE: f64 = 1.0; // s
+static WAITING_TIME_MARGIN: f64 = 0.95; // s
 
 #[derive(Debug, Clone)]
 pub enum TcpClientStatus {
@@ -59,15 +63,20 @@ impl TcpClientStatus {
 pub struct TcpClient {
     node_id: NodeId,
 
-    #[builder(setter(skip))]
-    status: TcpClientStatus,
-
     next_hop_id: NodeId,
     dst_id: NodeId,
 
     window_size: usize,
     t_repeat: f64,
     t_unusable: f64,
+
+    expected_plt: f64,
+
+    #[builder(setter(skip))]
+    status: TcpClientStatus,
+
+    #[builder(setter(skip))]
+    starting_time: f64,
 
     #[builder(setter(skip))]
     timeouts: Vec<usize>,
@@ -108,6 +117,8 @@ impl Node for TcpClient {
                         },
 
                         RequestInit => {
+                            self.starting_time = current_time;
+
                             // immediately send DATA request
                             let session_id = Message::new_session_id();
 
@@ -187,7 +198,6 @@ impl Node for TcpClient {
                             // still alive
                             self.timeouts.clear();
 
-                            // TODO use new_packet to update the metrics
                             if let TcpData { sequence_num, sequence_end, rtt } = new_packet.pkt_type {
                                 self.received_chunks[sequence_num] = true;
 
@@ -324,10 +334,24 @@ impl Node for TcpClient {
                             ]
                         },
                         Evaluate { .. } => {
-                            // TODO use obtained metrics to compute QoS, QoE
+                            let plt = current_time - self.starting_time;
+
+                            // utility is based on the expected packet load time
+                            // tolerance is standard
+                            let utility = utility(
+                                plt,
+                                self.expected_plt + WAITING_TIME_TOLERANCE,
+                                WAITING_TIME_TOLERANCE,
+                                WAITING_TIME_MARGIN
+                            );
+
                             vec![ self.new_event(current_time,
                                                  MoveToStatus(Box::new(Idle)),
-                                                 self.node_id) ]
+                                                 self.node_id),
+
+                                  self.new_event(current_time,
+                                                 ReportUtility(utility),
+                                                 CORE_ID) ]
                         }
                     }
                 }

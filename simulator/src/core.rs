@@ -84,7 +84,9 @@ pub enum Message {
 
     MoveToStatus(Box<MachineStatus>),
 
-    QueueTransmitPacket
+    QueueTransmitPacket,
+
+    ReportUtility(f64)
 }
 
 impl Message {

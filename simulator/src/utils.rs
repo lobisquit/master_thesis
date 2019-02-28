@@ -42,14 +42,18 @@ impl DelayTracker {
 }
 
 pub fn variance(data: &Vec<f64>) -> f64 {
-    let n_data = data.len() as f64;
-
-    let average = data.iter().sum::<f64>() / n_data;
+    let average = mean(data);
 
     let power = data
         .iter()
         .map(|x| x.powf(2.0))
-        .sum::<f64>() / n_data;
+        .sum::<f64>() / data.len() as f64;
 
     power - average.powf(2.0)
+}
+
+pub fn mean(data: &Vec<f64>) -> f64 {
+    let n_data = data.len() as f64;
+
+    data.iter().sum::<f64>() / n_data
 }

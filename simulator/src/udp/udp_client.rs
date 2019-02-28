@@ -1,6 +1,16 @@
-use crate::utils::variance;
+use crate::utils::mean;
 use crate::core::*;
 use crate::Message::*;
+use crate::counters::CORE_ID;
+use crate::utility::*;
+
+static PKT_LOSS_LIMIT: f64 = 5e-2;
+static PKT_LOSS_TOLERANCE: f64 = 1e-2;
+static PKT_LOSS_MARGIN: f64 = 0.95;
+
+static AVG_DELAY_LIMIT: f64 = 4.0; // s
+static AVG_DELAY_TOLERANCE: f64 = 1.0; // s
+static AVG_DELAY_MARGIN: f64 = 0.95; // s
 
 #[derive(Debug, Clone)]
 pub enum UdpClientStatus {
@@ -67,7 +77,10 @@ pub struct UdpClient {
     status: UdpClientStatus,
 
     #[builder(setter(skip))]
-    timeouts: Vec<usize>
+    timeouts: Vec<usize>,
+
+    #[builder(setter(skip))]
+    starting_time: f64
 }
 
 impl Node for UdpClient {
@@ -106,6 +119,9 @@ impl Node for UdpClient {
                         },
 
                         RequestInit => {
+                            // register start of current session
+                            self.starting_time = current_time;
+
                             // immediately send DATA request
                             let session_id = Message::new_session_id();
 
@@ -241,20 +257,36 @@ impl Node for UdpClient {
                                                self.node_id)
                             ]
                         },
-                        Evaluate { session_id, file_size } => {
+                        Evaluate { file_size, .. } => {
                             // FINISH packet received: connection is closed
                             self.timeouts.clear();
 
-                            // TODO use obtained metrics to compute QoE
                             let pkt_loss = 1.0 -
                                 self.received_data as f64 /
                                 file_size as f64;
 
-                            let jitter = variance(&self.delays);
+                            let avg_delay = mean(&self.delays);
+
+                            // let throughput = file_size  as f64 /
+                            //     (current_time - self.starting_time);
+
+                            let current_utility =
+                                utility(pkt_loss,
+                                        PKT_LOSS_LIMIT + PKT_LOSS_TOLERANCE,
+                                        PKT_LOSS_TOLERANCE,
+                                        PKT_LOSS_MARGIN) *
+                                utility(avg_delay,
+                                        AVG_DELAY_LIMIT + AVG_DELAY_TOLERANCE,
+                                        AVG_DELAY_TOLERANCE,
+                                        AVG_DELAY_MARGIN);
 
                             vec![ self.new_event(current_time,
                                                  MoveToStatus(Box::new(Idle)),
-                                                 self.node_id) ]
+                                                 self.node_id),
+
+                                  self.new_event(current_time,
+                                                 ReportUtility(current_utility),
+                                                 CORE_ID) ]
                         }
                     }
                 }
@@ -265,11 +297,9 @@ impl Node for UdpClient {
             // external events
             UserSwitchOn => {
                 if let Idle = self.status {
-                    vec![
-                        self.new_event(current_time,
-                                       MoveToStatus(Box::new( RequestInit )),
-                                       self.node_id)
-                    ]
+                    vec![ self.new_event(current_time,
+                                         MoveToStatus(Box::new( RequestInit )),
+                                         self.node_id) ]
                 }
                 else {
                     panic!("User request in {:?} received while in status {:?}",
@@ -286,8 +316,7 @@ impl Node for UdpClient {
                         };
                         vec![ self.new_event(current_time,
                                              MoveToStatus(Box::new(new_status)),
-                                             self.node_id)
-                        ]
+                                             self.node_id) ]
                     }
                 }
             },
