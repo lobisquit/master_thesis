@@ -315,6 +315,7 @@ Internet Topology Zoo'' project cite:topology_zoo, has been plotted in
 autoref:fig:lambdanet.
 
 #+LABEL: fig:lambdanet
+#+ATTR_LATEX: :width 10cm
 #+CAPTION: LambdaNet is a national backbone that serves all German major cities and connects the country to the rest of Europe.
 [[../figures/german_backbone.pdf]]
 
