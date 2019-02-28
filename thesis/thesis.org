@@ -1082,19 +1082,22 @@ network.
 
 *** Network structure
 As presented in autoref:methodology-network_design, obtained network topology is
-organized in a hierarchical tree of switches, whose task is to merge all flows
-towards the mainframe.
+organized in a hierarchical tree of switches, whose task is to merge all uplink
+communications towards the mainframe and split the downlink ones among the
+various destinations.
 
 This structure resembles what was previously described in
 autoref:fig:network_tree, and is further detailed in
-autoref:fig:simulator_uplink and autoref:fig:simulator_downlink. As shown in
-these diagrams, each outgoing flow passes through a [[ac:tbf][TBF]]: this unit controls the
-rate of the packets before they enter the transmitting interface, labeled as
-``NIC''.
+autoref:fig:simulator_uplink and autoref:fig:simulator_downlink.
 
-The central network controller will use these [[acp:tbf][TBF]] to give or revoke priority
-from a given source, with the ultimate goal of keeping the network balanced.
-They will be described in their functioning in upcoming autoref:methodology-tbf.
+As shown in these diagrams, each outgoing flow passes through a [[ac:tbf][TBF]]: this unit
+controls the rate of the packets before they enter the transmitting interface,
+labeled as ``NIC''.
+
+The central network controller will use these traffic shapers to give or revoke
+priority from a given source, with the ultimate goal of keeping the network
+balanced. Their functioning will be explained in detail in upcoming
+autoref:methodology-tbf.
 
 #+NAME: fig:simulator_downlink
 #+BEGIN_SRC plantuml :file ../figures/simulator_downlink.eps :noweb yes
@@ -1196,15 +1199,23 @@ They will be described in their functioning in upcoming autoref:methodology-tbf.
 #+RESULTS[25dbf7a61220364bf16e96ec79bafc95564a5839]: fig:simulator_uplink
 [[file:../figures/simulator_uplink.eps]]
 
-*** Token Bucket Filters
+*** Token Bucket Filter
 :PROPERTIES:
 :CUSTOM_ID: methodology-tbf
 :END:
 
 \glsreset{tbf}
 
-The [[ac:tbf][TBF]] is a classless discipline for packet queues that can be put in place to
-limit bandwidth and burstiness of data flow.
+The [[ac:tbf][TBF]] is a classless discipline for managing packet queues. Through its
+parameters, described later, it can be tuned to limit bandwidth and burstiness
+of the data flow to acceptable values.
+
+The analogy, often employed to describe this algorithm, is the one of the token
+bucket, outlined in autoref:fig:tbf_diagram. This bucket is constantly refilled
+at rate $\lambda$ and, once its level reaches $M$, all new coins are discarded.
+In order for packets of a certain size to be served, the corresponding amount of
+tokens must be removed from the bucket. If not available, the data will wait in
+a queue for the needed amount of time.
 
 #+NAME: fig:tbf_diagram
 #+BEGIN_SRC asymptote :file ../figures/tbf_diagram.pdf :noweb yes
@@ -1235,7 +1246,7 @@ limit bandwidth and burstiness of data flow.
   real bar_x = x + r - tq_padding * 2;
   draw((bar_x, 3*r) -- (bar_x, 3*r + tq_height),
        bar=Bars,
-       L=Label("Bucket size $b$", align=W));
+       L=Label("Bucket size $M\,$", align=W));
 
   // connectors
   draw((x + 2*r, 3*r) -- (x + 2*r, 2*r), arrow=Arrow);
@@ -1304,8 +1315,39 @@ limit bandwidth and burstiness of data flow.
 #+CAPTION: Packets are forwarded once enough tokens are available in the bucket.
 #+ATTR_LATEX: :width 10cm
 #+LABEL: fig:tbf_diagram
-#+RESULTS[9e9264673e041801d14f8ed7199ab720eb61d8f1]: fig:tbf_diagram
+#+RESULTS[eecadcd2335c30f84a1528201475d3c9318e151f]: fig:tbf_diagram
 [[file:../figures/tbf_diagram.pdf]]
+
+As can be noticed in previous explanation, this algorithms are very simple to
+implement, making them suitable for a wide range of practical contexts.
+Moreover, their entire behavior can be modified and tuned simply by settings two
+numbers, $\lambda$ and $M$.
+
+The former parameter, called \emph{token rate} [token/s], is the upper bound for
+the average bitrate the [[ac:tbf][TBF]] can output, given by the 1:1 exchange rate between
+token and bytes.
+
+The latter, called \emph{burst size} [byte], limits the amount of data sent to
+the network in small time windows. In our setup, bursts happen when the bucket
+is operating normally, but a great number of packets arrives and exhausts all
+available tokens. However large the input rate no more than $M$ bytes can exit
+one after the other, as explained earlier in filter behaviour.
+
+With careful choice of its parameters, a [[ac:tbf][TBF]] can shape a bursty traffic,
+difficult to handle by network switches, into a more predictable and constant
+flow. Moreover, setting them properly, our controller will be able to coordinate
+all packet streams to avoid congestion and ensure [[ac:qos][QoS]] requirements for our
+users.
+
+As mentioned in [[ac:tbf][TBF]] definition, its queue discipline is \emph{classless}, as it
+does not discriminate data based on source or destination addresses, transport
+protocol, corresponding application, etc. The only feature considered is in fact
+packet size, needed to reserve the right amount of tokens to each element in the
+queue.
+
+This feature makes the [[ac:tbf][TBF]] a flexible and powerful tool, that can be deployed
+even in low-power network devices, whose processing power cannot handle advanced
+classification algorithms, such as Deep Packet Inspection.
 
 *** Optimization approach
 
