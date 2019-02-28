@@ -71,7 +71,10 @@ PlantUML skin, reusable for all diagrams
   skinparam shadowing false
   skinparam padding 1
   skinparam BoxPadding 1
+
+  'skinparam DefaultFontName Charter
   skinparam DefaultFontName Fira Sans
+
   skinparam defaultTextAlignment center
 
   skinparam SequenceDelayFontSize 15
@@ -219,6 +222,18 @@ LaTeX support for svg files sucks.
 
 \restoregeometry
 #+END_EXPORT
+
+** Asymptote preamble :ignore:
+#+NAME: asymptote_preamble
+#+BEGIN_SRC asymptote :exports none
+  settings.outformat="pdf";
+
+  texpreamble("\usepackage[sfdefault]{Fira Sans}");
+  texpreamble("\usepackage{newtxsf}");
+
+  // texpreamble("\usepackage{charter}");
+  // texpreamble("\usepackage[charter]{mathdesign}");
+#+END_SRC
 
 * Introduction
 #+BEGIN_SRC org :exports none
@@ -493,7 +508,7 @@ task is to aggregate all the traffic further and further.
 #+LABEL: fig:network_tree
 #+CAPTION: A layered tree access network connects users (circles) to the Internet backbone
 #+ATTR_LATEX: :height 3.5in
-#+RESULTS[523cd5a337d1346008f38f33ce7943a529710011]:
+#+RESULTS[8ea501892da9a680d09dae6c57f8da0bec56e358]:
 [[file:../figures/network_tree.eps]]
 
 From a technological point of view the network is considered to be relatively
@@ -639,7 +654,7 @@ simplified setting of autoref:fig:network_tree_simplified.
 #+LABEL: fig:network_tree_simplified
 #+CAPTION: Each /head/ aggregates the traffic of all nodes in its /cluster/.
 #+ATTR_LATEX: :height 2.5in
-#+RESULTS[788af81242e64321fe0a0d689c0856e95e9909fe]:
+#+RESULTS[5085dfc30f26ccf8321faf35dc8ee483110cc158]:
 [[file:../figures/network_tree_simplified.eps]]
 
 As apparent in the diagram the solver must now take into consideration the cost
@@ -835,7 +850,7 @@ With this setup our network access configuration will simply be a direct tree, o
 #+LABEL: fig:tree_network
 #+CAPTION: In the final solution, additional arcs $(r,\, i)$ connect artifical node $r$ to all the roots, making the whole structure an arborescence, instead of a forest.
 #+ATTR_LATEX: :width \linewidth
-#+RESULTS[bea2596847324dc90f1d87a0dbcf112c22b2589b]:
+#+RESULTS[73e203a14ca9323ed263eab6c671feafb662aded]:
 [[file:../figures/ilp_graph_reduced.eps]]
 
 Because of the system requirements we also have to keep track of the distance
@@ -1130,7 +1145,7 @@ They will be described in their functioning in upcoming autoref:methodology-tbf.
 # #+ATTR_LATEX: :width 8cm
 #+CAPTION: Logical node structure for downlink traffic.
 #+LABEL: fig:simulator_downlink
-#+RESULTS[b87efdfcd70ed6f32f723d0cbadcc0a77b2cd8ab]: fig:simulator_downlink
+#+RESULTS[f7f24508cf19d10974b4497651141623c9352779]: fig:simulator_downlink
 [[file:../figures/simulator_downlink.eps]]
 
 #+NAME: fig:simulator_uplink
@@ -1178,9 +1193,8 @@ They will be described in their functioning in upcoming autoref:methodology-tbf.
 # #+ATTR_LATEX: :width 8cm
 #+CAPTION: Logical node structure for uplink traffic.
 #+LABEL: fig:simulator_uplink
-#+RESULTS[1cf142fbce7974ddda86f326c04f993d5aad73f5]: fig:simulator_uplink
+#+RESULTS[25dbf7a61220364bf16e96ec79bafc95564a5839]: fig:simulator_uplink
 [[file:../figures/simulator_uplink.eps]]
-
 
 *** Token Bucket Filters
 :PROPERTIES:
@@ -1193,10 +1207,8 @@ The [[ac:tbf][TBF]] is a classless discipline for packet queues that can be put 
 limit bandwidth and burstiness of data flow.
 
 #+NAME: fig:tbf_diagram
-#+BEGIN_SRC asymptote :file ../figures/tbf_diagram.pdf
-  settings.outformat="pdf";
-  texpreamble("\usepackage[sfdefault]{Fira Sans}");
-  texpreamble("\usepackage{newtxsf}");
+#+BEGIN_SRC asymptote :file ../figures/tbf_diagram.pdf :noweb yes
+  <<asymptote_preamble>>
 
   size(10cm);
 
@@ -1292,15 +1304,14 @@ limit bandwidth and burstiness of data flow.
 #+CAPTION: Packets are forwarded once enough tokens are available in the bucket.
 #+ATTR_LATEX: :width 10cm
 #+LABEL: fig:tbf_diagram
-#+RESULTS[a19bf3c7d1499ff1f4886249b54f293f301e9c2f]: fig:tbf_diagram
+#+RESULTS[9e9264673e041801d14f8ed7199ab720eb61d8f1]: fig:tbf_diagram
 [[file:../figures/tbf_diagram.pdf]]
 
 *** Optimization approach
+
 #+NAME: utility_example
-#+BEGIN_SRC asymptote :file ../figures/utility_example.pdf
-  settings.outformat="pdf";
-  texpreamble("\usepackage[sfdefault]{Fira Sans}");
-  texpreamble("\usepackage{newtxsf}");
+#+BEGIN_SRC asymptote :file ../figures/utility_example.pdf :noweb yes
+  <<asymptote_preamble>>
 
   size(8cm);
 
@@ -1361,7 +1372,7 @@ limit bandwidth and burstiness of data flow.
 #+CAPTION: Utility function with threshold on $x_{c}$, separating suitable and unsuitable values of $x$.
 #+ATTR_LATEX: :width 8cm
 #+LABEL: utility_example
-#+RESULTS[f3c47ca7528a82b530ccb41071ef3afbd5f5a91f]: utility_example
+#+RESULTS[94d068631332ade2aa3868d1a95e9840b9bed403]: utility_example
 [[file:../figures/utility_example.pdf]]
 
 * Results
