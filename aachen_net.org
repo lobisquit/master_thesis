@@ -606,7 +606,7 @@ Plot final graph on top of district map.
   convert_properties(G, float)
 
   ## plot everything
-  fig = plt.figure(figsize=(6, 6), frameon=False)
+  fig = plt.figure(figsize=(6, 5.6), frameon=False)
   ax = fig.gca()
 
   plot_result(G,
@@ -625,11 +625,18 @@ Plot final graph on top of district map.
                                                        ax=ax,
                                                        zorder=-2)
 
-  # plt.show()
+  plt.subplots_adjust(top=0.85,
+                      bottom=0.0,
+                      left=0.0,
+                      right=1.0)
 
   plt.savefig('figures/aachen_city_graph.png', dpi=250)
   plt.close('all')
+
+  # plt.show()
 #+END_SRC
+
+#+RESULTS:
 
 * Solve optimization problem
 Solve the optimization problem in two ways, exactly with ILP and through an
@@ -1290,7 +1297,7 @@ A handy ~org~ function is here provided to ease parameters extraction.
 #+NAME: extract
 #+BEGIN_SRC python :var model_params=DSLAM_params
   return [(param[1:4], value) for param, value in model_params
-           if param != "Parameter"]
+          if param != "Parameter"]
 #+END_SRC
 
 *** ILP

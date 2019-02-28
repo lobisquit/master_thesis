@@ -316,7 +316,7 @@ autoref:fig:lambdanet.
 
 #+LABEL: fig:lambdanet
 #+CAPTION: LambdaNet is a national backbone that serves all German major cities and connects the country to the rest of Europe.
-[[file:~/Archivi/tesi/figures/german_backbone.pdf]]
+[[../figures/german_backbone.pdf]]
 
 In this thesis we will then suppose that the access network connects all Aachen
 buildings to this main backbone via a single [[ac:pop][PoP]], located in the industrial
@@ -1480,7 +1480,7 @@ otherwise discerned.
 #+LABEL: fig:aachen_city_graph
 #+ATTR_LATEX: :width 4in
 #+CAPTION: City topology is converted into an abstract graph.
-[[file:~/Archivi/tesi/figures/aachen_city_graph.png]]
+[[file:../figures/aachen_city_graph.png]]
 
 [fn:2] See http://xiaming.me/posts/2016/12/18/process-gis-shapefile-with-graph-tools/
 
@@ -1574,7 +1574,7 @@ the proper level of detail if needed.
 #+LABEL: fig:heuristic_mainframe
 #+ATTR_LATEX: :height 4.5in
 #+CAPTION: The mainframe, red dot, is located in an industrial complex and is connected to all second level routers.
-[[file:~/Archivi/tesi/figures/heuristic_mainframe.png]]
+[[file:../figures/heuristic_mainframe.png]]
 
 * Conclusions
 
