@@ -1,8 +1,7 @@
-use crate::utils::mean;
+use crate::utils::*;
 use crate::core::*;
 use crate::Message::*;
-use crate::counters::CORE_ID;
-use crate::utility::*;
+use crate::counters::CONTROLLER_ID;
 
 static PKT_LOSS_LIMIT: f64 = 5e-2;
 static PKT_LOSS_TOLERANCE: f64 = 1e-2;
@@ -280,13 +279,18 @@ impl Node for UdpClient {
                                         AVG_DELAY_TOLERANCE,
                                         AVG_DELAY_MARGIN);
 
+                            let report = ReportUtility {
+                                utility: current_utility,
+                                node_id: self.get_id()
+                            };
+
                             vec![ self.new_event(current_time,
                                                  MoveToStatus(Box::new(Idle)),
                                                  self.node_id),
 
                                   self.new_event(current_time,
-                                                 ReportUtility(current_utility),
-                                                 CORE_ID) ]
+                                                 report,
+                                                 CONTROLLER_ID) ]
                         }
                     }
                 }

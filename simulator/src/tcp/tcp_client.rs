@@ -1,7 +1,7 @@
 use crate::core::*;
 use crate::Message::*;
-use crate::utility::*;
-use crate::counters::CORE_ID;
+use crate::utils::*;
+use crate::counters::CONTROLLER_ID;
 
 static WAITING_TIME_TOLERANCE: f64 = 1.0; // s
 static WAITING_TIME_MARGIN: f64 = 0.95; // s
@@ -345,13 +345,18 @@ impl Node for TcpClient {
                                 WAITING_TIME_MARGIN
                             );
 
+                            let report = ReportUtility {
+                                utility,
+                                node_id: self.get_id()
+                            };
+
                             vec![ self.new_event(current_time,
                                                  MoveToStatus(Box::new(Idle)),
                                                  self.node_id),
 
                                   self.new_event(current_time,
-                                                 ReportUtility(utility),
-                                                 CORE_ID) ]
+                                                 report,
+                                                 CONTROLLER_ID) ]
                         }
                     }
                 }

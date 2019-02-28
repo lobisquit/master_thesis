@@ -5,17 +5,33 @@ use crate::Message::*;
 /// See here for terminology: https://www.nsnam.org/docs/models/html/tbf.html
 
 #[derive(Debug, Builder, Clone)]
+pub struct TokenBucketQueueParams {
+    max_queue: usize,
+    max_tokens: f64,
+    token_rate: f64
+}
+
+impl Default for TokenBucketQueueParams {
+    fn default() -> Self {
+        TokenBucketQueueParams {
+            // TODO set better starting values
+            max_queue: 100,
+            max_tokens: 10000.0,
+            token_rate: 10000.0
+        }
+    }
+}
+
+#[derive(Debug, Builder, Clone)]
 #[builder(setter(into))]
 pub struct TokenBucketQueue {
     node_id: NodeId,
     dest_id: NodeId,
 
-    max_queue: usize,
+    #[builder(setter(skip))]
+    params: TokenBucketQueueParams,
 
-    max_tokens: f64,
-    token_rate: f64,
-
-    #[builder(default = "self.default_tokens()?")]
+    #[builder(default="self.default_tokens()?")]
     tokens: f64,
 
     #[builder(setter(skip))]
@@ -37,7 +53,7 @@ pub struct TokenBucketQueue {
 impl TokenBucketQueueBuilder {
     // set to maximum value
     fn default_tokens(&self) -> Result<f64, String> {
-        let max_tokens = self.max_tokens.ok_or("Max tokens not set")?;
+        let max_tokens = TokenBucketQueueParams::default().max_tokens;
 
         Ok(max_tokens)
     }
@@ -61,11 +77,11 @@ impl MachineStatus for TokenBucketQueueStatus {}
 
 impl TokenBucketQueue {
     fn update_tokens(&mut self, current_time: f64) {
-        self.tokens += (current_time - self.last_update_time) * self.token_rate;
+        self.tokens += (current_time - self.last_update_time) * self.params.token_rate;
         self.last_update_time = current_time;
 
-        if self.tokens > self.max_tokens {
-            self.tokens = self.max_tokens;
+        if self.tokens > self.params.max_tokens {
+            self.tokens = self.params.max_tokens;
         }
     }
 
@@ -75,7 +91,7 @@ impl TokenBucketQueue {
                 0.0
             }
             else {
-                (*pkt_size as f64 - self.tokens) / self.token_rate
+                (*pkt_size as f64 - self.tokens) / self.params.token_rate
             }
         }
         else {
@@ -106,7 +122,7 @@ impl Node for TokenBucketQueue {
                     },
                     Transmitting | Wait => {
                         // put packet in the queue if there is space for it
-                        if self.queue.len() < self.max_queue {
+                        if self.queue.len() < self.params.max_queue {
                             self.queue.push_back(packet);
                         }
                         else {
@@ -174,17 +190,19 @@ impl Node for TokenBucketQueue {
                     panic!("Invalid status {:?} for {:?}", new_status, self)
                 }
             },
-            SetParams(params_map) => {
-                let err_msg = "ERROR: param not found in SetParams";
+            SetParams(params) => {
+                self.params = params;
 
-                self.max_queue = *params_map.get("max_queue".into())
-                    .expect("ERROR: param \"max_queue\" not found in SetParams") as usize;
+                // if max_tokens is lowered, lower max_tokens as well
+                if self.tokens > self.params.max_tokens {
+                    self.tokens = self.params.max_tokens;
+                }
 
-                self.max_tokens = *params_map.get("max_tokens".into())
-                    .expect("ERROR: param \"max_tokens\" not found in SetParams");
-
-                self.token_rate = *params_map.get("token_rate".into())
-                    .expect("ERROR: param \"token_rate\" not found in SetParams");
+                // if max_queue is lowered, remove all new packets in excess
+                // in a newer-first fashion
+                while self.queue.len() > self.params.max_queue {
+                    self.queue.pop_back();
+                }
 
                 vec![]
             },

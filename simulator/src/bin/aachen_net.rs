@@ -18,6 +18,8 @@ fn main() {
     let environment = Env::default().default_filter_or("error");
     Builder::from_env(environment).init();
 
+    let mut controller = ControllerBuilder::default().build().unwrap();
+
     let mut client = UdpClientBuilder::default()
         .node_id(1)
         .next_hop_id(5)
@@ -56,29 +58,36 @@ fn main() {
     let mut client_to_server_tbf = TokenBucketQueueBuilder::default()
         .node_id(5)
         .dest_id(3)
-        .max_queue(40 as usize)
-        .max_tokens(100000.0)
-        .token_rate(1000.0)
         .build()
         .unwrap();
+
+    controller.register_tbf(client_to_server_tbf.get_id());
 
     let mut server_to_client_tbf = TokenBucketQueueBuilder::default()
         .node_id(6)
         .dest_id(4)
-        .max_queue(40 as usize)
-        .max_tokens(100000.0)
-        .token_rate(1000.0)
+        .build()
+        .unwrap();
+
+    let new_params = TokenBucketQueueParamsBuilder::default()
+        .max_queue(14)
+        .max_tokens(15.0)
+        .token_rate(25.0)
         .build()
         .unwrap();
 
     let fire_event = Event {
-        sender: NodeId(1),
+        sender: NodeId(0),
         time: 0.0,
-        message: Message::UserSwitchOn,
-        recipient: NodeId(1)
+        message: Message::SetParams(new_params),
+        recipient: server_to_client_tbf.get_id()
     };
 
+    controller.register_tbf(server_to_client_tbf.get_id());
+
     let mut nodes: HashMap<NodeId, &mut Node> = HashMap::new();
+    nodes.insert(controller.get_id(), &mut controller);
+
     nodes.insert(client.get_id(), &mut client);
     nodes.insert(server.get_id(), &mut server);
 
@@ -89,6 +98,7 @@ fn main() {
     nodes.insert(server_to_client_tbf.get_id(), &mut server_to_client_tbf);
 
     let mut event_queue: BinaryHeap<Event> = BinaryHeap::new();
+
     event_queue.push(fire_event);
 
     let start = Instant::now();
@@ -113,12 +123,12 @@ fn main() {
         event_queue.extend(new_events);
     }
 
-    for node in nodes {
-        // dbg!(node);
-    }
+    dbg!(nodes);
 
     let duration = start.elapsed();
-    println!("{:?} for each one of the {} events", duration / n_events, n_events);
+    if n_events != 0 {
+        println!("{:?} for each one of the {} events", duration / n_events, n_events);
+    }
 }
 
 fn expand_event(original_event: Event, nodes: &mut HashMap<NodeId, &mut Node>) -> Vec<Event> {
