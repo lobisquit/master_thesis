@@ -17,8 +17,11 @@ mod controller;
 #[allow(dead_code)]
 mod utils;
 
+mod little_graph;
+
 pub use self::core::*;
 pub use self::tcp::*;
 pub use self::udp::*;
 pub use self::queue::*;
 pub use self::controller::*;
+pub use self::little_graph::*;
