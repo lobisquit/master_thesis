@@ -1546,9 +1546,9 @@ problem.
 #+ATTR_LATEX: :align crr
 | Problem                   | [[ac:dslam][DSLAM]] | 2nd level routers |
 |---------------------------+-------+-------------------|
-| Number of groups          |  1115 |                70 |
+| Number of groups          |  1125 |                72 |
 | [[ac:ilp][ILP]] cost lower bound [M€] | 65.05 |             38.08 |
-| Heuristic cost [M€]       | 67.73 |             39.40 |
+| Heuristic cost [M€]       | 67.73 |             39.38 |
 | Heuristic gap             |    4% |                3% |
 #+TBLFM: @5$2='(format "%d%% "(truncate (* 100 (/ (float (- @4$2 @3$2)) @3$2))));N::@5$3='(format "%d%% "(truncate (* 100 (/ (float (- @4$3 @3$3)) @3$3))));N
 

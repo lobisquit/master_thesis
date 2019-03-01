@@ -1208,6 +1208,7 @@ Merge has to guarantee that
 
       G.vp['is_subroot'].a = False
       G.vp['active'].a     = False
+      G.vp['father_id'].a  = -1
       G.ep['active'].a     = False
 
       for index, cluster_id in enumerate(set(clusters)):
