@@ -1203,6 +1203,7 @@ Merge has to guarantee that
       # create maps if needed
       G.vp['is_subroot'] = G.new_vertex_property("bool")
       G.vp['active']     = G.new_vertex_property("bool")
+      G.vp['father_id']  = G.new_vertex_property("int")
       G.ep['active']     = G.new_edge_property("bool")
 
       G.vp['is_subroot'].a = False
@@ -1225,6 +1226,7 @@ Merge has to guarantee that
           G.vp['n_lines'].a[root] = G.vp['n_lines'].a[cluster_nodes[0]]
           G.vp['is_subroot'].a[root] = True
           G.vp['active'].a[cluster_nodes] = True
+          G.vp['father_id'].a[cluster_nodes] = root
           G.ep['active'].a = np.logical_or(G.ep['active'].a, tree_edges)
 
       # make n_lines != only for subroots (terminals of next iteration)
