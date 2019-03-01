@@ -14,6 +14,10 @@ use simulator::*;
 
 pub static FLAG: bool = false;
 
+fn register_node<'a>(node: &'a mut dyn Node, nodes: &mut HashMap<NodeId, &'a mut Node>) {
+    nodes.insert(node.get_id(), node);
+}
+
 fn main() {
     let environment = Env::default().default_filter_or("error");
     Builder::from_env(environment).init();
@@ -86,16 +90,13 @@ fn main() {
     controller.register_tbf(server_to_client_tbf.get_id());
 
     let mut nodes: HashMap<NodeId, &mut Node> = HashMap::new();
-    nodes.insert(controller.get_id(), &mut controller);
-
-    nodes.insert(client.get_id(), &mut client);
-    nodes.insert(server.get_id(), &mut server);
-
-    nodes.insert(client_to_server.get_id(), &mut client_to_server);
-    nodes.insert(server_to_client.get_id(), &mut server_to_client);
-
-    nodes.insert(client_to_server_tbf.get_id(), &mut client_to_server_tbf);
-    nodes.insert(server_to_client_tbf.get_id(), &mut server_to_client_tbf);
+    register_node(&mut controller, &mut nodes);
+    register_node(&mut client, &mut nodes);
+    register_node(&mut server, &mut nodes);
+    register_node(&mut client_to_server, &mut nodes);
+    register_node(&mut server_to_client, &mut nodes);
+    register_node(&mut client_to_server_tbf, &mut nodes);
+    register_node(&mut server_to_client_tbf, &mut nodes);
 
     let mut event_queue: BinaryHeap<Event> = BinaryHeap::new();
 
