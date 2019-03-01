@@ -1646,16 +1646,60 @@ Write network tree in a `txt` file for making the job for Rust parser easy.
   G_2router = load_graph(graph_path + "_2router_heuristic.graphml")
   G_mainframe = load_graph(graph_path + "_mainframe_heuristic.graphml")
 
+  max_vertex = max(int(v) for v in G_complete.vertices())
+
   buildings = np.where(G_complete.vp['n_lines'].a > 0)[0]
   building_dslam = G_dslam.vp['father_id'].a[buildings]
 
   dslams = np.unique(building_dslam)
   dslam_router = G_2router.vp['father_id'].a[dslams]
 
-  mainframe_id = np.where(G_mainframe.vp['is_subroot'].a)[0][0]
   routers = np.unique(dslam_router)
+
+  # rename nodes that are both DSLAM and router, etc
+  def new_renamer(first_set, second_set, factor):
+      mapper = { old_v: old_v + factor
+                 for old_v in
+                 set(first_set).intersection(set(second_set)) }
+
+      def element_renamer(element):
+          if element in mapper:
+              return mapper[element]
+          else:
+              return element
+
+      return element_renamer
+
+  # rename the DSLAMs placed in buildings
+  rename_bd = new_renamer(buildings, dslams, factor=max_vertex + 1)
+
+  building_dslam = list(map(rename_bd, building_dslam))
+  dslams = list(map(rename_bd, dslams))
+
+  # rename the routers placed in buildings
+  rename_br = new_renamer(buildings, routers, factor=2 * max_vertex + 1)
+
+  dslam_router = list(map(rename_br, dslam_router))
+  routers = list(map(rename_br, routers))
+
+  # rename the routers placed in the same node of a DSLAM
+  rename_dr = new_renamer(dslams, routers, factor=3 * max_vertex + 1)
+
+  dslam_router = list(map(rename_dr, dslam_router))
+  routers = list(map(rename_dr, routers))
+
+  assert set(buildings).intersection(set(dslams)) == set()
+  assert set(routers).intersection(set(dslams)) == set()
+  assert set(buildings).intersection(set(routers)) == set()
+
+  assert set(dslams) == set(building_dslam)
+  assert set(routers) == set(dslam_router)
+
+  # assign the mainframe a new ID
+  mainframe_id = 10 * max_vertex + 1
   router_mainframe = len(routers) * list([mainframe_id])
 
+  # save output result
   with open('data/aachen_net/topology.txt', 'w') as f:
       for child, father in zip(buildings, building_dslam):
           f.write("{},{},{}\n".format(child,
