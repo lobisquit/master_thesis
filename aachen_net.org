@@ -1633,10 +1633,47 @@ Plot detail of obtained graph.
   plt.close('all')
 #+END_SRC
 
+* Output abstract topology
+Write network tree in a `txt` file for making the job for Rust parser easy.
+
+#+BEGIN_SRC python :noweb yes :var graph_path=flatten(graph_path) :tangle scripts/aachen_net/22_output_topology.py
+  <<imports_&_defaults>>
+  <<projection>>
+  <<graph_utils>>
+
+  G_complete = load_graph(graph_path + "_complete.graphml")
+  G_dslam = load_graph(graph_path + "_DSLAM_heuristic.graphml")
+  G_2router = load_graph(graph_path + "_2router_heuristic.graphml")
+  G_mainframe = load_graph(graph_path + "_mainframe_heuristic.graphml")
+
+  buildings = np.where(G_complete.vp['n_lines'].a > 0)[0]
+  building_dslam = G_dslam.vp['father_id'].a[buildings]
+
+  dslams = np.unique(building_dslam)
+  dslam_router = G_2router.vp['father_id'].a[dslams]
+
+  mainframe_id = np.where(G_mainframe.vp['is_subroot'].a)[0][0]
+  routers = np.unique(dslam_router)
+  router_mainframe = len(routers) * list([mainframe_id])
+
+  with open('data/aachen_net/topology.txt', 'w') as f:
+      for child, father in zip(buildings, building_dslam):
+          f.write("{},{},{}\n".format(child,
+                                      father,
+                                      G_complete.vp['n_lines'].a[child]))
+
+      for child, father in zip(dslams, dslam_router):
+          f.write("{},{}\n".format(child, father))
+
+      for child, father in zip(routers, router_mainframe):
+          f.write("{},{}\n".format(child, father))
+#+END_SRC
+
+# # eval: (add-hook 'after-save-hook 'org-babel-tangle-this-file t t)
+# # eval: (add-hook 'org-babel-pre-tangle-hook (lambda () (org-babel-lob-ingest "utils.org")) t t)
+
 
 * COMMENT Local variables
 # Local Variables:
 # org-confirm-babel-evaluate: nil
-# eval: (add-hook 'after-save-hook 'org-babel-tangle-this-file t t)
-# eval: (add-hook 'org-babel-pre-tangle-hook (lambda () (org-babel-lob-ingest "utils.org")) t t)
 # End:
