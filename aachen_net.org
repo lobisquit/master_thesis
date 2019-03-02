@@ -1699,6 +1699,28 @@ Write network tree in a `txt` file for making the job for Rust parser easy.
   mainframe_id = 10 * max_vertex + 1
   router_mainframe = len(routers) * list([mainframe_id])
 
+  # remap the (now) unique ids to consecutive ones
+
+  old_ids = list(buildings) + dslams + routers + [mainframe_id]
+  new_ids = [x + 1 for x in range(len(old_ids))] # reserve 0 as special id
+
+  def new_replacer(old_group, new_group):
+      mapper = dict(zip(old_group, new_group))
+
+      def _replacer(element):
+          return mapper[element]
+
+      return _replacer
+
+  unique_replacer = new_replacer(old_ids, new_ids)
+
+  buildings = list(map(unique_replacer, buildings))
+  building_dslam = list(map(unique_replacer, building_dslam))
+  dslams = list(map(unique_replacer, dslams))
+  dslam_router = list(map(unique_replacer, dslam_router))
+  routers = list(map(unique_replacer, routers))
+  router_mainframe = list(map(unique_replacer, router_mainframe))
+
   # save output result
   with open('data/aachen_net/topology.txt', 'w') as f:
       for child, father in zip(buildings, building_dslam):
@@ -1714,10 +1736,9 @@ Write network tree in a `txt` file for making the job for Rust parser easy.
 #+END_SRC
 
 # # eval: (add-hook 'after-save-hook 'org-babel-tangle-this-file t t)
-# # eval: (add-hook 'org-babel-pre-tangle-hook (lambda () (org-babel-lob-ingest "utils.org")) t t)
-
 
 * COMMENT Local variables
 # Local Variables:
+# eval: (add-hook 'org-babel-pre-tangle-hook (lambda () (org-babel-lob-ingest "utils.org")) t t)
 # org-confirm-babel-evaluate: nil
 # End:
