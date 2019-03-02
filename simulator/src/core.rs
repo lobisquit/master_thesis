@@ -162,7 +162,7 @@ impl PartialOrd for Event {
     }
 }
 
-pub trait Node: Debug {
+pub trait Node: Debug + Downcast {
     fn get_id(&self) -> NodeAddress;
 
     fn process_message(&mut self, message: Message, current_time: f64) -> Vec<Event>;
@@ -176,3 +176,5 @@ pub trait Node: Debug {
         }
     }
 }
+
+impl_downcast!(Node);
