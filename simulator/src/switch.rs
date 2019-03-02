@@ -5,20 +5,20 @@ use std::collections::HashMap;
 #[derive(Debug, Builder)]
 #[builder(setter(into))]
 pub struct Switch {
-    node_id: NodeId,
+    node_id: NodeAddress,
 
     #[builder(setter(skip))]
-    routing_table: HashMap<NodeId, NodeId>
+    routing_table: HashMap<NodeAddress, NodeAddress>
 }
 
 impl Switch {
-    fn add_route(&mut self, dst_node: NodeId, next_hop: NodeId) {
+    fn add_route(&mut self, dst_node: NodeAddress, next_hop: NodeAddress) {
         self.routing_table.insert(dst_node, next_hop);
     }
 }
 
 impl Node for Switch {
-    fn get_id(&self) -> NodeId {
+    fn get_id(&self) -> NodeAddress {
         self.node_id
     }
 

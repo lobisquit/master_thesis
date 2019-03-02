@@ -7,18 +7,18 @@ use std::collections::HashMap;
 #[derive(Debug, Builder)]
 #[builder(setter(into))]
 pub struct Controller {
-    #[builder(default="CONTROLLER_ID")]
-    node_id: NodeId,
+    #[builder(default="MAINFRAME_ADDR")]
+    node_id: NodeAddress,
 
     #[builder(setter(skip))]
-    utilities: HashMap<NodeId, f64>,
+    utilities: HashMap<NodeAddress, f64>,
 
     #[builder(setter(skip))]
-    tbf_params: HashMap<NodeId, TokenBucketQueueParams>
+    tbf_params: HashMap<NodeAddress, TokenBucketQueueParams>
 }
 
 impl Controller {
-    pub fn register_tbf(&mut self, tbf_id: NodeId) {
+    pub fn register_tbf(&mut self, tbf_id: NodeAddress) {
         // default value is the starting one for all TBF
         let default_params = TokenBucketQueueParams::default();
 
@@ -28,8 +28,8 @@ impl Controller {
 }
 
 impl Node for Controller {
-    fn get_id(&self) -> NodeId {
-        CONTROLLER_ID
+    fn get_id(&self) -> NodeAddress {
+        MAINFRAME_ADDR
     }
 
     fn process_message(&mut self, message: Message, _current_time: f64) -> Vec<Event> {

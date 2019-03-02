@@ -1,7 +1,7 @@
 use crate::core::*;
 use crate::Message::*;
 use crate::utils::*;
-use crate::counters::CONTROLLER_ID;
+use crate::counters::MAINFRAME_ADDR;
 
 static WAITING_TIME_TOLERANCE: f64 = 1.0; // s
 static WAITING_TIME_MARGIN: f64 = 0.95; // s
@@ -61,10 +61,10 @@ impl TcpClientStatus {
 #[derive(Debug, Builder)]
 #[builder(setter(into))]
 pub struct TcpClient {
-    node_id: NodeId,
+    node_id: NodeAddress,
 
-    next_hop_id: NodeId,
-    dst_id: NodeId,
+    next_hop_id: NodeAddress,
+    dst_id: NodeAddress,
 
     window_size: usize,
     t_repeat: f64,
@@ -86,7 +86,7 @@ pub struct TcpClient {
 }
 
 impl Node for TcpClient {
-    fn get_id(&self) -> NodeId {
+    fn get_id(&self) -> NodeAddress {
         self.node_id
     }
 
@@ -356,7 +356,7 @@ impl Node for TcpClient {
 
                                   self.new_event(current_time,
                                                  report,
-                                                 CONTROLLER_ID) ]
+                                                 MAINFRAME_ADDR) ]
                         }
                     }
                 }

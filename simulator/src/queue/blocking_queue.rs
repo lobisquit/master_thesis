@@ -5,8 +5,8 @@ use crate::Message::*;
 #[derive(Debug, Builder, Clone)]
 #[builder(setter(into))]
 pub struct BlockingQueue {
-    node_id: NodeId,
-    dest_id: NodeId,
+    node_id: NodeAddress,
+    dest_id: NodeAddress,
 
     max_queue: usize,
     conn_speed: f64,
@@ -40,7 +40,7 @@ impl Default for BlockingQueueStatus {
 impl MachineStatus for BlockingQueueStatus {}
 
 impl Node for BlockingQueue {
-    fn get_id(&self) -> NodeId {
+    fn get_id(&self) -> NodeAddress {
         self.node_id
     }
 

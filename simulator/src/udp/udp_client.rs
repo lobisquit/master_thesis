@@ -1,7 +1,7 @@
 use crate::utils::*;
 use crate::core::*;
 use crate::Message::*;
-use crate::counters::CONTROLLER_ID;
+use crate::counters::MAINFRAME_ADDR;
 
 static PKT_LOSS_LIMIT: f64 = 5e-2;
 static PKT_LOSS_TOLERANCE: f64 = 1e-2;
@@ -57,10 +57,10 @@ impl UdpClientStatus {
 #[derive(Debug, Builder)]
 #[builder(setter(into))]
 pub struct UdpClient {
-    node_id: NodeId,
+    node_id: NodeAddress,
 
-    next_hop_id: NodeId,
-    dst_id: NodeId,
+    next_hop_id: NodeAddress,
+    dst_id: NodeAddress,
 
     bitrate: f64,
     t0: f64,
@@ -83,7 +83,7 @@ pub struct UdpClient {
 }
 
 impl Node for UdpClient {
-    fn get_id(&self) -> NodeId {
+    fn get_id(&self) -> NodeAddress {
         self.node_id
     }
 
@@ -290,7 +290,7 @@ impl Node for UdpClient {
 
                                   self.new_event(current_time,
                                                  report,
-                                                 CONTROLLER_ID) ]
+                                                 MAINFRAME_ADDR) ]
                         }
                     }
                 }

@@ -25,8 +25,8 @@ impl Default for TokenBucketQueueParams {
 #[derive(Debug, Builder, Clone)]
 #[builder(setter(into))]
 pub struct TokenBucketQueue {
-    node_id: NodeId,
-    dest_id: NodeId,
+    node_id: NodeAddress,
+    dest_id: NodeAddress,
 
     #[builder(setter(skip))]
     params: TokenBucketQueueParams,
@@ -101,7 +101,7 @@ impl TokenBucketQueue {
 }
 
 impl Node for TokenBucketQueue {
-    fn get_id(&self) -> NodeId {
+    fn get_id(&self) -> NodeAddress {
         self.node_id
     }
 

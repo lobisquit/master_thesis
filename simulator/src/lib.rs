@@ -20,6 +20,7 @@ mod utils;
 mod little_graph;
 
 pub use self::core::*;
+pub use self::switch::*;
 pub use self::tcp::*;
 pub use self::udp::*;
 pub use self::queue::*;

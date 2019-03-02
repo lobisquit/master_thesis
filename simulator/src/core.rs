@@ -10,29 +10,17 @@ use downcast_rs::Downcast;
 pub static PROC_TIME: f64 = 1e-8;
 
 #[derive(Debug, Eq, PartialEq, PartialOrd, Ord, Clone, Copy, Hash)]
-pub struct NodeId(pub usize);
-
-impl Into<usize> for &NodeId {
-    fn into(self) -> usize {
-        self.0
-    }
+pub struct NodeAddress {
+    pub node_id: usize,
+    pub component_id: usize
 }
 
-impl Into<usize> for NodeId {
-    fn into(self) -> usize {
-        self.0
-    }
-}
-
-impl Into<NodeId> for usize {
-    fn into(self) -> NodeId {
-        NodeId(self)
-    }
-}
-
-impl Default for NodeId {
-    fn default() -> NodeId {
-        NodeId( LAST_NODE_ID.fetch_add(1, AtomicOrdering::SeqCst) )
+impl NodeAddress {
+    pub fn new(node: usize, component: usize) -> NodeAddress {
+        NodeAddress {
+            node_id: node,
+            component_id: component
+        }
     }
 }
 
@@ -66,8 +54,8 @@ pub struct Packet {
     pub size: u64,
     pub pkt_type: PacketType,
     pub creation_time: f64,
-    pub src_node: NodeId,
-    pub dst_node: NodeId
+    pub src_node: NodeAddress,
+    pub dst_node: NodeAddress
 }
 
 #[derive(Debug)]
@@ -88,7 +76,7 @@ pub enum Message {
     QueueTransmitPacket,
 
     // messages to and from the controller
-    ReportUtility { utility: f64, node_id: NodeId },
+    ReportUtility { utility: f64, node_id: NodeAddress },
     SetParams(TokenBucketQueueParams),
     RecomputeParams,
 }
@@ -102,8 +90,8 @@ impl Message {
                       size: u64,
                       pkt_type: PacketType,
                       current_time: f64,
-                      src_node: NodeId,
-                      dst_node: NodeId) -> Message {
+                      src_node: NodeAddress,
+                      dst_node: NodeAddress) -> Message {
 
         Message::Data(Packet {
             id: LAST_PKT_ID.fetch_add(1, AtomicOrdering::SeqCst),
@@ -135,10 +123,10 @@ impl Message {
 
 #[derive(Debug)]
 pub struct Event {
-    pub recipient: NodeId,
+    pub recipient: NodeAddress,
     pub time: f64,
     pub message: Message,
-    pub sender: NodeId,
+    pub sender: NodeAddress,
 }
 
 impl Eq for Event {}
@@ -175,11 +163,11 @@ impl PartialOrd for Event {
 }
 
 pub trait Node: Debug {
-    fn get_id(&self) -> NodeId;
+    fn get_id(&self) -> NodeAddress;
 
     fn process_message(&mut self, message: Message, current_time: f64) -> Vec<Event>;
 
-    fn new_event(&self, time: f64, message: Message, recipient: NodeId) -> Event {
+    fn new_event(&self, time: f64, message: Message, recipient: NodeAddress) -> Event {
         Event {
             time: time,
             message: message,

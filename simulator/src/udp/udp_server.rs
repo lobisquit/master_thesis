@@ -37,10 +37,10 @@ impl UdpServerStatus {
 #[derive(Debug, Builder)]
 #[builder(setter(into))]
 pub struct UdpServer {
-    node_id: NodeId,
+    node_id: NodeAddress,
 
-    next_hop_id: NodeId,
-    dst_id: NodeId,
+    next_hop_id: NodeAddress,
+    dst_id: NodeAddress,
 
     file_size: u64,
     mtu_size: u64,
@@ -53,7 +53,7 @@ pub struct UdpServer {
 }
 
 impl Node for UdpServer {
-    fn get_id(&self) -> NodeId {
+    fn get_id(&self) -> NodeAddress {
         self.node_id
     }
 

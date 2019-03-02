@@ -34,7 +34,7 @@ impl MachineStatus for TcpServerStatus {}
 #[derive(Debug, Builder)]
 #[builder(setter(into))]
 pub struct TcpServer {
-    node_id: NodeId,
+    node_id: NodeAddress,
 
     #[builder(setter(skip))]
     status: TcpServerStatus,
@@ -42,8 +42,8 @@ pub struct TcpServer {
     #[builder(setter(skip))]
     conn_params: TcpConnParams,
 
-    next_hop_id: NodeId,
-    dst_id: NodeId,
+    next_hop_id: NodeAddress,
+    dst_id: NodeAddress,
 
     total_n_packets: usize,
     mtu_size: u64,
@@ -93,7 +93,7 @@ impl TcpServer {
 }
 
 impl Node for TcpServer {
-    fn get_id(&self) -> NodeId {
+    fn get_id(&self) -> NodeAddress {
         self.node_id
     }
 
