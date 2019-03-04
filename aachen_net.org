@@ -1701,8 +1701,9 @@ Write network tree in a `txt` file for making the job for Rust parser easy.
 
   # remap the (now) unique ids to consecutive ones
 
-  old_ids = list(buildings) + dslams + routers + [mainframe_id]
-  new_ids = [x + 1 for x in range(len(old_ids))] # reserve 0 as special id
+  # NOTE reserve 0 as mainframe id
+  old_ids = [mainframe_id] + list(buildings) + dslams + routers
+  new_ids = [x for x in range(len(old_ids))]
 
   def new_replacer(old_group, new_group):
       mapper = dict(zip(old_group, new_group))
@@ -1723,13 +1724,10 @@ Write network tree in a `txt` file for making the job for Rust parser easy.
 
   # save output result
   with open('data/aachen_net/topology.txt', 'w') as f:
-      for child, father in zip(buildings, building_dslam):
+      for child, father in zip(dslams, dslam_router):
           f.write("{},{},{}\n".format(child,
                                       father,
-                                      G_complete.vp['n_lines'].a[child]))
-
-      for child, father in zip(dslams, dslam_router):
-          f.write("{},{}\n".format(child, father))
+                                      G_dslam.vp['n_lines'].a[child]))
 
       for child, father in zip(routers, router_mainframe):
           f.write("{},{}\n".format(child, father))
