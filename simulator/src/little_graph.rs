@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 #[derive(PartialEq, Eq, Hash, Clone, Copy, Debug)]
 pub struct NodeId(pub usize);
@@ -24,7 +24,8 @@ impl Into<NodeId> for usize {
 #[derive(Default, Debug)]
 pub struct Graph {
     nodes_fathers: HashMap<NodeId, NodeId>,
-    pub nodes_weight: HashMap<NodeId, u64>
+    nodes_weight: HashMap<NodeId, u64>,
+    nodes_leaf_child: HashMap<NodeId, HashMap<NodeId, NodeId>>
 }
 
 impl Graph {
@@ -36,9 +37,12 @@ impl Graph {
         self.nodes_fathers.insert(node_id.into(), father_id.into());
     }
 
-    pub fn get_father<N>(&self, node_id: N) -> Option<&NodeId>
+    pub fn get_father<N>(&self, node_id: N) -> Option<NodeId>
     where N: Into<NodeId> {
-        self.nodes_fathers.get(&node_id.into())
+        match self.nodes_fathers.get(&node_id.into()) {
+            Some(n) => Some(*n),
+            None => None
+        }
     }
 
     pub fn get_weight<N>(&self, node_id: N) -> Option<&u64>
@@ -67,37 +71,38 @@ impl Graph {
             .collect::<Vec<NodeId>>()
     }
 
-    fn is_ancestor(&self, wanted_node: NodeId, leaf: NodeId) -> bool {
-        let mut current_node = leaf;
-        while let Some(node) = self.get_father(current_node) {
-            if *node == wanted_node {
-                return true;
-            }
-            else {
-                current_node = *node;
+    pub fn initialize_routes<'a>(mut self) -> Graph {
+        // create empty entries in map
+        self.nodes_leaf_child = HashMap::new();
+
+        let all_nodes = self.nodes_fathers.iter()
+            .flat_map(|(k, v)| vec![k, v])
+            .map(|x| *x)
+            .collect::<HashSet<NodeId>>();
+
+        for node in all_nodes {
+            self.nodes_leaf_child.insert(node, HashMap::new());
+        }
+
+        for leaf in self.get_leaves() {
+            let mut current_node = leaf;
+            while let Some(father) = self.get_father(current_node) {
+                // insert entry in the right place
+                self.nodes_leaf_child
+                    .get_mut(&father)
+                    .expect("Father key not in nodes_leaf_child map")
+                    .insert(leaf, current_node);
+
+                current_node = father;
             }
         }
-        false
+        self
     }
 
-    pub fn get_routes<N>(&self, node_id: N) -> HashMap<NodeId, NodeId>
+    pub fn get_routes<N>(&self, node_id: N) -> &HashMap<NodeId, NodeId>
     where N: Into<NodeId> {
-        let children = self.get_children(node_id.into());
-        let leaves = self.get_leaves();
-
-        let mut routes = HashMap::new();
-
-        for child in children {
-            let child_leaves = leaves
-                .iter()
-                .filter(|leaf| self.is_ancestor(child, **leaf))
-                .map(|x| *x)
-                .collect::<Vec<NodeId>>();
-
-            for leaf in child_leaves {
-                routes.insert(leaf, child);
-            }
-        }
-        routes
+        self.nodes_leaf_child
+            .get(&node_id.into())
+            .expect("Node not in nodes_leaf_child map")
     }
 }
