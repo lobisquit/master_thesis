@@ -76,7 +76,7 @@ pub enum Message {
     QueueTransmitPacket,
 
     // messages to and from the controller
-    ReportUtility { utility: f64, node_id: NodeAddress },
+    ReportUtility { utility: f64, node_addr: NodeAddress },
     SetParams(TokenBucketQueueParams),
     RecomputeParams,
 }
@@ -112,7 +112,7 @@ impl Message {
         }
     }
 
-    pub fn get_id(&self) -> Option<usize> {
+    pub fn get_addr(&self) -> Option<usize> {
         match self {
             Message::Data(Packet { id, .. }) => Some(*id),
             Message::Timeout { id, .. } => Some(*id),
@@ -163,7 +163,7 @@ impl PartialOrd for Event {
 }
 
 pub trait Node: Debug + Downcast {
-    fn get_id(&self) -> NodeAddress;
+    fn get_addr(&self) -> NodeAddress;
 
     fn process_message(&mut self, message: Message, current_time: f64) -> Vec<Event>;
 
@@ -171,7 +171,7 @@ pub trait Node: Debug + Downcast {
         Event {
             time: time,
             message: message,
-            sender: self.get_id(),
+            sender: self.get_addr(),
             recipient: recipient
         }
     }

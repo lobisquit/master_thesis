@@ -25,8 +25,8 @@ impl Default for TokenBucketQueueParams {
 #[derive(Debug, Builder, Clone)]
 #[builder(setter(into))]
 pub struct TokenBucketQueue {
-    node_id: NodeAddress,
-    dest_id: NodeAddress,
+    node_addr: NodeAddress,
+    dest_addr: NodeAddress,
 
     #[builder(setter(skip))]
     params: TokenBucketQueueParams,
@@ -101,8 +101,8 @@ impl TokenBucketQueue {
 }
 
 impl Node for TokenBucketQueue {
-    fn get_id(&self) -> NodeAddress {
-        self.node_id
+    fn get_addr(&self) -> NodeAddress {
+        self.node_addr
     }
 
     fn process_message(&mut self, message: Message, current_time: f64) -> Vec<Event> {
@@ -117,7 +117,7 @@ impl Node for TokenBucketQueue {
                         vec![
                             self.new_event(current_time,
                                            MoveToStatus(Box::new(Transmitting)),
-                                           self.get_id())
+                                           self.get_addr())
                         ]
                     },
                     Transmitting | Wait => {
@@ -149,25 +149,25 @@ impl Node for TokenBucketQueue {
                             // tx the first packet in the queue
                             vec![ self.new_event(current_time,
                                                  Data(next_pkt),
-                                                 self.dest_id),
+                                                 self.dest_addr),
 
                                   self.new_event(current_time,
                                                  MoveToStatus(Box::new(Decide)),
-                                                 self.get_id())
+                                                 self.get_addr())
                             ]
                         },
                         Decide => {
                             if self.queue.len() == 0 {
                                 vec![ self.new_event(current_time,
                                                      MoveToStatus(Box::new(Idle)),
-                                                     self.get_id()) ]
+                                                     self.get_addr()) ]
                             }
                             else {
                                 vec![ self.new_event(current_time,
                                                      MoveToStatus(Box::new(
                                                          Wait
                                                      )),
-                                                     self.get_id()) ]
+                                                     self.get_addr()) ]
                             }
                         },
                         Wait => {
@@ -182,7 +182,7 @@ impl Node for TokenBucketQueue {
                                                  MoveToStatus(Box::new(
                                                      Transmitting
                                                  )),
-                                                 self.get_id()) ]
+                                                 self.get_addr()) ]
                         }
                     }
                 }

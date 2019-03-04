@@ -1,7 +1,7 @@
 use crate::utils::*;
 use crate::core::*;
 use crate::Message::*;
-use crate::counters::MAINFRAME_ADDR;
+use crate::counters::CONTROLLER_ADDR;
 
 static PKT_LOSS_LIMIT: f64 = 5e-2;
 static PKT_LOSS_TOLERANCE: f64 = 1e-2;
@@ -57,10 +57,10 @@ impl UdpClientStatus {
 #[derive(Debug, Builder)]
 #[builder(setter(into))]
 pub struct UdpClient {
-    node_id: NodeAddress,
+    node_addr: NodeAddress,
 
-    next_hop_id: NodeAddress,
-    dst_id: NodeAddress,
+    next_hop_addr: NodeAddress,
+    dst_addr: NodeAddress,
 
     bitrate: f64,
     t0: f64,
@@ -83,8 +83,8 @@ pub struct UdpClient {
 }
 
 impl Node for UdpClient {
-    fn get_id(&self) -> NodeAddress {
-        self.node_id
+    fn get_addr(&self) -> NodeAddress {
+        self.node_addr
     }
 
     fn process_message(&mut self, message: Message, current_time: f64) -> Vec<Event> {
@@ -97,7 +97,7 @@ impl Node for UdpClient {
                 if self.timeouts.contains(&id) {
                     vec![ self.new_event(current_time,
                                          *expire_message,
-                                         self.get_id()) ]
+                                         self.get_addr()) ]
                 }
                 else {
                     vec![]
@@ -130,7 +130,7 @@ impl Node for UdpClient {
                                 MoveToStatus(Box::new( Unusable { session_id } ))
                             );
                             self.timeouts.push(
-                                unusable_timeout.get_id().unwrap()
+                                unusable_timeout.get_addr().unwrap()
                             );
                             let timeout_delay = self.n as f64 * self.t0;
 
@@ -139,11 +139,11 @@ impl Node for UdpClient {
                             vec![
                                 self.new_event(current_time,
                                                MoveToStatus(Box::new(new_status)),
-                                               self.node_id),
+                                               self.node_addr),
 
                                 self.new_event(current_time + timeout_delay,
                                                unusable_timeout,
-                                               self.node_id)
+                                               self.node_addr)
                             ]
                         },
                         RequestWait { session_id } => {
@@ -157,24 +157,24 @@ impl Node for UdpClient {
                                                              request_size,
                                                              pkt_type,
                                                              current_time,
-                                                             self.node_id,
-                                                             self.dst_id);
+                                                             self.node_addr,
+                                                             self.dst_addr);
 
                             // repeat the request after a timeout
                             let repeat_timeout = Message::new_timeout(
                                 MoveToStatus(Box::new(self.status.clone()))
                             );
                             self.timeouts.push(
-                                repeat_timeout.get_id().unwrap()
+                                repeat_timeout.get_addr().unwrap()
                             );
 
                             vec![
                                 self.new_event(current_time,
                                                request,
-                                               self.next_hop_id),
+                                               self.next_hop_addr),
                                 self.new_event(current_time + self.t0,
                                                repeat_timeout,
-                                               self.node_id),
+                                               self.node_addr),
                             ]
                         },
                         DataUpdate { session_id, new_packet } => {
@@ -195,7 +195,7 @@ impl Node for UdpClient {
                             vec![
                                 self.new_event(current_time,
                                                MoveToStatus(Box::new(new_status)),
-                                               self.node_id)
+                                               self.node_addr)
                             ]
                         },
                         DataWait { session_id } => {
@@ -206,13 +206,13 @@ impl Node for UdpClient {
                                 MoveToStatus(Box::new(new_status))
                             );
                             self.timeouts.push(
-                                unusable_timeout.get_id().unwrap()
+                                unusable_timeout.get_addr().unwrap()
                             );
 
                             let long_delay = self.n as f64 * self.t0;
                             vec![ self.new_event(current_time + long_delay,
                                                  unusable_timeout,
-                                                 self.node_id) ]
+                                                 self.node_addr) ]
                         },
                         FinishWait { session_id } => {
                             // communicate the server that it has to stop sending
@@ -222,8 +222,8 @@ impl Node for UdpClient {
                                                              request_size,
                                                              UdpFinishRequest,
                                                              current_time,
-                                                             self.node_id,
-                                                             self.dst_id);
+                                                             self.node_addr,
+                                                             self.dst_addr);
 
                             // repeat the FINISH request after a timeout
                             let new_status = FinishWait {
@@ -232,14 +232,14 @@ impl Node for UdpClient {
                             let repeat_timeout = Message::new_timeout(
                                 MoveToStatus(Box::new(new_status))
                             );
-                            self.timeouts.push(repeat_timeout.get_id().unwrap());
+                            self.timeouts.push(repeat_timeout.get_addr().unwrap());
 
                             vec![ self.new_event(current_time,
                                                  request,
-                                                 self.next_hop_id),
+                                                 self.next_hop_addr),
                                   self.new_event(current_time + self.t0,
                                                  repeat_timeout,
-                                                 self.node_id) ]
+                                                 self.node_addr) ]
                         },
                         Unusable { session_id } => {
                             // invalidate previous timeouts: connection is
@@ -253,7 +253,7 @@ impl Node for UdpClient {
                             vec![
                                 self.new_event(current_time,
                                                MoveToStatus(Box::new(new_status)),
-                                               self.node_id)
+                                               self.node_addr)
                             ]
                         },
                         Evaluate { file_size, .. } => {
@@ -281,16 +281,16 @@ impl Node for UdpClient {
 
                             let report = ReportUtility {
                                 utility: current_utility,
-                                node_id: self.get_id()
+                                node_addr: self.get_addr()
                             };
 
                             vec![ self.new_event(current_time,
                                                  MoveToStatus(Box::new(Idle)),
-                                                 self.node_id),
+                                                 self.node_addr),
 
                                   self.new_event(current_time,
                                                  report,
-                                                 MAINFRAME_ADDR) ]
+                                                 CONTROLLER_ADDR) ]
                         }
                     }
                 }
@@ -303,7 +303,7 @@ impl Node for UdpClient {
                 if let Idle = self.status {
                     vec![ self.new_event(current_time,
                                          MoveToStatus(Box::new( RequestInit )),
-                                         self.node_id) ]
+                                         self.node_addr) ]
                 }
                 else {
                     panic!("User request in {:?} received while in status {:?}",
@@ -320,15 +320,15 @@ impl Node for UdpClient {
                         };
                         vec![ self.new_event(current_time,
                                              MoveToStatus(Box::new(new_status)),
-                                             self.node_id) ]
+                                             self.node_addr) ]
                     }
                 }
             },
             Data(packet) => {
                 info!("{}: {:?} received by {:?}", current_time, packet, self);
 
-                assert!(packet.dst_node == self.node_id);
-                assert!(packet.src_node == self.dst_id);
+                assert!(packet.dst_node == self.node_addr);
+                assert!(packet.src_node == self.dst_addr);
 
                 match self.status.get_session_id() {
                     // no active connection: this is an old packet,
@@ -347,7 +347,7 @@ impl Node for UdpClient {
                                                          MoveToStatus(
                                                              Box::new(new_status)
                                                          ),
-                                                         self.node_id) ]
+                                                         self.node_addr) ]
                                 },
                                 UdpFinish { file_size }=> {
                                     let new_status = Evaluate {
@@ -358,7 +358,7 @@ impl Node for UdpClient {
                                                          MoveToStatus(
                                                              Box::new(new_status)
                                                          ),
-                                                         self.node_id) ]
+                                                         self.node_addr) ]
                                 },
                                 _ => panic!("Unexpected packet {:?} in {:?}",
                                            packet, self)

@@ -26,3 +26,4 @@ pub use self::udp::*;
 pub use self::queue::*;
 pub use self::controller::*;
 pub use self::little_graph::*;
+pub use self::counters::*;

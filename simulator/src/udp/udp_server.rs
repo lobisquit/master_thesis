@@ -37,10 +37,10 @@ impl UdpServerStatus {
 #[derive(Debug, Builder)]
 #[builder(setter(into))]
 pub struct UdpServer {
-    node_id: NodeAddress,
+    node_addr: NodeAddress,
 
-    next_hop_id: NodeAddress,
-    dst_id: NodeAddress,
+    next_hop_addr: NodeAddress,
+    dst_addr: NodeAddress,
 
     file_size: u64,
     mtu_size: u64,
@@ -53,8 +53,8 @@ pub struct UdpServer {
 }
 
 impl Node for UdpServer {
-    fn get_id(&self) -> NodeAddress {
-        self.node_id
+    fn get_addr(&self) -> NodeAddress {
+        self.node_addr
     }
 
     fn process_message(&mut self, message: Message, current_time: f64) -> Vec<Event> {
@@ -67,7 +67,7 @@ impl Node for UdpServer {
                 if self.timeouts.contains(&id) {
                     vec![ self.new_event(current_time,
                                          *expire_message,
-                                         self.get_id()) ]
+                                         self.get_addr()) ]
                 }
                 else {
                     vec![]
@@ -86,8 +86,8 @@ impl Node for UdpServer {
                                     self.mtu_size,
                                     UdpData,
                                     current_time,
-                                    self.node_id,
-                                    self.dst_id
+                                    self.node_addr,
+                                    self.dst_addr
                                 );
 
                                 let new_status = DataWait {
@@ -100,14 +100,14 @@ impl Node for UdpServer {
                                     // send packet to the new status now
                                     self.new_event(current_time,
                                                    data_packet,
-                                                   self.next_hop_id),
+                                                   self.next_hop_addr),
 
                                     // move immediately to waiting state
                                     self.new_event(current_time,
                                                    MoveToStatus(Box::new(
                                                        new_status
                                                    )),
-                                                   self.get_id())
+                                                   self.get_addr())
                                 ]
                             }
                             else {
@@ -117,7 +117,7 @@ impl Node for UdpServer {
                                                    MoveToStatus(Box::new(
                                                        FinishSend { session_id }
                                                    )),
-                                                   self.get_id())
+                                                   self.get_addr())
                                 ]
                             }
                         },
@@ -128,12 +128,12 @@ impl Node for UdpServer {
                                     DataSend { session_id, bitrate, data_sent }
                                 ))
                             );
-                            self.timeouts.push(timeout.get_id().unwrap());
+                            self.timeouts.push(timeout.get_addr().unwrap());
 
                             let wait_time = self.mtu_size as f64 / bitrate;
                             vec![ self.new_event(current_time + wait_time,
                                                  timeout,
-                                                 self.node_id) ]
+                                                 self.node_addr) ]
                         },
                         FinishSend { session_id } => {
                             // tell the user that stream has ended
@@ -142,18 +142,18 @@ impl Node for UdpServer {
                                 self.mtu_size,
                                 UdpFinish { file_size: self.file_size },
                                 current_time,
-                                self.node_id,
-                                self.dst_id
+                                self.node_addr,
+                                self.dst_addr
                             );
 
                             vec![
                                 self.new_event(current_time,
                                                finish_packet,
-                                               self.next_hop_id),
+                                               self.next_hop_addr),
 
                                 self.new_event(current_time,
                                                MoveToStatus(Box::new(Idle)),
-                                               self.get_id())
+                                               self.get_addr())
                             ]
                         }
                     }
@@ -165,8 +165,8 @@ impl Node for UdpServer {
             Data(packet) => {
                 info!("{}: {:?} received by {:?}", current_time, packet, self);
 
-                assert!(packet.dst_node == self.node_id);
-                assert!(packet.src_node == self.dst_id);
+                assert!(packet.dst_node == self.node_addr);
+                assert!(packet.src_node == self.dst_addr);
 
                 match packet.pkt_type {
                     // only answer to data requests
@@ -181,7 +181,7 @@ impl Node for UdpServer {
 
                         vec![ self.new_event(current_time,
                                              MoveToStatus(Box::new(new_status)),
-                                             self.get_id()) ]
+                                             self.get_addr()) ]
                     },
                     UdpFinishRequest => {
                         // ignore finish request if old (must be duplicate)
@@ -197,7 +197,7 @@ impl Node for UdpServer {
                                            MoveToStatus(Box::new(FinishSend {
                                                session_id: packet.session_id
                                            })),
-                                           self.get_id())
+                                           self.get_addr())
                         ]
                     },
                     _ => panic!("Unexpected packet type for {:?} in {:?}",

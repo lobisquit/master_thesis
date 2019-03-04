@@ -7,9 +7,6 @@ use std::collections::HashMap;
 #[derive(Debug, Builder)]
 #[builder(setter(into))]
 pub struct Controller {
-    #[builder(default="MAINFRAME_ADDR")]
-    node_id: NodeAddress,
-
     #[builder(setter(skip))]
     utilities: HashMap<NodeAddress, f64>,
 
@@ -28,14 +25,14 @@ impl Controller {
 }
 
 impl Node for Controller {
-    fn get_id(&self) -> NodeAddress {
-        MAINFRAME_ADDR
+    fn get_addr(&self) -> NodeAddress {
+        CONTROLLER_ADDR
     }
 
     fn process_message(&mut self, message: Message, _current_time: f64) -> Vec<Event> {
         match message {
-            ReportUtility { utility, node_id } => {
-                self.utilities.insert(node_id, utility);
+            ReportUtility { utility, node_addr } => {
+                self.utilities.insert(node_addr, utility);
 
                 vec![]
             },

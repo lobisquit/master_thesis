@@ -1,7 +1,7 @@
 use crate::core::*;
 use crate::Message::*;
 use crate::utils::*;
-use crate::counters::MAINFRAME_ADDR;
+use crate::counters::CONTROLLER_ADDR;
 
 static WAITING_TIME_TOLERANCE: f64 = 1.0; // s
 static WAITING_TIME_MARGIN: f64 = 0.95; // s
@@ -61,10 +61,10 @@ impl TcpClientStatus {
 #[derive(Debug, Builder)]
 #[builder(setter(into))]
 pub struct TcpClient {
-    node_id: NodeAddress,
+    node_addr: NodeAddress,
 
-    next_hop_id: NodeAddress,
-    dst_id: NodeAddress,
+    next_hop_addr: NodeAddress,
+    dst_addr: NodeAddress,
 
     window_size: usize,
     t_repeat: f64,
@@ -86,8 +86,8 @@ pub struct TcpClient {
 }
 
 impl Node for TcpClient {
-    fn get_id(&self) -> NodeAddress {
-        self.node_id
+    fn get_addr(&self) -> NodeAddress {
+        self.node_addr
     }
 
     fn process_message(&mut self, message: Message, current_time: f64) -> Vec<Event> {
@@ -100,7 +100,7 @@ impl Node for TcpClient {
                 if self.timeouts.contains(&id) {
                     vec![ self.new_event(current_time,
                                          *expire_message,
-                                         self.get_id()) ]
+                                         self.get_addr()) ]
                 }
                 else {
                     vec![]
@@ -128,7 +128,7 @@ impl Node for TcpClient {
                                 MoveToStatus(Box::new( Unusable { session_id } ))
                             );
                             self.timeouts.push(
-                                unusable_timeout.get_id().unwrap()
+                                unusable_timeout.get_addr().unwrap()
                             );
 
                             // immediately send DATA request
@@ -136,11 +136,11 @@ impl Node for TcpClient {
                             vec![
                                 self.new_event(current_time,
                                                MoveToStatus(Box::new(new_status)),
-                                               self.node_id),
+                                               self.node_addr),
 
                                 self.new_event(current_time + self.t_unusable,
                                                unusable_timeout,
-                                               self.node_id)
+                                               self.node_addr)
                             ]
                         },
                         RequestWait { session_id } => {
@@ -154,22 +154,22 @@ impl Node for TcpClient {
                                                              request_size,
                                                              request_type,
                                                              current_time,
-                                                             self.node_id,
-                                                             self.dst_id);
+                                                             self.node_addr,
+                                                             self.dst_addr);
 
                             // repeat the request after a timeout
                             let repeat_timeout = Message::new_timeout(
                                 MoveToStatus(Box::new(RequestWait { session_id }))
                             );
-                            self.timeouts.push(repeat_timeout.get_id().unwrap());
+                            self.timeouts.push(repeat_timeout.get_addr().unwrap());
 
                             vec![
                                 self.new_event(current_time,
                                                request,
-                                               self.next_hop_id),
+                                               self.next_hop_addr),
                                 self.new_event(current_time + self.t_repeat,
                                                repeat_timeout,
-                                               self.node_id),
+                                               self.node_addr),
                             ]
                         },
                         DataInit { session_id, new_packet } => {
@@ -185,7 +185,7 @@ impl Node for TcpClient {
                                 vec![
                                     self.new_event(current_time,
                                                    MoveToStatus(Box::new(new_status)),
-                                                   self.node_id)
+                                                   self.node_addr)
                                 ]
                             }
                             else {
@@ -230,7 +230,7 @@ impl Node for TcpClient {
                                 vec![
                                     self.new_event(current_time,
                                                    MoveToStatus(Box::new(new_status)),
-                                                   self.node_id)
+                                                   self.node_addr)
                                 ]
                             }
                             else {
@@ -251,12 +251,12 @@ impl Node for TcpClient {
                                                          ack_size,
                                                          pkt_type,
                                                          current_time,
-                                                         self.node_id,
-                                                         self.dst_id);
+                                                         self.node_addr,
+                                                         self.dst_addr);
 
                             events.push(self.new_event(current_time,
                                                        ack,
-                                                       self.next_hop_id));
+                                                       self.next_hop_addr));
 
                             // check if sequence_num matches the length of the
                             // boolean array of received packets: in this case
@@ -275,7 +275,7 @@ impl Node for TcpClient {
                             events.push(
                                 self.new_event(current_time,
                                                MoveToStatus(Box::new(new_status)),
-                                               self.node_id)
+                                               self.node_addr)
                             );
 
                             events
@@ -291,13 +291,13 @@ impl Node for TcpClient {
                                 MoveToStatus(Box::new(new_status))
                             );
                             self.timeouts.push(
-                                unusable_timeout.get_id().unwrap()
+                                unusable_timeout.get_addr().unwrap()
                             );
 
                             events.push(
                                 self.new_event(current_time + self.t_unusable,
                                                unusable_timeout,
-                                               self.node_id));
+                                               self.node_addr));
 
                             // repeat timeout
                             let new_status = DataACK {
@@ -309,13 +309,13 @@ impl Node for TcpClient {
                                 MoveToStatus(Box::new(new_status))
                             );
                             self.timeouts.push(
-                                repeat_timeout.get_id().unwrap()
+                                repeat_timeout.get_addr().unwrap()
                             );
 
                             events.push(
                                 self.new_event(current_time + self.t_repeat,
                                                repeat_timeout,
-                                               self.node_id));
+                                               self.node_addr));
 
                             events
                         },
@@ -330,7 +330,7 @@ impl Node for TcpClient {
                             vec![
                                 self.new_event(current_time,
                                                MoveToStatus(Box::new(new_status)),
-                                               self.node_id)
+                                               self.node_addr)
                             ]
                         },
                         Evaluate { .. } => {
@@ -347,16 +347,16 @@ impl Node for TcpClient {
 
                             let report = ReportUtility {
                                 utility,
-                                node_id: self.get_id()
+                                node_addr: self.get_addr()
                             };
 
                             vec![ self.new_event(current_time,
                                                  MoveToStatus(Box::new(Idle)),
-                                                 self.node_id),
+                                                 self.node_addr),
 
                                   self.new_event(current_time,
                                                  report,
-                                                 MAINFRAME_ADDR) ]
+                                                 CONTROLLER_ADDR) ]
                         }
                     }
                 }
@@ -370,7 +370,7 @@ impl Node for TcpClient {
                     vec![
                         self.new_event(current_time,
                                        MoveToStatus(Box::new( RequestInit )),
-                                       self.node_id)
+                                       self.node_addr)
                     ]
                 }
                 else {
@@ -387,14 +387,14 @@ impl Node for TcpClient {
                         let new_status = Evaluate { session_id: number };
                         vec![ self.new_event(current_time,
                                              MoveToStatus(Box::new(new_status)),
-                                             self.node_id)
+                                             self.node_addr)
                         ]
                     }
                 }
             },
             Data(packet) => {
-                assert!(packet.dst_node == self.node_id);
-                assert!(packet.src_node == self.dst_id);
+                assert!(packet.dst_node == self.node_addr);
+                assert!(packet.src_node == self.dst_addr);
 
                 if let TcpData { sequence_end, .. } = packet.pkt_type {
                     info!("{}: {:?} received by {:?}", current_time, packet, self);
@@ -412,12 +412,12 @@ impl Node for TcpClient {
                                                          ack_size,
                                                          pkt_type,
                                                          current_time,
-                                                         self.node_id,
-                                                         self.dst_id);
+                                                         self.node_addr,
+                                                         self.dst_addr);
 
                             vec![ self.new_event(current_time,
                                                  ack,
-                                                 self.next_hop_id) ]
+                                                 self.next_hop_addr) ]
                         },
                         RequestWait { session_id } => {
                             self.timeouts.clear();
@@ -429,7 +429,7 @@ impl Node for TcpClient {
                             vec![ self.new_event(current_time,
                                                  MoveToStatus(
                                                      Box::new(new_status)),
-                                                 self.node_id)
+                                                 self.node_addr)
                             ]
                         },
                         DataWait { session_id, .. } => {
@@ -442,7 +442,7 @@ impl Node for TcpClient {
                             vec![ self.new_event(current_time,
                                                  MoveToStatus(
                                                      Box::new(new_status)),
-                                                 self.node_id)
+                                                 self.node_addr)
                             ]
                         },
                         // reaching zero-time states can happen in an unfortunate

@@ -5,8 +5,8 @@ use crate::Message::*;
 #[derive(Debug, Builder, Clone)]
 #[builder(setter(into))]
 pub struct BlockingQueue {
-    node_id: NodeAddress,
-    dest_id: NodeAddress,
+    node_addr: NodeAddress,
+    dest_addr: NodeAddress,
 
     max_queue: usize,
     conn_speed: f64,
@@ -40,8 +40,8 @@ impl Default for BlockingQueueStatus {
 impl MachineStatus for BlockingQueueStatus {}
 
 impl Node for BlockingQueue {
-    fn get_id(&self) -> NodeAddress {
-        self.node_id
+    fn get_addr(&self) -> NodeAddress {
+        self.node_addr
     }
 
     fn process_message(&mut self, message: Message, current_time: f64) -> Vec<Event> {
@@ -56,7 +56,7 @@ impl Node for BlockingQueue {
                         vec![
                             self.new_event(current_time,
                                            MoveToStatus(Box::new(Transmitting)),
-                                           self.get_id())
+                                           self.get_addr())
                         ]
                     },
                     Transmitting => {
@@ -93,25 +93,25 @@ impl Node for BlockingQueue {
                             // tx the first packet in the queue
                             vec![ self.new_event(current_time + tx_time,
                                                  Data(next_pkt),
-                                                 self.dest_id),
+                                                 self.dest_addr),
 
                                   self.new_event(current_time + tx_time,
                                                  MoveToStatus(Box::new(Decide)),
-                                                 self.get_id())
+                                                 self.get_addr())
                             ]
                         },
                         Decide => {
                             if self.queue.len() == 0 {
                                 vec![ self.new_event(current_time,
                                                      MoveToStatus(Box::new(Idle)),
-                                                     self.get_id()) ]
+                                                     self.get_addr()) ]
                             }
                             else {
                                 vec![ self.new_event(current_time,
                                                      MoveToStatus(Box::new(
                                                          Transmitting
                                                      )),
-                                                     self.get_id()) ]
+                                                     self.get_addr()) ]
                             }
                         }
                     }

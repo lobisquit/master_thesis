@@ -34,16 +34,10 @@ impl MachineStatus for TcpServerStatus {}
 #[derive(Debug, Builder)]
 #[builder(setter(into))]
 pub struct TcpServer {
-    node_id: NodeAddress,
-
-    #[builder(setter(skip))]
-    status: TcpServerStatus,
-
-    #[builder(setter(skip))]
-    conn_params: TcpConnParams,
+    node_addr: NodeAddress,
 
     next_hop_id: NodeAddress,
-    dst_id: NodeAddress,
+    dst_addr: NodeAddress,
 
     total_n_packets: usize,
     mtu_size: u64,
@@ -51,6 +45,12 @@ pub struct TcpServer {
 
     #[builder(setter(skip))]
     timeouts: Vec<usize>,
+
+    #[builder(setter(skip))]
+    status: TcpServerStatus,
+
+    #[builder(setter(skip))]
+    conn_params: TcpConnParams,
 
     // monitor the channel using packets as probes
 
@@ -93,8 +93,8 @@ impl TcpServer {
 }
 
 impl Node for TcpServer {
-    fn get_id(&self) -> NodeAddress {
-        self.node_id
+    fn get_addr(&self) -> NodeAddress {
+        self.node_addr
     }
 
     fn process_message(&mut self, message: Message, current_time: f64) -> Vec<Event> {
@@ -107,7 +107,7 @@ impl Node for TcpServer {
                 if self.timeouts.contains(&id) {
                     vec![ self.new_event(current_time,
                                          *expire_message,
-                                         self.get_id()) ]
+                                         self.get_addr()) ]
                 }
                 else {
                     vec![]
@@ -131,7 +131,7 @@ impl Node for TcpServer {
                             vec![
                                 self.new_event(current_time,
                                                MoveToStatus(Box::new(TransmitDecide)),
-                                               self.get_id())
+                                               self.get_addr())
                             ]
                         },
                         TransmitDecide => {
@@ -143,7 +143,7 @@ impl Node for TcpServer {
                                 vec![
                                     self.new_event(current_time,
                                                    MoveToStatus(Box::new(TransmitWait)),
-                                                   self.get_id())
+                                                   self.get_addr())
                                 ]
                             }
                             else {
@@ -153,7 +153,7 @@ impl Node for TcpServer {
                                                        MoveToStatus(
                                                            Box::new(TransmitPacket)
                                                        ),
-                                                       self.get_id())
+                                                       self.get_addr())
                                     ]
                                 }
                                 else {
@@ -162,7 +162,7 @@ impl Node for TcpServer {
                                                        MoveToStatus(
                                                            Box::new(TransmitWait)
                                                        ),
-                                                       self.get_id())
+                                                       self.get_addr())
                                     ]
                                 }
                             }
@@ -186,8 +186,8 @@ impl Node for TcpServer {
                                     rtt: estimated_rtt
                                 },
                                 current_time,
-                                self.node_id,
-                                self.dst_id
+                                self.node_addr,
+                                self.dst_addr
                             );
 
                             // register first departure time for frame b
@@ -202,13 +202,13 @@ impl Node for TcpServer {
                             let repeat_timeout = Message::new_timeout(
                                 MoveToStatus(Box::new(TransmitDecide))
                             );
-                            self.timeouts.push(repeat_timeout.get_id().unwrap());
+                            self.timeouts.push(repeat_timeout.get_addr().unwrap());
 
                             vec![
                                 // here t0 / 2 tries to estimate the packet delay
                                 self.new_event(current_time + self.t0 / 2.,
                                                repeat_timeout,
-                                               self.get_id()),
+                                               self.get_addr()),
 
                                 self.new_event(current_time,
                                                data_packet,
@@ -219,11 +219,11 @@ impl Node for TcpServer {
                             let timeout = Message::new_timeout(
                                 MoveToStatus(Box::new(TransmitRepeat))
                             );
-                            self.timeouts.push(timeout.get_id().unwrap());
+                            self.timeouts.push(timeout.get_addr().unwrap());
 
                             vec![ self.new_event(current_time + self.t0,
                                                  timeout,
-                                                 self.node_id) ]
+                                                 self.node_addr) ]
                         },
                         TransmitRepeat => {
                             // reset sent window, to send unACKed packets again
@@ -232,7 +232,7 @@ impl Node for TcpServer {
                             vec![
                                 self.new_event(current_time,
                                                MoveToStatus(Box::new(TransmitDecide)),
-                                               self.get_id())
+                                               self.get_addr())
                             ]
                         }
                     }
@@ -244,8 +244,8 @@ impl Node for TcpServer {
             Data(packet) => {
                 info!("{}: {:?} received by {:?}", current_time, packet, self);
 
-                assert!(packet.dst_node == self.node_id);
-                assert!(packet.src_node == self.dst_id);
+                assert!(packet.dst_node == self.node_addr);
+                assert!(packet.src_node == self.dst_addr);
 
                 match packet.pkt_type {
                     // always drop current session if user is requesting another
@@ -257,7 +257,7 @@ impl Node for TcpServer {
                         vec![
                             self.new_event(current_time,
                                            MoveToStatus(Box::new(InitSession)),
-                                           self.get_id()) ]
+                                           self.get_addr()) ]
                     },
                     TcpACK { sequence_num, .. } => {
                         if let Idle = self.status {
@@ -306,7 +306,7 @@ impl Node for TcpServer {
                                                    MoveToStatus(
                                                        Box::new(Idle)
                                                    ),
-                                                   self.get_id())
+                                                   self.get_addr())
                                 ]
                             }
                             else {
@@ -320,7 +320,7 @@ impl Node for TcpServer {
                                                        MoveToStatus(
                                                            Box::new(TransmitDecide)
                                                        ),
-                                                       self.get_id())
+                                                       self.get_addr())
                                     ]
                                 }
                                 else {
