@@ -5,7 +5,7 @@ extern crate rand;
 extern crate log;
 extern crate env_logger;
 
-use std::collections::BinaryHeap;
+// use std::collections::BinaryHeap;
 use std::collections::{HashMap, HashSet};
 use std::time::Instant;
 
@@ -20,9 +20,9 @@ use simulator::*;
 pub static FLAG: bool = false;
 pub static GRAPH_PATH: &str = "../data/aachen_net/topology.txt";
 
-fn register_node<'a>(node: &'a mut dyn Node,
-                     nodes: &mut HashMap<NodeId, &'a mut Node>) {
-    nodes.insert(node.get_id(), node);
+fn register_node(node: Box<Node>,
+                 nodes: &mut HashMap<NodeAddress, Box<Node>>) {
+    nodes.insert(node.get_addr(), node);
 }
 
 fn read_graph(path: &str) -> Result<Graph, ParseIntError> {
@@ -32,7 +32,10 @@ fn read_graph(path: &str) -> Result<Graph, ParseIntError> {
     let mut graph = Graph::default();
 
     for line in buffered.lines() {
-        let content = line.unwrap();
+
+        let err_msg = format!("ERR: {:?}", line);
+
+        let content = line.expect(&err_msg);
         let pieces = content.split(',').collect::<Vec<&str>>();
 
         let node = pieces[0].parse::<usize>()?;
@@ -50,128 +53,246 @@ fn read_graph(path: &str) -> Result<Graph, ParseIntError> {
     Ok(graph)
 }
 
+fn populate_node(node_id: usize,
+                 nodes: &mut HashMap<NodeAddress, Box<Node>>,
+                 graph: &Graph,
+                 controller: &mut Controller,
+                 max_queue_uplink: usize,
+                 conn_speed_uplink: f64,
+                 max_queue_downlink: usize,
+                 conn_speed_downlink: f64) {
+
+    // uplink components
+    let uplink_tbf = TokenBucketQueueBuilder::default()
+        .node_addr(NodeAddress::new(node_id, TBF_UPLINK_ID))
+        .dest_addr(NodeAddress::new(node_id, NIC_UPLINK_ID))
+        .build()
+        .expect("ERR 1");
+
+    controller.register_tbf(uplink_tbf.get_addr());
+    register_node(Box::new(uplink_tbf), nodes);
+
+    let err_msg = format!("{}", node_id);
+    let father_id: usize = graph.get_father(node_id).expect(&err_msg).into();
+    let uplink_nic = BlockingQueueBuilder::default()
+        .node_addr(NodeAddress::new(node_id, NIC_UPLINK_ID))
+        .dest_addr(NodeAddress::new(father_id, TBF_UPLINK_ID))
+        .max_queue(max_queue_uplink)    // bits
+        .conn_speed(conn_speed_uplink)  // Mbit/s;
+        .build()
+        .expect("ERR 3");
+
+    register_node(Box::new(uplink_nic), nodes);
+
+    // downlink components
+    let downlink_tbf = TokenBucketQueueBuilder::default()
+        .node_addr(NodeAddress::new(node_id, TBF_DOWNLINK_ID))
+        .dest_addr(NodeAddress::new(node_id, NIC_DOWNLINK_ID))
+        .build()
+        .expect("ERR 4");
+
+    controller.register_tbf(downlink_tbf.get_addr());
+    register_node(Box::new(downlink_tbf), nodes);
+
+    let downlink_nic = BlockingQueueBuilder::default()
+        .node_addr(NodeAddress::new(node_id, NIC_DOWNLINK_ID))
+        .dest_addr(NodeAddress::new(node_id, SWITCH_DOWNLINK_ID))
+        .max_queue(max_queue_downlink)    // bits
+        .conn_speed(conn_speed_downlink)  // Mbit/s;
+        .build()
+        .expect("ERR 5");
+
+    register_node(Box::new(downlink_nic), nodes);
+
+    let mut downlink_switch = SwitchBuilder::default()
+        .node_addr(NodeAddress::new(node_id, SWITCH_DOWNLINK_ID))
+        .build()
+        .expect("ERR 6");
+
+    // populate routing table
+    for (leaf, child) in graph.get_routes(node_id) {
+        let next_hop = NodeAddress::new(child.into(), TBF_DOWNLINK_ID);
+        downlink_switch.add_route(*leaf, next_hop);
+    }
+
+    register_node(Box::new(downlink_switch), nodes);
+}
+
 fn main() {
     let environment = Env::default().default_filter_or("error");
     Builder::from_env(environment).init();
 
-    let mut controller = ControllerBuilder::default().build().unwrap();
-
     // read network topology structure
     let graph = read_graph(GRAPH_PATH)
-        .expect("Error while parsing graph");
+        .expect("ERR Error while parsing graph")
+        .initialize_routes();
 
-    // dbg!(leaves);
+    let mut controller = ControllerBuilder::default().build().expect("ERR 7");
 
-    // let mut client = UdpClientBuilder::default()
-    //     .node_id(1)
-    //     .next_hop_id(5)
-    //     .dst_id(2)
-    //     .bitrate(10000)
-    //     .t0(2.)
-    //     .n(10 as u64)
-    //     .build()
-    //     .unwrap();
+    let mut nodes = HashMap::new();
 
-    // let mut server = UdpServerBuilder::default()
-    //     .node_id(2)
-    //     .next_hop_id(6)
-    //     .dst_id(1)
-    //     .file_size(1e5 as u64)
-    //     .mtu_size(1500 as u64)
+    let buildings = graph.get_leaves();
 
-    //     .build()
-    //     .unwrap();
+    let dslams = buildings
+        .iter()
+        .map(|building| graph.get_father(*building).expect("ERR 8"))
+        .collect::<HashSet<NodeId>>();
 
-    // let mut client_to_server = BlockingQueueBuilder::default()
-    //     .node_id(3)
-    //     .dest_id(2)
-    //     .max_queue(40 as usize)
-    //     .conn_speed(999.0)
-    //     .build()
-    //     .unwrap();
+    let routers = dslams
+        .iter()
+        .map(|dslam| graph.get_father(*dslam).expect("ERR 9"))
+        .collect::<HashSet<NodeId>>();
 
-    // let mut server_to_client = BlockingQueueBuilder::default()
-    //     .node_id(4)
-    //     .dest_id(1)
-    //     .max_queue(40 as usize)
-    //     .conn_speed(1001.0)
-    //     .build()
-    //     .unwrap();
+    for dslam in &dslams {
+        populate_node(dslam.into(),
+                      &mut nodes,
+                      &graph,
+                      &mut controller,
+                      1000, 1e6,
+                      1000, 1e6);
+    }
+    debug!("Initialized DSLAMs");
 
-    // let mut client_to_server_tbf = TokenBucketQueueBuilder::default()
-    //     .node_id(5)
-    //     .dest_id(3)
-    //     .build()
-    //     .unwrap();
+    for router in routers {
+        populate_node(router.into(),
+                      &mut nodes,
+                      &graph,
+                      &mut controller,
+                      1000, 1e6,
+                      1000, 1e6);
+    }
+    debug!("Initialized ROUTERS");
 
-    // controller.register_tbf(client_to_server_tbf.get_id());
+    // create (unique) mainframe
+    {
+        let uplink_nic = BlockingQueueBuilder::default()
+            .node_addr(NodeAddress::new(MAINFRAME_ID.into(), NIC_UPLINK_ID))
+            .dest_addr(NodeAddress::new(MAINFRAME_ID.into(), SWITCH_UPLINK_ID))
+            .max_queue(1000000 as usize) // bits
+            .conn_speed(1e5) // Mbit/s;
+            .build()
+            .expect("ERR 3asd");
 
-    // let mut server_to_client_tbf = TokenBucketQueueBuilder::default()
-    //     .node_id(6)
-    //     .dest_id(4)
-    //     .build()
-    //     .unwrap();
+        register_node(Box::new(uplink_nic), &mut nodes);
 
-    // let new_params = TokenBucketQueueParamsBuilder::default()
-    //     .max_queue(14)
-    //     .max_tokens(15.0)
-    //     .token_rate(25.0)
-    //     .build()
-    //     .unwrap();
+        let uplink_switch = SwitchBuilder::default()
+            .node_addr(NodeAddress::new(MAINFRAME_ID.into(), SWITCH_UPLINK_ID))
+            .build()
+            .expect("ERR 10");
 
-    // let fire_event = Event {
-    //     sender: NodeId(0),
-    //     time: 0.0,
-    //     message: Message::SetParams(new_params),
-    //     recipient: server_to_client_tbf.get_id()
-    // };
+        register_node(Box::new(uplink_switch), &mut nodes);
 
-    // controller.register_tbf(server_to_client_tbf.get_id());
+        let downlink_nic = BlockingQueueBuilder::default()
+            .node_addr(NodeAddress::new(MAINFRAME_ID.into(), NIC_DOWNLINK_ID))
+            .dest_addr(NodeAddress::new(MAINFRAME_ID.into(), SWITCH_DOWNLINK_ID))
+            .max_queue(1000000 as usize) // bits
+            .conn_speed(1e5) // Mbit/s;
+            .build()
+            .expect("ERR 3asd");
 
-    // let mut nodes: HashMap<NodeId, &mut Node> = HashMap::new();
-    // register_node(&mut controller, &mut nodes);
-    // register_node(&mut client, &mut nodes);
-    // register_node(&mut server, &mut nodes);
-    // register_node(&mut client_to_server, &mut nodes);
-    // register_node(&mut server_to_client, &mut nodes);
-    // register_node(&mut client_to_server_tbf, &mut nodes);
-    // register_node(&mut server_to_client_tbf, &mut nodes);
+        register_node(Box::new(downlink_nic), &mut nodes);
 
-    // let mut event_queue: BinaryHeap<Event> = BinaryHeap::new();
+        let mut downlink_switch = SwitchBuilder::default()
+            .node_addr(NodeAddress::new(MAINFRAME_ID.into(), SWITCH_DOWNLINK_ID))
+            .build()
+            .expect("ERR 10a");
 
-    // event_queue.push(fire_event);
+        // register all network routes in downlink switch
+        for (leaf, child) in graph.get_routes(MAINFRAME_ID) {
+            let next_hop = NodeAddress::new(child.into(), TBF_DOWNLINK_ID);
+            downlink_switch.add_route(*leaf, next_hop);
+        }
 
-    // let start = Instant::now();
-    // let mut n_events = 0;
+        register_node(Box::new(downlink_switch), &mut nodes);
 
-    // while let Some(event) = event_queue.pop() {
-    //     if !FLAG {
-    //         debug!(" ");
-    //         debug!("{:?}", event);
-    //     }
+        debug!("Initialized MAINFRAME");
+    }
 
-    //     n_events += 1;
+    // create all clients and all servers
+    let mut current_id = MIN_CLIENT_ID;
 
-    //     let new_events = expand_event(event, &mut nodes);
+    for dslam in dslams {
+        let client_next_hop = NodeAddress::new(dslam.into(),
+                                               TBF_UPLINK_ID);
 
-    //     if !FLAG {
-    //         for e in &new_events {
-    //             debug!("-> {:?}", e);
-    //         }
-    //     }
+        let server_next_hop = NodeAddress::new(MAINFRAME_ID.into(),
+                                               TBF_DOWNLINK_ID);
 
-    //     event_queue.extend(new_events);
-    // }
+        if let Some(n_lines) = graph.get_weight(dslam) {
+            for _ in 0..*n_lines {
+                {
+                    let server_address = NodeAddress::new(MAINFRAME_ID.into(),
+                                                          current_id.into());
 
-    // dbg!(nodes);
+                    let client_address = NodeAddress::new(dslam.into(),
+                                                         current_id.into());
 
-    // let duration = start.elapsed();
-    // if n_events != 0 {
-    //     println!("{:?} for each one of the {} events", duration / n_events, n_events);
-    // }
+                    let server = UdpServerBuilder::default()
+                        .node_addr(server_address)
+                        .next_hop_addr(server_next_hop)
+                        .dst_addr(client_address)
+                        .file_size(10000 as u64)
+                        .mtu_size(1000 as u64)
+                        .build()
+                        .expect("ERR 11");
+                    register_node(Box::new(server), &mut nodes);
+
+                    // create n_lines users per DSLAM and the corresponding server
+                    let client = UdpClientBuilder::default()
+                        .node_addr(client_address)
+                        .next_hop_addr(client_next_hop)
+                        .dst_addr(server_address)
+                        .bitrate(1000)
+                        .t0(2.0)
+                        .n(5 as u64)
+                        .build()
+                        .expect("12");
+                    register_node(Box::new(client), &mut nodes);
+
+                    current_id += 1;
+                }
+                {
+                    let server_address = NodeAddress::new(MAINFRAME_ID.into(),
+                                                          current_id.into());
+
+                    let client_address = NodeAddress::new(dslam.into(),
+                                                          current_id.into());
+
+                    let server = TcpServerBuilder::default()
+                        .node_addr(server_address)
+                        .next_hop_id(server_next_hop)
+                        .dst_addr(client_address)
+                        .total_n_packets(10000 as usize)
+                        .mtu_size(1000 as u64)
+                        .t0(10)
+                        .build()
+                        .expect("13");
+
+                    register_node(Box::new(server), &mut nodes);
+
+                    // create n_lines users per DSLAM and the corresponding server
+                    let client = TcpClientBuilder::default()
+                        .node_addr(client_address)
+                        .next_hop_addr(client_next_hop)
+                        .dst_addr(server_address)
+                        .window_size(100 as usize)
+                        .t_repeat(5.0)
+                        .t_unusable(10.0)
+                        .expected_plt(5.0)
+                        .build()
+                        .expect("14");
+
+                    register_node(Box::new(client), &mut nodes);
+
+                    current_id += 1;
+                }
+            }
+        }
+    }
+    debug!("Initialized CLIENTs and SERVERs");
 }
 
-fn expand_event(original_event: Event, nodes: &mut HashMap<NodeId, &mut Node>) -> Vec<Event> {
+fn expand_event(original_event: Event, nodes: &mut HashMap<NodeAddress, &mut Node>) -> Vec<Event> {
     if FLAG {
         debug!(" ");
         debug!("{:?}", original_event);
@@ -179,7 +300,7 @@ fn expand_event(original_event: Event, nodes: &mut HashMap<NodeId, &mut Node>) -
 
     let Event { time, message, recipient, .. } = original_event;
 
-    let destination = nodes.get_mut(&recipient).unwrap();
+    let destination = nodes.get_mut(&recipient).expect("15");
     let output_events = destination.process_message(message, time.into());
 
     if FLAG {
@@ -211,13 +332,13 @@ fn test_graph_structure() {
 
     let dslams = leaves
         .iter()
-        .map(|id| *graph.get_father(*id).unwrap())
-        .collect::<HashSet<GraphId>>();
+        .map(|id| *graph.get_father(*id).expect("16"))
+        .collect::<HashSet<NodeId>>();
 
     let routers = dslams
         .iter()
-        .map(|id| *graph.get_father(*id).unwrap())
-        .collect::<HashSet<GraphId>>();
+        .map(|id| *graph.get_father(*id).expect("17"))
+        .collect::<HashSet<NodeId>>();
 
     for leaf in &leaves {
         let dslam = graph.get_father(*leaf)
@@ -234,10 +355,24 @@ fn test_graph_structure() {
         let mainframe = graph.get_father(*router)
             .expect("router has no father");
 
+        assert!(*mainframe == 0.into());
+
         assert!(!leaves.contains(mainframe));
         assert!(!dslams.contains(mainframe));
         assert!(!routers.contains(mainframe));
 
         assert!(graph.get_father(*mainframe) == None);
+    }
+
+    for router in routers {
+        if let Some(n_lines) = graph.get_weight(router) {
+            panic!();
+        }
+    }
+
+    for building in graph.get_leaves() {
+        if let Some(n_lines) = graph.get_weight(building) {
+            panic!();
+        }
     }
 }
