@@ -49,6 +49,13 @@ impl Controller {
     }
 }
 
+impl Drop for Controller {
+    fn drop(&mut self) {
+        self.flush_report()
+            .expect("Unable to flush controller report on drop");
+    }
+}
+
 impl Node for Controller {
     fn get_addr(&self) -> NodeAddress {
         CONTROLLER_ADDR
