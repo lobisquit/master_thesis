@@ -352,7 +352,7 @@ impl Node for TcpClient {
                             let report = ReportUtility {
                                 utility,
                                 node_addr: self.get_addr(),
-                                notes: "TCP".to_owned()
+                                notes: format!("TCP,{}", usable)
                             };
 
                             vec![ self.new_event(current_time,

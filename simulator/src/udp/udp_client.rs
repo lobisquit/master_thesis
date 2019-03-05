@@ -287,7 +287,7 @@ impl Node for UdpClient {
                             let report = ReportUtility {
                                 utility: utility,
                                 node_addr: self.get_addr(),
-                                notes: "UDP".to_owned()
+                                notes: format!("UDP,{}", usable)
                             };
 
                             vec![ self.new_event(current_time,
