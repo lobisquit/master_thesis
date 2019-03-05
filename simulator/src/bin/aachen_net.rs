@@ -6,7 +6,7 @@ extern crate log;
 extern crate env_logger;
 
 // use std::collections::BinaryHeap;
-use std::collections::{HashMap, HashSet};
+use std::collections::{HashMap, HashSet, BinaryHeap};
 use std::time::Instant;
 
 use std::fs::File;
@@ -17,7 +17,6 @@ use std::num::ParseIntError;
 use env_logger::{Builder, Env};
 use simulator::*;
 
-pub static FLAG: bool = false;
 pub static GRAPH_PATH: &str = "../data/aachen_net/topology.txt";
 
 fn register_node(node: Box<Node>,
@@ -128,15 +127,9 @@ fn main() {
         .initialize_routes();
 
     let mut controller = ControllerBuilder::default().build().expect("ERR 7");
-
     let mut nodes = HashMap::new();
 
-    let buildings = graph.get_leaves();
-
-    let dslams = buildings
-        .iter()
-        .map(|building| graph.get_father(*building).expect("ERR 8"))
-        .collect::<HashSet<NodeId>>();
+    let dslams = graph.get_leaves();
 
     let routers = dslams
         .iter()
@@ -166,7 +159,7 @@ fn main() {
     // create (unique) mainframe
     {
         let uplink_nic = BlockingQueueBuilder::default()
-            .node_addr(NodeAddress::new(MAINFRAME_ID.into(), NIC_UPLINK_ID))
+            .node_addr(NodeAddress::new(MAINFRAME_ID.into(), TBF_UPLINK_ID))
             .dest_addr(NodeAddress::new(MAINFRAME_ID.into(), SWITCH_UPLINK_ID))
             .max_queue(1000000 as usize) // bits
             .conn_speed(1e5) // Mbit/s;
@@ -211,14 +204,15 @@ fn main() {
     // create all clients and all servers
     let mut current_id = MIN_CLIENT_ID;
 
-    for dslam in dslams {
+    let mut a_client_addr = None;
+    for dslam in &dslams {
         let client_next_hop = NodeAddress::new(dslam.into(),
-                                               TBF_UPLINK_ID);
+                                              TBF_UPLINK_ID);
 
         let server_next_hop = NodeAddress::new(MAINFRAME_ID.into(),
-                                               TBF_DOWNLINK_ID);
+                                              NIC_DOWNLINK_ID);
 
-        if let Some(n_lines) = graph.get_weight(dslam) {
+        if let Some(n_lines) = graph.get_weight(*dslam) {
             for _ in 0..*n_lines {
                 {
                     let server_address = NodeAddress::new(MAINFRAME_ID.into(),
@@ -226,6 +220,10 @@ fn main() {
 
                     let client_address = NodeAddress::new(dslam.into(),
                                                          current_id.into());
+
+                    if let None = a_client_addr {
+                        a_client_addr = Some(client_address.clone());
+                    }
 
                     let server = UdpServerBuilder::default()
                         .node_addr(server_address)
@@ -290,20 +288,71 @@ fn main() {
         }
     }
     debug!("Initialized CLIENTs and SERVERs");
+
+    register_node(Box::new(controller), &mut nodes);
+    debug!("Initialized CONTROLLER");
+
+    // retrieve one client (randomly) for the test fire event
+    if let None = nodes.get(&a_client_addr.unwrap()) {
+        panic!("No such client {:?}", a_client_addr);
+    }
+
+    let fire_event = Event {
+        sender: CONTROLLER_ADDR, // does not matter here
+        time: 0.0,
+        message: Message::UserSwitchOn,
+        recipient: a_client_addr.unwrap()
+    };
+
+    let mut event_queue: BinaryHeap<Event> = BinaryHeap::new();
+    event_queue.push(fire_event);
+
+    let start = Instant::now();
+    let mut n_events = 0;
+    let detailed_debug = false;
+    while let Some(event) = event_queue.pop() {
+        if !detailed_debug {
+            debug!(" ");
+            debug!("{:?}", event);
+        }
+
+        n_events += 1;
+
+        let new_events = expand_event(event, &mut nodes, detailed_debug);
+
+        if !detailed_debug {
+            for e in &new_events {
+                debug!("-> {:?}", e);
+            }
+        }
+
+        event_queue.extend(new_events);
+    }
+
+    let duration = start.elapsed();
+    if n_events != 0 {
+        println!("{:?} for each one of the {} events", duration / n_events, n_events);
+    }
+
 }
 
-fn expand_event(original_event: Event, nodes: &mut HashMap<NodeAddress, &mut Node>) -> Vec<Event> {
-    if FLAG {
+fn expand_event(original_event: Event,
+                nodes: &mut HashMap<NodeAddress, Box<Node>>,
+                detailed_debug: bool) -> Vec<Event> {
+    if detailed_debug {
         debug!(" ");
         debug!("{:?}", original_event);
     }
 
     let Event { time, message, recipient, .. } = original_event;
 
-    let destination = nodes.get_mut(&recipient).expect("15");
+    let destination = match nodes.get_mut(&recipient) {
+        Some(node) => node,
+        None => panic!("No such node {:?}", recipient)
+    };
     let output_events = destination.process_message(message, time.into());
 
-    if FLAG {
+    if detailed_debug {
         for e in &output_events {
             debug!("-> {:?}", e);
         }
@@ -313,7 +362,7 @@ fn expand_event(original_event: Event, nodes: &mut HashMap<NodeAddress, &mut Nod
         |event| {
             // check if the event is in the same place and time wrt the original one
             if event.recipient == recipient && event.time == time {
-                expand_event(event, nodes)
+                expand_event(event, nodes, detailed_debug)
             }
             else {
                 vec![event]
