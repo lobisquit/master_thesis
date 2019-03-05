@@ -241,20 +241,23 @@ impl Node for UdpClient {
                                                  repeat_timeout,
                                                  self.node_addr) ]
                         },
-                        Unusable { session_id } => {
+                        Unusable { .. } => {
                             // invalidate previous timeouts: connection is
-                            // considered dead
+                            // considered dead and utility is very low
                             self.timeouts.clear();
 
-                            // TODO mark connection as unusable in metrics
-                            let new_status = FinishWait {
-                                session_id: session_id
+                            let report = ReportUtility {
+                                utility: 1e-9,
+                                node_addr: self.get_addr()
                             };
-                            vec![
-                                self.new_event(current_time,
-                                               MoveToStatus(Box::new(new_status)),
-                                               self.node_addr)
-                            ]
+
+                            vec![ self.new_event(current_time,
+                                                 MoveToStatus(Box::new(Idle)),
+                                                 self.node_addr),
+
+                                  self.new_event(current_time,
+                                                 report,
+                                                 CONTROLLER_ADDR) ]
                         },
                         Evaluate { file_size, .. } => {
                             // FINISH packet received: connection is closed
