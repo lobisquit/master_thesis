@@ -5,6 +5,10 @@ extern crate rand;
 extern crate log;
 extern crate env_logger;
 
+use rand::SeedableRng;
+use rand_hc::Hc128Rng;
+use rand::distributions::Exp;
+
 // use std::collections::BinaryHeap;
 use std::collections::{HashMap, HashSet, BinaryHeap};
 use std::time::Instant;
@@ -126,7 +130,19 @@ fn main() {
         .expect("ERR Error while parsing graph")
         .initialize_routes();
 
-    let mut controller = ControllerBuilder::default().build().expect("ERR 7");
+    // randomly generated seed
+    let seed: [u8; 32] = [ 99,  8, 83, 32, 34, 69, 53, 54,
+                           90, 86, 60, 14, 62, 32, 67, 35,
+                           96, 75, 58, 22, 55, 38, 24, 24,
+                           85, 85, 14, 96, 11, 38, 85, 64 ];
+
+    let mut controller = ControllerBuilder::default()
+        .interarrival( Exp::new(3.0) )
+        .rng( Hc128Rng::from_seed(seed) )
+        .report_path("prova.txt")
+        .build()
+        .expect("ERR 7");
+
     let mut nodes: HashMap<NodeAddress, Box<dyn Node>> = HashMap::new();
 
     let dslams = graph.get_leaves();
@@ -298,11 +314,13 @@ fn main() {
         };
 
         // add event to queue if client
-        if let Some(_) = (*node).downcast_ref::<UdpClient>() {
+        if let Some(_) = node.downcast_ref::<UdpClient>() {
             event_queue.push(fire_event);
+            break;
         }
-        else if let Some(_) = (*node).downcast_ref::<TcpClient>() {
+        else if let Some(_) = node.downcast_ref::<TcpClient>() {
             event_queue.push(fire_event);
+            break;
         }
     }
 
@@ -312,6 +330,10 @@ fn main() {
 
     let detailed_debug = false;
     while let Some(event) = event_queue.pop() {
+        if n_events % 1000000 == 0 {
+            info!("Reached {}", n_events);
+        }
+
         if !detailed_debug {
             debug!(" ");
             debug!("{:?}", event);
@@ -332,9 +354,10 @@ fn main() {
 
     let duration = start.elapsed();
     if n_events != 0 {
-        println!("{:?} for each one of the {} events", duration / n_events, n_events);
+        println!("{:?} for each one of the {} events",
+                 duration / n_events,
+                 n_events);
     }
-
 }
 
 fn expand_event(original_event: Event,
