@@ -73,7 +73,7 @@ impl TcpServer {
         // before the last packet window
         let mut old_nums: Vec<usize> = vec![];
         for sequence_num in self.creation_times.keys() {
-            if *sequence_num < self.conn_params.a - self.conn_params.n {
+            if *sequence_num + self.conn_params.n < self.conn_params.a {
                 old_nums.push(*sequence_num);
             }
         }
@@ -85,7 +85,7 @@ impl TcpServer {
         // remove old acked packets: their ACKs will be ignored later
         self.acked_pkts = self.acked_pkts.iter()
             .filter(|sequence_num| {
-                **sequence_num > self.conn_params.a - self.conn_params.n * 4
+                **sequence_num + self.conn_params.n * 4 > self.conn_params.a
             })
             .map(|x| *x)
             .collect();
@@ -273,6 +273,7 @@ impl Node for TcpServer {
                             // register first packet ACK and update RTT
                             if !self.acked_pkts.contains(&sequence_num) {
                                 let ack_creation = packet.creation_time;
+
 
                                 if let Some(packet_creation) = self.creation_times.get(&(sequence_num - 1)) {
                                     // evaluate transmission time for uplink and
