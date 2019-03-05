@@ -26,7 +26,7 @@ pub enum TcpClientStatus {
         sequence_end: usize
     },
     Unusable { session_id: usize },
-    Evaluate { session_id: usize }
+    Evaluate { session_id: usize, usable: bool }
 }
 
 impl Default for TcpClientStatus {
@@ -262,7 +262,7 @@ impl Node for TcpClient {
                             // boolean array of received packets: in this case
                             // we are done, else continue
                             let new_status = if sequence_num == sequence_end {
-                                Evaluate { session_id }
+                                Evaluate { session_id, usable: true }
                             }
                             else {
                                 DataWait {
@@ -319,39 +319,40 @@ impl Node for TcpClient {
 
                             events
                         },
-                        Unusable { .. } => {
+                        Unusable { session_id } => {
                             // invalidate previous timeouts: connection is
                             // considered dead and utility is very low
                             self.timeouts.clear();
 
-                            let report = ReportUtility {
-                                utility: 1e-9,
-                                node_addr: self.get_addr()
-                            };
-
+                            let new_status = Box::new(Evaluate {
+                                session_id,
+                                usable: false
+                            });
                             vec![ self.new_event(current_time,
-                                                 MoveToStatus(Box::new(Idle)),
-                                                 self.node_addr),
-
-                                  self.new_event(current_time,
-                                                 report,
-                                                 CONTROLLER_ADDR) ]
+                                                 MoveToStatus(new_status),
+                                                 self.node_addr) ]
                         },
-                        Evaluate { .. } => {
-                            let plt = current_time - self.starting_time;
+                        Evaluate { usable, .. } => {
+                            let utility = if usable {
+                                // utility is based on the expected packet load
+                                // time tolerance is standard
+                                let plt = current_time - self.starting_time;
 
-                            // utility is based on the expected packet load time
-                            // tolerance is standard
-                            let utility = utility(
-                                plt,
-                                self.expected_plt + WAITING_TIME_TOLERANCE,
-                                WAITING_TIME_TOLERANCE,
-                                WAITING_TIME_MARGIN
-                            );
+                                utility(
+                                    plt,
+                                    self.expected_plt + WAITING_TIME_TOLERANCE,
+                                    WAITING_TIME_TOLERANCE,
+                                    WAITING_TIME_MARGIN
+                                )
+                            } else {
+                                // when unusable, default to a known value
+                                -1.0
+                            };
 
                             let report = ReportUtility {
                                 utility,
-                                node_addr: self.get_addr()
+                                node_addr: self.get_addr(),
+                                notes: "TCP".to_owned()
                             };
 
                             vec![ self.new_event(current_time,
@@ -388,7 +389,8 @@ impl Node for TcpClient {
                     Some(number) => {
                         // do not send final ACK, as it will be performed when in
                         // IDLE state
-                        let new_status = Evaluate { session_id: number };
+                        let new_status = Evaluate { session_id: number,
+                                                    usable: true };
                         vec![ self.new_event(current_time,
                                              MoveToStatus(Box::new(new_status)),
                                              self.node_addr)

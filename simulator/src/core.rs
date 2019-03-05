@@ -76,7 +76,7 @@ pub enum Message {
     QueueTransmitPacket,
 
     // messages to and from the controller
-    ReportUtility { utility: f64, node_addr: NodeAddress },
+    ReportUtility { utility: f64, node_addr: NodeAddress, notes: String },
     SetParams(TokenBucketQueueParams),
     RecomputeParams,
 }

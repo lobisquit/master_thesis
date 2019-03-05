@@ -31,7 +31,7 @@ impl Node for Controller {
 
     fn process_message(&mut self, message: Message, _current_time: f64) -> Vec<Event> {
         match message {
-            ReportUtility { utility, node_addr } => {
+            ReportUtility { utility, node_addr, notes } => {
                 self.utilities.insert(node_addr, utility);
 
                 vec![]

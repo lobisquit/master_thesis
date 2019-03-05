@@ -23,7 +23,7 @@ pub enum UdpClientStatus {
 
     FinishWait { session_id: usize },
     Unusable { session_id: usize },
-    Evaluate { session_id: usize, file_size: u64 }
+    Evaluate { session_id: usize, file_size: u64, usable: bool }
 }
 
 impl Default for UdpClientStatus {
@@ -241,50 +241,53 @@ impl Node for UdpClient {
                                                  repeat_timeout,
                                                  self.node_addr) ]
                         },
-                        Unusable { .. } => {
+                        Unusable { session_id } => {
                             // invalidate previous timeouts: connection is
                             // considered dead and utility is very low
                             self.timeouts.clear();
 
-                            let report = ReportUtility {
-                                utility: 1e-9,
-                                node_addr: self.get_addr()
-                            };
-
+                            let new_status = Box::new(Evaluate {
+                                session_id,
+                                file_size: 0,
+                                usable: false
+                            });
                             vec![ self.new_event(current_time,
-                                                 MoveToStatus(Box::new(Idle)),
-                                                 self.node_addr),
-
-                                  self.new_event(current_time,
-                                                 report,
-                                                 CONTROLLER_ADDR) ]
+                                                 MoveToStatus(new_status),
+                                                 self.node_addr) ]
                         },
-                        Evaluate { file_size, .. } => {
+                        Evaluate { file_size, usable, .. } => {
                             // FINISH packet received: connection is closed
                             self.timeouts.clear();
 
-                            let pkt_loss = 1.0 -
-                                self.received_data as f64 /
-                                file_size as f64;
+                            let utility = {
+                                if usable {
+                                    let pkt_loss = 1.0 -
+                                        self.received_data as f64 /
+                                        file_size as f64;
 
-                            let avg_delay = mean(&self.delays);
+                                    let avg_delay = mean(&self.delays);
 
-                            // let throughput = file_size  as f64 /
-                            //     (current_time - self.starting_time);
+                                    // let throughput = file_size  as f64 /
+                                    //     (current_time - self.starting_time);
 
-                            let current_utility =
-                                utility(pkt_loss,
-                                        PKT_LOSS_LIMIT + PKT_LOSS_TOLERANCE,
-                                        PKT_LOSS_TOLERANCE,
-                                        PKT_LOSS_MARGIN) *
-                                utility(avg_delay,
-                                        AVG_DELAY_LIMIT + AVG_DELAY_TOLERANCE,
-                                        AVG_DELAY_TOLERANCE,
-                                        AVG_DELAY_MARGIN);
+                                    utility(pkt_loss,
+                                            PKT_LOSS_LIMIT + PKT_LOSS_TOLERANCE,
+                                            PKT_LOSS_TOLERANCE,
+                                            PKT_LOSS_MARGIN) *
+                                        utility(avg_delay,
+                                                AVG_DELAY_LIMIT + AVG_DELAY_TOLERANCE,
+                                                AVG_DELAY_TOLERANCE,
+                                                AVG_DELAY_MARGIN)
+                                }
+                                else {
+                                    -1.0
+                                }
+                            };
 
                             let report = ReportUtility {
-                                utility: current_utility,
-                                node_addr: self.get_addr()
+                                utility: utility,
+                                node_addr: self.get_addr(),
+                                notes: "UDP".to_owned()
                             };
 
                             vec![ self.new_event(current_time,
@@ -355,7 +358,8 @@ impl Node for UdpClient {
                                 UdpFinish { file_size }=> {
                                     let new_status = Evaluate {
                                         session_id: number,
-                                        file_size: file_size
+                                        file_size: file_size,
+                                        usable: true
                                     };
                                     vec![ self.new_event(current_time,
                                                          MoveToStatus(
