@@ -14,6 +14,7 @@ use std::collections::{HashMap, HashSet, BinaryHeap};
 use std::time::Instant;
 
 use std::fs::File;
+use std::fs::remove_file;
 use std::io::{BufReader, BufRead};
 use std::result::Result;
 use std::num::ParseIntError;
@@ -21,7 +22,7 @@ use std::num::ParseIntError;
 use env_logger::{Builder, Env};
 use simulator::*;
 
-pub static GRAPH_PATH: &str = "../data/aachen_net/topology.txt";
+static GRAPH_PATH: &str = "../data/aachen_net/topology.txt";
 
 fn register_node(node: Box<Node>,
                  nodes: &mut HashMap<NodeAddress, Box<Node>>) {
@@ -136,10 +137,18 @@ fn main() {
                            96, 75, 58, 22, 55, 38, 24, 24,
                            85, 85, 14, 96, 11, 38, 85, 64 ];
 
+    let report_path = "prova.txt";
+
+    // clean path if file already exists
+    match remove_file(report_path) {
+        Ok(_) => debug!("Report file \"{}\" removed", report_path),
+        Err(_) => debug!("Path \"{}\" already clear", report_path)
+    }
+
     let mut controller = ControllerBuilder::default()
         .interarrival( Exp::new(3.0) )
         .rng( Hc128Rng::from_seed(seed) )
-        .report_path("prova.txt")
+        .report_path(report_path)
         .build()
         .expect("ERR 7");
 
