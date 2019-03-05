@@ -127,7 +127,7 @@ fn main() {
         .initialize_routes();
 
     let mut controller = ControllerBuilder::default().build().expect("ERR 7");
-    let mut nodes = HashMap::new();
+    let mut nodes: HashMap<NodeAddress, Box<dyn Node>> = HashMap::new();
 
     let dslams = graph.get_leaves();
 
@@ -204,7 +204,6 @@ fn main() {
     // create all clients and all servers
     let mut current_id = MIN_CLIENT_ID;
 
-    let mut a_client_addr = None;
     for dslam in &dslams {
         let client_next_hop = NodeAddress::new(dslam.into(),
                                               TBF_UPLINK_ID);
@@ -220,10 +219,6 @@ fn main() {
 
                     let client_address = NodeAddress::new(dslam.into(),
                                                          current_id.into());
-
-                    if let None = a_client_addr {
-                        a_client_addr = Some(client_address.clone());
-                    }
 
                     let server = UdpServerBuilder::default()
                         .node_addr(server_address)
@@ -292,23 +287,29 @@ fn main() {
     register_node(Box::new(controller), &mut nodes);
     debug!("Initialized CONTROLLER");
 
-    // retrieve one client (randomly) for the test fire event
-    if let None = nodes.get(&a_client_addr.unwrap()) {
-        panic!("No such client {:?}", a_client_addr);
+    // create fire events for all clients
+    let mut event_queue: BinaryHeap<Event> = BinaryHeap::new();
+    for (node_id, node) in nodes.iter() {
+        let fire_event = Event {
+            sender: CONTROLLER_ADDR, // does not matter here
+            time: 0.0,
+            message: Message::UserSwitchOn,
+            recipient: *node_id
+        };
+
+        // add event to queue if client
+        if let Some(_) = (*node).downcast_ref::<UdpClient>() {
+            event_queue.push(fire_event);
+        }
+        else if let Some(_) = (*node).downcast_ref::<TcpClient>() {
+            event_queue.push(fire_event);
+        }
     }
 
-    let fire_event = Event {
-        sender: CONTROLLER_ADDR, // does not matter here
-        time: 0.0,
-        message: Message::UserSwitchOn,
-        recipient: a_client_addr.unwrap()
-    };
-
-    let mut event_queue: BinaryHeap<Event> = BinaryHeap::new();
-    event_queue.push(fire_event);
-
+    // start event loop
     let start = Instant::now();
     let mut n_events = 0;
+
     let detailed_debug = false;
     while let Some(event) = event_queue.pop() {
         if !detailed_debug {
