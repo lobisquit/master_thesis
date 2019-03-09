@@ -14,10 +14,9 @@ pub struct TokenBucketQueueParams {
 impl Default for TokenBucketQueueParams {
     fn default() -> Self {
         TokenBucketQueueParams {
-            // TODO set better starting values
-            max_queue: 100,
-            max_tokens: 10000.0,
-            token_rate: 10000.0
+            max_queue: 10000000,
+            max_tokens: 10000000.0,
+            token_rate: 10000000.0
         }
     }
 }
