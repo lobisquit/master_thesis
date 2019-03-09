@@ -5,11 +5,11 @@ use crate::counters::CONTROLLER_ADDR;
 
 static PKT_LOSS_LIMIT: f64 = 5e-2;
 static PKT_LOSS_TOLERANCE: f64 = 1e-2;
-static PKT_LOSS_MARGIN: f64 = 0.95;
+static PKT_LOSS_MARGIN: f64 = 0.05;
 
 static AVG_DELAY_LIMIT: f64 = 4.0; // s
 static AVG_DELAY_TOLERANCE: f64 = 1.0; // s
-static AVG_DELAY_MARGIN: f64 = 0.95; // s
+static AVG_DELAY_MARGIN: f64 = 0.05; // s
 
 #[derive(Debug, Clone)]
 pub enum UdpClientStatus {

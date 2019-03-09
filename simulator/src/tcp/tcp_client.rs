@@ -4,7 +4,7 @@ use crate::utils::*;
 use crate::counters::CONTROLLER_ADDR;
 
 static WAITING_TIME_TOLERANCE: f64 = 1.0; // s
-static WAITING_TIME_MARGIN: f64 = 0.95; // s
+static WAITING_TIME_MARGIN: f64 = 0.05; // s
 
 #[derive(Debug, Clone)]
 pub enum TcpClientStatus {
