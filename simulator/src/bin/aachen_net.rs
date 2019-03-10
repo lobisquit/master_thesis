@@ -5,6 +5,7 @@ extern crate rand;
 extern crate log;
 extern crate env_logger;
 
+use rand::Rng;
 use rand::SeedableRng;
 use rand_hc::Hc128Rng;
 use rand::distributions::Exp;
@@ -27,7 +28,7 @@ static GRAPH_PATH: &str = "../data/aachen_net/topology.txt";
 fn main() {
     // simulation parameters
 
-    let interarrival_seed: Hc128Rng = Hc128Rng::from_seed(
+    let mut interarrival_rng: Hc128Rng = Hc128Rng::from_seed(
         [ 99,  8, 83, 32, 34, 69, 53, 54,
           90, 86, 60, 14, 62, 32, 67, 35,
           96, 75, 58, 22, 55, 38, 24, 24,
@@ -93,7 +94,7 @@ fn main() {
 
     let mut controller = ControllerBuilder::default()
         .interarrival(interarrival_distr)
-        .rng(interarrival_seed)
+        .rng(interarrival_rng.clone())
         .report_path(report_path)
         .build()
         .expect("ERR 7");
@@ -278,8 +279,10 @@ fn main() {
 
         // add event to queue if client
         if let Some(_) = node.downcast_ref::<UdpClient>() {
-            continue;
-            event_queue.push(fire_event);
+            let r = interarrival_rng.gen_range(0, 100);
+            if r < 5 {
+                event_queue.push(fire_event);
+            }
         }
         else if let Some(_) = node.downcast_ref::<TcpClient>() {
             event_queue.push(fire_event);
@@ -293,7 +296,7 @@ fn main() {
     let detailed_debug = false;
     while let Some(event) = event_queue.pop() {
         if n_events % 1000000 == 0 {
-            info!("Reached {}", n_events);
+            info!("Reached time {:.2}s", event.time);
         }
 
         if !detailed_debug {
@@ -316,9 +319,10 @@ fn main() {
 
     let duration = start.elapsed();
     if n_events != 0 {
-        println!("{:?} for each one of the {} events",
+        println!("Time {:?}: {:?} for each one of the {} events",
                  duration / n_events,
-                 n_events);
+                 n_events,
+                 duration);
     }
 }
 
