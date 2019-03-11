@@ -37,33 +37,33 @@ fn main() {
 
     let interarrival_distr: Exp = Exp::new(3.0);
 
-    let dslam_upload_speed: f64 = 200e6; // bit/s
-    let dslam_upload_buffer: usize = (3e6 * 8.0) as usize; // bits
+    let dslam_upload_speed: f64 = 200e5; // bit/s
+    let dslam_upload_buffer: usize = (3e6 / 1500.0) as usize; // ETH packets
 
-    let dslam_download_speed: f64 = 1e9; // bit/s
-    let dslam_download_buffer: usize = (13e6 * 8.0) as usize; // bits
+    let dslam_download_speed: f64 = 1e8; // bit/s
+    let dslam_download_buffer: usize = (13e6 / 1500.0) as usize; // ETH packets
 
     let router_upload_speed: f64 = 2e9; // bit/s
-    let router_upload_buffer: usize = (3e6 * 8.0) as usize; // bits
+    let router_upload_buffer: usize = (3e6 / 1500.0) as usize; // ETH packets
 
     let router_download_speed: f64 = 10e9; // bit/s
-    let router_download_buffer: usize = (13e6 * 8.0) as usize; // bits
+    let router_download_buffer: usize = (13e6 / 1500.0) as usize; // ETH packets
 
     let mainframe_upload_speed: f64 = 2e9; // bit/s
-    let mainframe_upload_buffer: usize = (12e6 * 8.0) as usize; // bits
+    let mainframe_upload_buffer: usize = (12e6 / 1500.0) as usize; // ETH packets
 
     let mainframe_download_speed: f64 = 10e9; // bit/s
-    let mainframe_download_buffer: usize = (52e6 * 8.0) as usize; // bits
+    let mainframe_download_buffer: usize = (52e6 / 1500.0) as usize; // ETH packets
 
     let udp_server_file_size: u64 = 1e8 as u64; // bit
-    let udp_server_mtu_size: u64 = 548 * 8 as u64; // bit
+    let udp_server_mtu_size: u64 = 1500 as u64; // bit of ETH packet
 
     let udp_client_bitrate: f64 = 10e6; // bit/s
     let udp_client_timeout: f64 = 5.0; // s
     let udp_client_n_timeouts: u64 = 3;
 
-    let tcp_server_mtu_size: u64 = 512 * 8; // bits
-    let tcp_server_n_packets: usize = (1e6 / tcp_server_mtu_size as f64) as usize;
+    let tcp_server_mtu_size: u64 = 1500; // bits of ETH packet
+    let tcp_server_n_packets: usize = (1e6 / (512.0 * 8.0) as f64) as usize;
     let tcp_server_first_rtt: f64 = 1.0; // s
 
     let tcp_client_window: usize = 2000; // n packets
@@ -296,7 +296,9 @@ fn main() {
     let detailed_debug = false;
     while let Some(event) = event_queue.pop() {
         if n_events % 1000000 == 0 {
-            info!("Reached time {:.2}s", event.time);
+            info!("Reached time {:.2}s, n_events = {}",
+                  event.time,
+                  n_events);
         }
 
         if !detailed_debug {
@@ -320,9 +322,9 @@ fn main() {
     let duration = start.elapsed();
     if n_events != 0 {
         println!("Time {:?}: {:?} for each one of the {} events",
+                 duration,
                  duration / n_events,
-                 n_events,
-                 duration);
+                 n_events);
     }
 }
 
