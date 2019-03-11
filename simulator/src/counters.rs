@@ -22,3 +22,6 @@ pub static NIC_DOWNLINK_ID: usize = 21;
 pub static SWITCH_DOWNLINK_ID: usize = 22;
 
 pub static MIN_CLIENT_ID: usize = 100;
+
+/// Time required by each node to process a single event
+pub static PROC_TIME: f64 = 1e-3;

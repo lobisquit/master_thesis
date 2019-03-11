@@ -140,7 +140,9 @@ impl Node for TokenBucketQueue {
                     match status {
                         Idle => vec![],
                         Transmitting => {
-                            let next_pkt = self.queue.pop_front().expect("Empty queue");
+                            let next_pkt = self.queue
+                                .pop_front()
+                                .expect("Empty queue");
 
                             // track delivered packet
                             self.n_pkt_served += 1;

@@ -1,6 +1,7 @@
 use crate::core::*;
 use std::collections::VecDeque;
 use crate::Message::*;
+use crate::counters::*;
 
 #[derive(Debug, Builder, Clone)]
 #[builder(setter(into))]
@@ -63,8 +64,13 @@ impl Node for BlockingQueue {
                         // put packet in the queue if there is space for it
                         if self.queue.len() < self.max_queue {
                             self.queue.push_back(packet);
+                            debug!("Queue size of {:?}: {}",
+                                   self.get_addr(),
+                                   self.queue.len());
                         }
                         else {
+                            info!("Packet lost for queue {:?}", self.get_addr());
+
                             // track lost packets
                             self.n_pkt_lost += 1;
                         }
@@ -91,11 +97,11 @@ impl Node for BlockingQueue {
                             let tx_time = next_pkt.size as f64 / self.conn_speed;
 
                             // tx the first packet in the queue
-                            vec![ self.new_event(current_time + tx_time,
+                            vec![ self.new_event(current_time + tx_time + PROC_TIME,
                                                  Data(next_pkt),
                                                  self.dest_addr),
 
-                                  self.new_event(current_time + tx_time,
+                                  self.new_event(current_time + tx_time + PROC_TIME,
                                                  MoveToStatus(Box::new(Decide)),
                                                  self.get_addr())
                             ]

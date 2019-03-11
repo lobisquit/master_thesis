@@ -259,13 +259,14 @@ impl Node for UdpClient {
                             // FINISH packet received: connection is closed
                             self.timeouts.clear();
 
+                            let pkt_loss = 1.0 -
+                                self.received_data as f64 /
+                                file_size as f64;
+
+                            let avg_delay = mean(&self.delays);
+
                             let utility = {
                                 if usable {
-                                    let pkt_loss = 1.0 -
-                                        self.received_data as f64 /
-                                        file_size as f64;
-
-                                    let avg_delay = mean(&self.delays);
 
                                     // let throughput = file_size  as f64 /
                                     //     (current_time - self.starting_time);
@@ -287,7 +288,10 @@ impl Node for UdpClient {
                             let report = ReportUtility {
                                 utility: utility,
                                 node_addr: self.get_addr(),
-                                notes: format!("UDP,{}", usable)
+                                notes: format!("UDP,{}; pkt_loss {}, avg_delay {}",
+                                               usable,
+                                               pkt_loss,
+                                               avg_delay)
                             };
 
                             vec![ self.new_event(current_time,
