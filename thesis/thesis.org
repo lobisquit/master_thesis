@@ -272,7 +272,7 @@ cite:CiscoVisualNetworking
 
   import graph;
 
-  size(200, 200, IgnoreAspect);
+  size(8cm, 8cm, IgnoreAspect);
 
   int[] years = { 2005,
                   2006,
@@ -311,21 +311,24 @@ cite:CiscoVisualNetworking
   real ymin = 0.5;
   real ymax = 8;
 
-  draw(graph(x=years, y=people, join=operator ..), red + linewidth(1pt));
+  draw(graph(x=years, y=people, join=operator ..), red + linewidth(1.1pt));
 
-  xaxis(axis=YEquals(0.0, false),
+  xaxis(axis=YEquals(0.5),
         xmin=years[0] - 1,
         xmax=years[years.length - 1] + 2,
-        ticks=LeftTicks(Label(fontsize(8)), beginlabel=false, Step=2, step=1,
+        ticks=LeftTicks(Label(fontsize(8)),
+                        beginlabel=false,
+                        Step=2,
+                        step=1,
                         modify=OmitTickInterval(2019, inf)),
         arrow=Arrow());
 
   yaxis(axis=Left,
-        ymin=0,
-        ymax=people[people.length - 1] + 1.2,
-        ticks=LeftTicks(Label("$%.4g \times 10^{\,9}$", fontsize(8)),
-                        modify=OmitTickInterval(5.1, inf),
-                        beginlabel=false),
+        ymin=0.5,
+        ymax=people[people.length - 1] + 0.5,
+        ticks=LeftTicks(format=Label("$%.4g \times 10^{\,9}$", fontsize(8)),
+                        modify=OmitTickInterval(4.6, inf),
+                        beginlabel=true),
         arrow=Arrow);
 
   label(L="Internet users progression",
@@ -337,7 +340,7 @@ cite:CiscoVisualNetworking
 #+CAPTION: Packets are forwarded once enough tokens are available in the bucket.
 #+ATTR_LATEX: :width 8cm
 #+LABEL: fig:internet_growth
-#+RESULTS[f2cdd36abbca4bf0e864f073967803e315a7afcd]: fig:internet_growth
+#+RESULTS[501a1821c22ab817fff53f6ba1fc3e1eb4e7aae6]: fig:internet_growth
 [[file:../figures/internet_growth.pdf]]
 
 The idea behind this revolution was to decouple the \emph{data plane}, the
