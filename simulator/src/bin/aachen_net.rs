@@ -14,6 +14,7 @@ use rand::distributions::Exp;
 use std::collections::{HashMap, HashSet, BinaryHeap};
 use std::time::Instant;
 
+use std::env;
 use std::fs::File;
 use std::fs::remove_file;
 use std::io::{BufReader, BufRead};
@@ -23,9 +24,14 @@ use std::num::ParseIntError;
 use env_logger::{Builder, Env};
 use simulator::*;
 
-static GRAPH_PATH: &str = "../data/aachen_net/topology.txt";
+static DEFAULT_GRAPH_PATH: &str = "../data/aachen_net/topology.txt";
 
 fn main() {
+    let graph_path = match env::var("GRAPH_PATH") {
+        Ok(path) => path,
+        Err(_) => DEFAULT_GRAPH_PATH.into()
+    };
+
     // simulation parameters
 
     let mut interarrival_rng: Hc128Rng = Hc128Rng::from_seed(
@@ -78,7 +84,7 @@ fn main() {
 
     // read graph
 
-    let graph = read_graph(GRAPH_PATH)
+    let graph = read_graph(&graph_path)
         .expect("ERR Error while parsing graph")
         .initialize_routes();
 
@@ -368,7 +374,7 @@ fn register_node(node: Box<Node>,
     nodes.insert(node.get_addr(), node);
 }
 
-fn read_graph(path: &str) -> Result<Graph, ParseIntError> {
+fn read_graph(path: &String) -> Result<Graph, ParseIntError> {
     let input = File::open(path).expect(&format!("{} not found", path));
     let buffered = BufReader::new(input);
 
@@ -464,7 +470,7 @@ fn populate_node(node_id: usize,
 #[test]
 fn test_graph_structure() {
     // read network topology structure
-    let graph = read_graph(GRAPH_PATH)
+    let graph = read_graph(DEFAULT_GRAPH_PATH)
         .expect("Error while parsing graph");
 
     let leaves = graph.get_leaves();
