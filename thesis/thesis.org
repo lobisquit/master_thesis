@@ -36,6 +36,7 @@
 #+LATEX_HEADER_EXTRA: \newacronym{pop}{PoP}{Point of Presence}
 #+LATEX_HEADER_EXTRA: \newacronym{dslam}{DSLAM}{Digital Subscriber Line Access Multiplexer}
 #+latex_header_extra: \newacronym{qos}{QoS}{Quality of Service}
+#+latex_header_extra: \newacronym{forces}{ForCES}{Forwarding and Control Element Separation}
 #+latex_header_extra: \newacronym{ilp}{ILP}{Integer Linear Programming}
 #+latex_header_extra: \newacronym{tbf}{TBF}{Token Bucket Filter}
 
@@ -254,6 +255,100 @@ LaTeX support for svg files sucks.
     - SDN are not inherently good: /probably/ traditional solutions are good in 99% of the networks
     - SDN are relevant when the complexity of the network grows
 #+END_SRC
+
+Since the creation of the public internet, the nature of the network layer of
+the protocol stack had been static. Each route was either set by hand or
+discovered by the device itself: in both cases no control was given to the
+network administrator to change this behaviour in case of load variations or
+poor performance.
+
+In the last year, this inflexible paradigm was questioned, as the complexity and
+sheer amount of data crossing each connection increased exponentially.
+cite:CiscoVisualNetworking
+
+#+NAME: fig:internet_growth
+#+BEGIN_SRC asymptote :file ../figures/internet_growth.pdf :noweb yes
+  <<asymptote_preamble>>
+
+  import graph;
+
+  size(200, 200, IgnoreAspect);
+
+  int[] years = { 2005,
+                  2006,
+                  2007,
+                  2008,
+                  2009,
+                  2010,
+                  2011,
+                  2012,
+                  2013,
+                  2014,
+                  2015,
+                  2016,
+                  2017,
+                  2018 };
+
+  real xmin = 0.5;
+  real xmax = 8;
+
+  real[] people = { 1.018, // 2005
+                    1.093, // 2006
+                    1.319, // 2007
+                    1.574, // 2008
+                    1.802, // 2009
+                    1.971, // 2010
+                    2.267, // 2011
+                    2.497, // 2012
+                    2.802, // 2013
+                    3.079, // 2014
+                    3.366, // 2015
+                    3.696, // 2016
+                    4.156, // 2017
+                    4.502, // 2018
+  };
+
+  real ymin = 0.5;
+  real ymax = 8;
+
+  draw(graph(years, people), red);
+
+  xaxis(axis=YEquals(0.0, false),
+        xmin=years[0] - 1,
+        xmax=years[years.length - 1] + 2,
+        ticks=LeftTicks(Label(fontsize(8)), beginlabel=false, Step=2, step=1,
+                        modify=OmitTickInterval(2019, inf)),
+        arrow=Arrow());
+
+  yaxis(axis=Left,
+        ymin=0,
+        ymax=people[people.length - 1] + 1.2,
+        ticks=LeftTicks(Label("$%.4g \times 10^{\,9}$", fontsize(8)),
+                        modify=OmitTickInterval(5.1, inf),
+                        beginlabel=false),
+        arrow=Arrow);
+
+  label(L="Internet users progression", position=point(N), align=N, p=fontsize(10));
+#+END_SRC
+
+#+CAPTION: Packets are forwarded once enough tokens are available in the bucket.
+#+ATTR_LATEX: :width 8cm
+#+LABEL: fig:internet_growth
+#+RESULTS[48baa2b89895feb3f05997a0e7df452cc39db236]: fig:internet_growth
+[[file:../figures/internet_growth.pdf]]
+
+The idea behind this revolution was to decouple the \emph{data plane}, the
+actual physical devices forwarding packets, and the \emph{control plane},
+responsible for the actual routing decision. The latter component is placed in
+one or mode devices, called \emph{controllers}, whose task is to orchestrate all
+involved devices based on current network status.
+
+The need for a programmable network layer lead to the creation of [[ac:forces][ForCES]]
+standard, in 2004. cite:Yang2004
+
+In the past years, much interest from the academic and industrial world was
+focused on the new concet
+
 * State of the art
 
 #+BEGIN_SRC org :exports none
