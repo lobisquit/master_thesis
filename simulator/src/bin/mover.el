@@ -1,4 +1,6 @@
-(defun copy-project ()
+(defun aachen-push ()
+  (interactive)
+
   (defvar remote-dir "/ssh:lovisott@login.dei.unipd.it:/home/lovisott/aachen_net/")
   (mkdir remote-dir t)
 
@@ -16,4 +18,14 @@
    "/home/enrico/Archivi/master_thesis/simulator/src/bin/aachen_net.job"
    (concat remote-dir "aachen_net.job") t))
 
-(copy-project)
+(defun aachen-pull ()
+  (interactive)
+
+  (defvar remote-dir "/ssh:lovisott@login.dei.unipd.it:/home/lovisott/aachen_net/")
+
+  (copy-file
+   (concat remote-dir "results/current.csv")
+   (concat "/home/enrico/Archivi/master_thesis/simulator/results/"
+           (number-to-string (floor (time-to-seconds (current-time))))
+           ".csv")
+   t))
