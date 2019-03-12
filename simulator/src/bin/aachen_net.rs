@@ -9,6 +9,7 @@ use rand::Rng;
 use rand::SeedableRng;
 use rand_hc::Hc128Rng;
 use rand::distributions::Exp;
+use rand::distributions::Distribution;
 
 // use std::collections::BinaryHeap;
 use std::collections::{HashMap, HashSet, BinaryHeap};
@@ -41,7 +42,7 @@ fn main() {
           85, 85, 14, 96, 11, 38, 85, 64 ]
     );
 
-    let interarrival_distr: Exp = Exp::new(3.0);
+    let interarrival_distr: Exp = Exp::new(20.0);
 
     let dslam_upload_speed: f64 = 200e5; // bit/s
     let dslam_upload_buffer: usize = (3e6 / 1500.0) as usize; // ETH packets
@@ -99,7 +100,7 @@ fn main() {
     // create nodes
 
     let mut controller = ControllerBuilder::default()
-        .interarrival(interarrival_distr)
+        .interarrival(interarrival_distr.clone())
         .rng(interarrival_rng.clone())
         .report_path(report_path)
         .build()
@@ -275,10 +276,11 @@ fn main() {
 
     // create fire events for all clients
     let mut event_queue: BinaryHeap<Event> = BinaryHeap::new();
+    let mut counter = 0;
     for (node_id, node) in &nodes {
         let fire_event = Event {
             sender: CONTROLLER_ADDR, // does not matter here
-            time: 0.0,
+            time: interarrival_distr.sample(&mut interarrival_rng),
             message: Message::UserSwitchOn,
             recipient: *node_id
         };
@@ -287,11 +289,17 @@ fn main() {
         if let Some(_) = node.downcast_ref::<UdpClient>() {
             let r = interarrival_rng.gen_range(0, 100);
             if r < 5 {
+                counter += 1;
                 event_queue.push(fire_event);
+
+                if counter == 40 {
+                    break;
+                }
+
             }
         }
         else if let Some(_) = node.downcast_ref::<TcpClient>() {
-            event_queue.push(fire_event);
+            // event_queue.push(fire_event);
         }
     }
 
@@ -302,9 +310,9 @@ fn main() {
     let detailed_debug = false;
     while let Some(event) = event_queue.pop() {
         if n_events % 1000000 == 0 {
-            info!("Reached time {:.2}s, n_events = {}",
+            info!("Reached time {:.2}s, n_events = {} x 10^6",
                   event.time,
-                  n_events);
+                  n_events / 1000000);
         }
 
         if !detailed_debug {

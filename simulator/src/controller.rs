@@ -73,17 +73,23 @@ impl Node for Controller {
                     &format!("{},{:.14},{}\n", node_addr.component_id, utility, notes)
                 );
 
-                // flush report every megabyte
-                if self.report.len() > 1e6 as usize {
+                // flush report every now and then
+                if self.report.len() > 1e4 as usize {
                     self.flush_report().unwrap();
                 }
 
-                let interarrival_time = self.interarrival.sample(&mut self.rng);
-                vec![
-                    // self.new_event(current_time + interarrival_time,
-                    //                UserSwitchOn,
-                    //                node_addr)
-                ]
+                if current_time < 50.0 {
+                    let interarrival_time = self.interarrival.sample(&mut self.rng);
+
+                    vec![
+                        self.new_event(current_time + interarrival_time,
+                                       UserSwitchOn,
+                                       node_addr)
+                    ]
+                }
+                else {
+                    vec![]
+                }
             },
             RecomputeParams => {
                 // TODO use utilities information to modify TBF parameters, with

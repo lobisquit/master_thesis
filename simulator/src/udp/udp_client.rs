@@ -288,7 +288,7 @@ impl Node for UdpClient {
                             let report = ReportUtility {
                                 utility: utility,
                                 node_addr: self.get_addr(),
-                                notes: format!("UDP,{}; pkt_loss {}, avg_delay {}",
+                                notes: format!("UDP; usable {}, pkt_loss {}, avg_delay {}",
                                                usable,
                                                pkt_loss,
                                                avg_delay)
