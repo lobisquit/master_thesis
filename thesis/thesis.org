@@ -311,7 +311,7 @@ cite:CiscoVisualNetworking
   real ymin = 0.5;
   real ymax = 8;
 
-  draw(graph(years, people), red);
+  draw(graph(x=years, y=people, join=operator ..), red + linewidth(1pt));
 
   xaxis(axis=YEquals(0.0, false),
         xmin=years[0] - 1,
@@ -328,13 +328,16 @@ cite:CiscoVisualNetworking
                         beginlabel=false),
         arrow=Arrow);
 
-  label(L="Internet users progression", position=point(N), align=N, p=fontsize(10));
+  label(L="Internet users progression",
+        position=point(N),
+        align=N,
+        p=fontsize(10));
 #+END_SRC
 
 #+CAPTION: Packets are forwarded once enough tokens are available in the bucket.
 #+ATTR_LATEX: :width 8cm
 #+LABEL: fig:internet_growth
-#+RESULTS[48baa2b89895feb3f05997a0e7df452cc39db236]: fig:internet_growth
+#+RESULTS[f2cdd36abbca4bf0e864f073967803e315a7afcd]: fig:internet_growth
 [[file:../figures/internet_growth.pdf]]
 
 The idea behind this revolution was to decouple the \emph{data plane}, the
