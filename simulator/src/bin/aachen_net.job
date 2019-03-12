@@ -13,7 +13,7 @@
 # Il file di output sara' test.job.oJOBID
 # Il file degli errori sara' test.job.eJOBID
 #$ -o out_aachen_net
-#$ -e in_aachen_net
+#$ -e err_aachen_net
 
 chmod +x aachen_net
 GRAPH_PATH=$(realpath topology.txt) RUST_LOG=aachen_net=info ./aachen_net
