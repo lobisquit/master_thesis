@@ -159,7 +159,7 @@
      fig = plt.figure(figsize=(4, 5), frameon=False)
      ax = fig.gca()
 
-     ttl = ax.set_title("Map of LambdaNet network",
+     ttl = ax.set_title("Map of LambdaNet",
                         fontsize=12,
                         fontweight=font_spec['font.weight'])
 
