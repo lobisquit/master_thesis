@@ -39,6 +39,7 @@
 #+latex_header_extra: \newacronym{forces}{ForCES}{Forwarding and Control Element Separation}
 #+latex_header_extra: \newacronym{ilp}{ILP}{Integer Linear Programming}
 #+latex_header_extra: \newacronym{tbf}{TBF}{Token Bucket Filter}
+#+latex_header_extra: \newacronym{sdn}{SDN}{Software Defined Network}
 
 #+LATEX_HEADER: \makeatletter
 #+LATEX_HEADER: \newenvironment{bigalgorithm}
@@ -256,6 +257,8 @@ LaTeX support for svg files sucks.
     - SDN are relevant when the complexity of the network grows
 #+END_SRC
 
+# SDN
+
 Since the creation of the public internet, the nature of the network layer of
 the protocol stack had been static. Each route was either set by hand or
 discovered by the device itself: in both cases no control was given to the
@@ -266,8 +269,8 @@ In the last year, this inflexible paradigm was questioned, as the complexity and
 sheer amount of data crossing each connection increased exponentially.
 cite:CiscoVisualNetworking
 
-#+NAME: fig:internet_growth
-#+BEGIN_SRC asymptote :file ../figures/internet_growth.pdf :noweb yes
+#+NAME: fig:internet_user_growth
+#+BEGIN_SRC asymptote :file ../figures/internet_user_growth.pdf :noweb yes
   <<asymptote_preamble>>
 
   import graph;
@@ -326,36 +329,177 @@ cite:CiscoVisualNetworking
   yaxis(axis=Left,
         ymin=0.5,
         ymax=people[people.length - 1] + 0.5,
-        ticks=LeftTicks(format=Label("$%.4g \times 10^{\,9}$", fontsize(8)),
+        ticks=RightTicks(format=Label("$%.4g \times 10^{\,9}$", fontsize(8)),
                         modify=OmitTickInterval(4.6, inf),
+                        extend=false,
                         beginlabel=true),
         arrow=Arrow);
 
   label(L="Internet users progression",
         position=point(N),
-        align=N,
+        align=shift(0, 1) * N,
         p=fontsize(10));
 #+END_SRC
 
-#+CAPTION: Packets are forwarded once enough tokens are available in the bucket.
+#+CAPTION: Number of internet users has steadily increased for the past fifteen years.
 #+ATTR_LATEX: :width 8cm
-#+LABEL: fig:internet_growth
-#+RESULTS[501a1821c22ab817fff53f6ba1fc3e1eb4e7aae6]: fig:internet_growth
-[[file:../figures/internet_growth.pdf]]
+#+LABEL: fig:internet_user_growth
+#+RESULTS[741d558b5f3167e9b663ac66fa2b42b26986980f]: fig:internet_user_growth
+[[file:../figures/internet_user_growth.pdf]]
 
 The idea behind this revolution was to decouple the \emph{data plane}, the
 actual physical devices forwarding packets, and the \emph{control plane},
-responsible for the actual routing decision. The latter component is placed in
-one or mode devices, called \emph{controllers}, whose task is to orchestrate all
-involved devices based on current network status.
+responsible for the actual routing decision. The latter is placed in one or mode
+devices, called \emph{controllers}, whose task is to orchestrate involved
+routers and switches based on current and forecast network status.
 
-The need for a programmable network layer lead to the creation of [[ac:forces][ForCES]]
-standard, in 2004. cite:Yang2004
+This separation moves the routing logic from the single component to a
+centralized and fully programmable entity, that can perform its decisions based
+on an overall view of the network dynamics.
 
-In the past years, much interest from the academic and industrial world was
-focused on the new concet
+In a moment of congestion of a particular link, for example, some data flows can
+be diverted to other paths, increasing [[ac:qos][QoS]] for all users. This can be very
+interesting in cable networks, where packet gridlock is indeed the main issue
+for administrators.
+
+#+CAPTION: Data flow of users (squares) are tuned and managed by the SDN controller via the routers (circles).
+#+ATTR_LATEX: :width 8cm
+#+LABEL: fig:network_planes
+[[file:../figures/network_planes.pdf]]
+
+# brief history of the concept
+
+Although the concept had been considered for many years, its first
+implementations were not successful from an adoption point of view. Standards
+like [[ac:forces][ForCES]], published by IETF in 2004, failed to gain traction because of the
+security concerns, regarding possible attacks against the [[ac:sdn][SDN]] controller and
+because vendors were not willing to adopt a common interface, for fear of
+competition.
+
+The first widespread example of open-source API was OpenFlow, proposed in 2008
+by the Stanford computer science department. cite:Mckeown2008 After its
+definition, a multitude of applications were written on top of this new
+standard, such as NOX network operating system cite:Gude2008, and this helped
+further adoption to the point where OpenFlow is now considered industry
+standard.
+
+Many data centers all over the world experimented successfully with it
+cite:Vaughan2011,Uppal2010, in fact, and report significant improvements in
+their infrastructure management and performance.
+
+# shortcomings of proposed solution and applications
+
+Currently there is much hype about OpenFlow, since they are seen as a tool to
+overcome the ``ossification of the Internet'' cite:Hakiri2014, making the whole
+system more flexible to manage.
+
+This is especially interesting since users number has steadily continued to grow
+in the past years, as shown previously in autoref:fig:internet_user_growth.
+Moreover, the traffic all these people are requesting to the Internet
+infrastructure is not yet expected to stabilize, according to \textsc{cisco}.
+cite:CiscoVisualNetworking.
+
+#+NAME: fig:internet_traffic_growth
+#+BEGIN_SRC asymptote :file ../figures/internet_traffic_growth.pdf :noweb yes
+  <<asymptote_preamble>>
+
+  import graph;
+
+  size(8cm, 8cm, IgnoreAspect);
+
+  int[] years = { 2017,
+                  2018,
+                  2019,
+                  2020,
+                  2021,
+                  2022 };
+
+  real xmin = 0.5;
+  real xmax = 8;
+
+  real[] traffic = { 122, // 2017
+                     156, // 2018
+                     201, // 2019
+                     254, // 2020
+                     319, // 2021
+                     396, // 2022
+  };
+
+  real ymin = 0.5;
+  real ymax = 8;
+
+  draw(graph(x=years, y=traffic, join=operator ..), green + linewidth(1.1pt));
+
+  xaxis(axis=YEquals(0.5),
+        xmin=years[0] - 1,
+        xmax=years[years.length - 1] + 2,
+        ticks=LeftTicks(Label(fontsize(8)),
+                        beginlabel=false,
+                        Step=2,
+                        step=1,
+                        modify=OmitTickInterval(years[years.length - 1] + 1, inf)),
+        arrow=Arrow());
+
+  yaxis(axis=Left,
+        ymin=0.5,
+        ymax=traffic[traffic.length - 1] + 100,
+        ticks=RightTicks(format=Label("$%.4g$EB/month", fontsize(8)),
+                        modify=OmitTickInterval(401, inf),
+                        extend=false,
+                        beginlabel=true),
+        arrow=Arrow);
+
+  label(L="Internet traffic projection",
+        position= point(N),
+        align=shift(0, 1) * N,
+        p=fontsize(10));
+#+END_SRC
+
+#+CAPTION: Internet traffic is expected to explode in the next years.
+#+ATTR_LATEX: :width 8cm
+#+LABEL: fig:internet_traffic_growth
+#+RESULTS[4b42a8c1b680a5f504ed404b1508d1409846c631]: fig:internet_traffic_growth
+[[file:../figures/internet_traffic_growth.pdf]]
+
+Given the current demand for connectivity and bandwidth, [[ac:sdn][SDN]] can be a
+ground-breaking approach to further improve the networks performance at every
+level.
+
+However, as every tool, its makings have to be coupled with a robust knowledge
+on its limits. From a methodological point of view, this is necessary in order
+to make the most out of [[ac:sdn][SDN]], since alleged once-and-for-all solutions often
+stumble when context changes from the expected one.
+
+As mentioned before, [[ac:sdn][SDN]] were indeed useful when dealing with very high
+bandwidth link management in scenarios that are complex either because of the
+topology or applications demand. cite:Singh2015
+
+In this thesis we aim then to understand what happens in the other side of the
+spectrum, i.e. when dealing with static and simple access networks. At the
+moment no study has been devoted to understand and quantify how much a
+controller can improve user [[ac:qos][QoS]] in these simple, but very common, settings.
+
+We specifically focused on the access network of Aachen, historical city in the
+German state of North Rein-Westphalia. As the actual schematics are not
+available to the general public, our network topology was inferred, solving an
+optimization problem, as residential buildings and population distribution
+across the area, performing a so-called \emph{educated guess}.
+
+The network was run in a custom event driven simulator, both with and without a
+controller, in order to assess the improvement introduced by its action.
+
+\smallskip
+This thesis is structured as follows.
+First, an overview of past works related to this thesis scope is provided in
+autoref:state_of_art. Then, autoref:methodology introduces the theoretical
+instruments employed in this analysis, whose results are collected and commented
+in autoref:results. Final remarks and considerations are eventually discussed in
+autoref:conclusion.
 
 * State of the art
+:PROPERTIES:
+:CUSTOM_ID: state_of_art
+:END:
 
 #+BEGIN_SRC org :exports none
   One subsection for each of the macro-areas
@@ -406,7 +550,7 @@ effectively self-learning framework.
 
 The city of Aachen is located in the north-west of Germany, in state of North
 Rhine-Westphalia. Its district has a surface of 160.85km² and a population of
-244951 citizens.
+244,951 citizens.
 
 Although medium sized, the city is an important telecommunication node between
 Germany and the neighbour countries of Belgium and Netherlands. The LambdaNet
@@ -417,7 +561,7 @@ autoref:fig:lambdanet.
 
 #+LABEL: fig:lambdanet
 #+ATTR_LATEX: :width 10cm
-#+CAPTION: LambdaNet is a national backbone that serves all German major cities and connects the country to the rest of Europe.
+#+CAPTION: LambdaNet is a national backbone that serves all major German cities and connects the country to the rest of Europe.
 [[../figures/german_backbone.pdf]]
 
 In this thesis we will then suppose that the access network connects all Aachen
@@ -1520,6 +1664,10 @@ classification algorithms, such as Deep Packet Inspection.
 [[file:../figures/utility_example.pdf]]
 
 * Results
+:PROPERTIES:
+:CUSTOM_ID: results
+:END:
+
 This chapter follows the what was presented in [[autoref:methodology]] and shows
 what can be obtained using those theoretical frameworks and tools.
 
@@ -1543,7 +1691,7 @@ corresponding to buildings and streets of the entire state of North
 Rein-Westphalia were downloaded, merged and cropped to remove anything outside
 Aachen border. cite:OpenStreetMap
 
-After those operations, the remaining 58305 constructions and 9759 roads were
+After those operations, the remaining 58,305 constructions and 9,759 roads were
 paired with the population density information and used to draw the map in
 autoref:results-geographical_analysis.
 
@@ -1573,8 +1721,8 @@ All long roads were split and forced to be shorter than 200m: this way the
 average displacement introduced via this approximation was reduced to just 50m,
 tolerable for our purposes.
 
-At the end of this pre-processing phase, the graph is made of 7231 vertices and
-9272 edges and its complexity can be handled by our algorithms. \\
+At the end of this pre-processing phase, the graph is made of 7,231 vertices and
+9,272 edges and its complexity can be handled by our algorithms. \\
 A visual representation is given in [[autoref:fig:aachen_city_graph]] that shows the
 result of a small part of the city center, as tiny details could not be
 otherwise discerned.
@@ -1620,13 +1768,13 @@ items in the market and industry best practices. cite:CiscoWAN
 #+NAME: optimization_params
 #+CAPTION: Values for problem parameters in the first two iterations.
 #+ATTR_LATEX: :align crrr
-| Parameters     |        [[ac:dslam][DSLAM]] |       Routers | Mainframe |
-|----------------+--------------+---------------+-----------|
-| $n_M$ [unit]   |           48 |           400 | -         |
-| $d_M$ [m]      |         1500 |             - | -         |
-| $c_r$ [€/unit] | 1000 + 30000 | 15000 + 85000 | -         |
-| $c_f$ [€/m]    |            3 |             3 | 3         |
-| $c_e$ [€/m]    |          100 |           100 | 100       |
+| Parameters     |          [[ac:dslam][DSLAM]] |         Routers | Mainframe |
+|----------------+----------------+-----------------+-----------|
+| $n_M$ [unit]   |             48 |             400 | -         |
+| $d_M$ [m]      |          1,500 |               - | -         |
+| $c_r$ [€/unit] | 1,000 + 30,000 | 15,000 + 85,000 | -         |
+| $c_f$ [€/m]    |              3 |               3 | 3         |
+| $c_e$ [€/m]    |            100 |             100 | 100       |
 
 As anticipated in autoref:methodology-network_design the exact
 solution to the placement optimization problems could not be obtained using [[ac:ilp][ILP]].
@@ -1647,7 +1795,7 @@ problem.
 #+ATTR_LATEX: :align crr
 | Problem                   | [[ac:dslam][DSLAM]] | 2nd level routers |
 |---------------------------+-------+-------------------|
-| Number of groups          |  1125 |                72 |
+| Number of groups          | 1,125 |                72 |
 | [[ac:ilp][ILP]] cost lower bound [M€] | 65.05 |             38.08 |
 | Heuristic cost [M€]       | 67.73 |             39.38 |
 | Heuristic gap             |    4% |                3% |
@@ -1679,6 +1827,9 @@ the proper level of detail if needed.
 [[file:../figures/heuristic_mainframe.png]]
 
 * Conclusions
+:PROPERTIES:
+:CUSTOM_ID: conclusion
+:END:
 
 bibliographystyle:plain
 bibliography:biblio.bib
