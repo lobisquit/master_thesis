@@ -274,8 +274,7 @@ impl Node for TcpServer {
                             if !self.acked_pkts.contains(&sequence_num) {
                                 let ack_creation = packet.creation_time;
 
-
-                                if let Some(packet_creation) = self.creation_times.get(&(sequence_num - 1)) {
+                                if let Some(packet_creation) = self.creation_times.get(&sequence_num) {
                                     // evaluate transmission time for uplink and
                                     // downlink
                                     let tx_ack = current_time - ack_creation;
