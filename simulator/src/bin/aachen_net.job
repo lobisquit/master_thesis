@@ -2,16 +2,10 @@
 
 #!/bin/bash
 #
-# Imposta il valore 'name' di qstat
 #$ -N aachen_net
 #
-# Tutti i percorsi sono relativi alla cartella corrente (-cwd)
-# Genera output ed errori nella cartella corrente.
 #$ -cwd
 #
-# Non redirigo l'output: ogni esecuzione generera' un file diverso.
-# Il file di output sara' test.job.oJOBID
-# Il file degli errori sara' test.job.eJOBID
 #$ -o out_aachen_net
 #$ -e err_aachen_net
 

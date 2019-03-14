@@ -42,6 +42,8 @@ fn main() {
           85, 85, 14, 96, 11, 38, 85, 64 ]
     );
 
+    let proc_time: f64 = 5e-6;
+
     let interarrival_distr: Exp = Exp::new(20.0);
 
     let dslam_upload_speed: f64 = 200e5; // bit/s
@@ -123,7 +125,8 @@ fn main() {
                       dslam_upload_buffer,
                       dslam_upload_speed,
                       dslam_download_buffer,
-                      dslam_download_speed);
+                      dslam_download_speed,
+                      proc_time);
     }
     debug!("Initialized {} DSLAMs", dslams.len());
 
@@ -135,7 +138,8 @@ fn main() {
                       router_upload_buffer,
                       router_upload_speed,
                       router_download_buffer,
-                      router_download_speed);
+                      router_download_speed,
+                      proc_time);
     }
     debug!("Initialized {} ROUTERs", routers.len());
 
@@ -146,6 +150,7 @@ fn main() {
             .dest_addr(NodeAddress::new(MAINFRAME_ID.into(), SWITCH_UPLINK_ID))
             .max_queue(mainframe_upload_buffer)
             .conn_speed(mainframe_upload_speed)
+            .additional_delay(0.0)
             .build()
             .expect("ERR 3asd");
 
@@ -163,6 +168,7 @@ fn main() {
             .dest_addr(NodeAddress::new(MAINFRAME_ID.into(), SWITCH_DOWNLINK_ID))
             .max_queue(mainframe_download_buffer)
             .conn_speed(mainframe_download_speed)
+            .additional_delay(0.0)
             .build()
             .expect("ERR 3asd");
 
@@ -292,14 +298,14 @@ fn main() {
                 counter += 1;
                 event_queue.push(fire_event);
 
-                if counter == 40 {
+                if counter == 20 {
                     break;
                 }
 
             }
         }
         else if let Some(_) = node.downcast_ref::<TcpClient>() {
-            // event_queue.push(fire_event);
+            event_queue.push(fire_event);
         }
     }
 
@@ -309,6 +315,9 @@ fn main() {
 
     let detailed_debug = false;
     while let Some(event) = event_queue.pop() {
+        if event.time < -0.0 {
+            panic!("Negative time for {:?}", event);
+        }
         if n_events % 1000000 == 0 {
             info!("Reached time {:.2}s, n_events = {} x 10^6",
                   event.time,
@@ -417,7 +426,8 @@ fn populate_node(node_id: usize,
                  max_queue_uplink: usize,
                  conn_speed_uplink: f64,
                  max_queue_downlink: usize,
-                 conn_speed_downlink: f64) {
+                 conn_speed_downlink: f64,
+                 proc_time: f64) {
 
     // uplink components
     let uplink_tbf = TokenBucketQueueBuilder::default()
@@ -434,6 +444,7 @@ fn populate_node(node_id: usize,
     let uplink_nic = BlockingQueueBuilder::default()
         .node_addr(NodeAddress::new(node_id, NIC_UPLINK_ID))
         .dest_addr(NodeAddress::new(father_id, TBF_UPLINK_ID))
+        .additional_delay(proc_time)
         .max_queue(max_queue_uplink)    // bits
         .conn_speed(conn_speed_uplink)  // Mbit/s;
         .build()
@@ -456,6 +467,7 @@ fn populate_node(node_id: usize,
         .dest_addr(NodeAddress::new(node_id, SWITCH_DOWNLINK_ID))
         .max_queue(max_queue_downlink)    // bits
         .conn_speed(conn_speed_downlink)  // Mbit/s;
+        .additional_delay(proc_time)
         .build()
         .expect("ERR 5");
 

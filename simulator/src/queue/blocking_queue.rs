@@ -12,6 +12,8 @@ pub struct BlockingQueue {
     max_queue: usize,
     conn_speed: f64,
 
+    additional_delay: f64,
+
     #[builder(setter(skip))]
     status: BlockingQueueStatus,
 
@@ -22,7 +24,7 @@ pub struct BlockingQueue {
     n_pkt_served: usize,
 
     #[builder(setter(skip))]
-    n_pkt_lost: usize,
+    n_pkt_lost: usize
 }
 
 #[derive(Debug, Clone)]
@@ -97,11 +99,11 @@ impl Node for BlockingQueue {
                             let tx_time = next_pkt.size as f64 / self.conn_speed;
 
                             // tx the first packet in the queue
-                            vec![ self.new_event(current_time + tx_time + PROC_TIME,
+                            vec![ self.new_event(current_time + tx_time + self.additional_delay,
                                                  Data(next_pkt),
                                                  self.dest_addr),
 
-                                  self.new_event(current_time + tx_time + PROC_TIME,
+                                  self.new_event(current_time + tx_time + self.additional_delay,
                                                  MoveToStatus(Box::new(Decide)),
                                                  self.get_addr())
                             ]
