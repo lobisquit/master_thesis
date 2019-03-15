@@ -1719,6 +1719,7 @@ Write network tree in a `txt` file for making the job for Rust parser easy.
       return _replacer
 
   unique_replacer = new_replacer(old_ids, new_ids)
+  unique_replacer_reverse = new_replacer(new_ids, old_ids)
 
   buildings = list(map(unique_replacer, buildings))
   building_dslam = list(map(unique_replacer, building_dslam))
@@ -1727,15 +1728,50 @@ Write network tree in a `txt` file for making the job for Rust parser easy.
   routers = list(map(unique_replacer, routers))
   router_mainframe = list(map(unique_replacer, router_mainframe))
 
-  # save output result
-  with open('data/aachen_net/topology.txt', 'w') as f:
-      for child, father in zip(dslams, dslam_router):
-          f.write("{},{},{}\n".format(child,
-                                      father,
-                                      G_dslam.vp['n_lines'].a[child]))
+  # create an abstract graph and save it to graphml
+  g = Graph()
 
-      for child, father in zip(routers, router_mainframe):
-          f.write("{},{}\n".format(child, father))
+  dslam_vertex = {
+      dslam: g.add_vertex()
+      for dslam in dslams
+  }
+
+  router_vertex = {
+      router: g.add_vertex()
+      for router in routers
+  }
+
+  mainframe_vertex = { 0: g.add_vertex() }
+
+  for dslam, router in zip(dslams, dslam_router):
+      g.add_edge(dslam_vertex[dslam],
+                 router_vertex[router])
+
+  for router, mainframe in zip(routers, router_mainframe):
+      g.add_edge(router_vertex[router],
+                 mainframe_vertex[mainframe])
+
+  # check obtained graph is a tree
+  assert len(list(g.vertices())) == len(list(g.edges())) + 1
+
+  components = label_components(g)[1]
+  assert np.all(components == components[0])
+
+  # setup n_lines (!=0 only in dlams)
+  g.vp['n_lines'] = g.new_vertex_property("int")
+  for v in g.vertices():
+      g.vp['n_lines'][v] = 0
+
+  for dslam, vertex in dslam_vertex.items():
+      buildings_of_dslam = np.array(building_dslam) == dslam
+      buildings_ids = list(map(reverse_replacer,
+                               np.array(buildings)[buildings_of_dslam]))
+
+      g.vp['n_lines'][vertex] = sum(G_complete.vp['n_lines'].a[buildings_ids])
+
+  assert g.vp['n_lines'].a.sum() == G_complete.vp['n_lines'].a.sum()
+
+  g.save('data/aachen_net/abstract_topology.graphml')
 #+END_SRC
 
 # # eval: (add-hook 'after-save-hook 'org-babel-tangle-this-file t t)
