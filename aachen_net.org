@@ -997,7 +997,7 @@ measuring its cost for each node of the cluster as root.
           )
 
       for index, root in enumerate(set(neighbour_nodes)):
-          print("root {}/{}".format(index, len(set(neighbour_nodes))), end="\r")
+          # print("root {}/{}".format(index, len(set(neighbour_nodes))), end="\r")
 
           # compute edges of tree with root node
           tree_edges = np.zeros(G.num_edges(), dtype=bool)
@@ -1120,6 +1120,8 @@ Merge has to guarantee that
       terminal_dist = vertex_dist[np.ix_(is_terminal, is_terminal)]
       min_cluster_dist = terminal_dist.copy()
 
+      initial_total_cluster_lines = sum(cluster_lines)
+
       # fill diagonal with nans (values we want to ignore)
       np.fill_diagonal(min_cluster_dist, np.nan)
 
@@ -1212,7 +1214,8 @@ Merge has to guarantee that
       G.ep['active'].a     = False
 
       for index, cluster_id in enumerate(set(clusters)):
-          print("Loaded cluster", index, "/", len(set(clusters)), end='\r')
+          if index % 100 == 0:
+              print("Loaded cluster", index, "/", len(set(clusters)), end='\r')
 
           cluster_nodes = terminals[clusters == cluster_id]
           _, _, root, tree_edges = get_min_path_tree(G,
@@ -1224,7 +1227,7 @@ Merge has to guarantee that
 
           # root may also be (in non-fast mode) a non-terminal, so its n_lines
           # would be zero: better set it
-          G.vp['n_lines'].a[root] = G.vp['n_lines'].a[cluster_nodes[0]]
+          G.vp['n_lines'].a[root] = cluster_lines[ np.where(clusters == cluster_id)[0][0] ]
           G.vp['is_subroot'].a[root] = True
           G.vp['active'].a[cluster_nodes] = True
           G.vp['father_id'].a[cluster_nodes] = root
@@ -1233,6 +1236,8 @@ Merge has to guarantee that
       # make n_lines != only for subroots (terminals of next iteration)
       not_subroot_mask = np.logical_not(G.vp['is_subroot'].a)
       G.vp['n_lines'].a[not_subroot_mask] = 0
+
+      assert initial_total_cluster_lines == G.vp['n_lines'].a.sum(), 'Some lines were lost while merging'
 
       return G
 #+END_SRC
