@@ -1,9 +1,8 @@
 import numpy as np
-import pandas as pd
+from docplex.mp.model import Model
 from graph_tool.all import *
 
 import cplex
-from docplex.mp.model import Model
 
 g = load_graph('data/aachen_net/abstract_topology.graphml')
 
