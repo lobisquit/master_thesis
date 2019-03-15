@@ -238,6 +238,10 @@ LaTeX support for svg files sucks.
 #+END_SRC
 
 * Introduction
+:PROPERTIES:
+:CUSTOM_ID: introduction
+:END:
+
 #+BEGIN_SRC org :exports none
   + background: what are we talking about?
     - SDN => self-optimizing networks
@@ -513,6 +517,12 @@ autoref:conclusion.
 
   - heuristic control of the network
 #+END_SRC
+
+As mentioned in autoref:introduction, the first step of this thesis is the
+estimation of the Aachen city network, given publicly available information on
+city topology and population density.
+
+The \emph{educated guess} was performed solving an optimization problem,
 
 * Methodology
 :PROPERTIES:
@@ -1595,13 +1605,22 @@ This feature makes the [[ac:tbf][TBF]] a flexible and powerful tool, that can be
 even in low-power network devices, whose processing power cannot handle advanced
 classification algorithms, such as Deep Packet Inspection.
 
-*** Optimization approach
+*** Objective definition
+In order to improve the network service for its users, first we have to define
+what we mean for \emph{improvement}. We decided to maximize user [[ac:qos][QoS]], defined as
+a number in $[0,\,1]$, ranging from unusable to perfect link.
+
+Following what proposed in Cisco Service Level Agreement recommendations, each
+type of user application is assigned a certain number of constraints to satisfy
+in order for it to work properly. For example, video streaming requires moderate
+packet loss and a decent average delay, while the main concern for traditional
+web page traffic is the page load time. cite:CiscoSLA
 
 #+NAME: utility_example
-#+BEGIN_SRC asymptote :file ../figures/utility_example.pdf :noweb yes
+#+BEGIN_SRC asymptote :file ../figures/utility_example.pdf :noweb yes :tangle ciao.asy
   <<asymptote_preamble>>
 
-  size(8cm);
+  size(x=0, y=7cm);
 
   real m = 0.15;
   real deltax = 0.2;
@@ -1620,17 +1639,25 @@ classification algorithms, such as Deep Packet Inspection.
   label("$x$", (xmax + padding, 0), align=E);
   label("$y$", (0, ymax + padding), align=N);
 
-  draw((0, 1) -- (xmax, 1), dashed + grey);
   label("$1$", (0, 1), align=W);
   label("$0$", (0, 0), align=W);
 
   import graph;
-  real f(real x) {
+  real f1(real x) {
     return 1/(1 + ((1-m)/m)^((x - xcenter)/deltax));
   }
 
-  path g = graph(f, xmin, xmax);
-  draw(g);
+  real f2(real x) {
+    if (x < xcenter) {
+      return 1;
+    }
+    else {
+      return 0;
+    }
+  }
+
+  draw(graph(f2, xmin, xcenter), dashed + grey, legend=Label("Ideal utility", fontsize(10)));
+  draw(graph(f1, xmin, xmax), legend=Label("Smoothed utility", fontsize(10)));
 
   path p1 = (xcenter + deltax, 0) -- (xcenter + deltax, m);
   draw(p1, grey, arrow=Arrows);
@@ -1655,12 +1682,14 @@ classification algorithms, such as Deep Packet Inspection.
 
   dot( (xcenter + deltax, m) );
   dot( (xcenter - deltax, 1-m) );
+
+  attach(legend(p=invisible, linelength=1cm, xmargin=0), point(E), NE);
 #+END_SRC
 
-#+CAPTION: Utility function with threshold on $x_{c}$, separating suitable and unsuitable values of $x$.
-#+ATTR_LATEX: :width 8cm
+#+CAPTION: A smoothed version of the shifted unit step is employed, to guide the optimization.
+#+ATTR_LATEX: :height 7cm
 #+LABEL: utility_example
-#+RESULTS[94d068631332ade2aa3868d1a95e9840b9bed403]: utility_example
+#+RESULTS[52f6ec3f067dd8083c848821ccab803bc0174838]: utility_example
 [[file:../figures/utility_example.pdf]]
 
 * Results
