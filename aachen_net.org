@@ -1479,6 +1479,9 @@ Run the heuristic and save its results as well.
   for key, value in params:
       logger.info("{}={}".format(key, value))
 
+  # dslams (all sub-roots of previous tree) count as 1
+  G.vp['n_lines'].a = np.array(G.vp['n_lines'].a > 0, dtype=int)
+
   # find optimal configuration
   params = dict(params)
   params['discovery_dist'] = 400
@@ -1751,28 +1754,43 @@ Write network tree in a `txt` file for making the job for Rust parser easy.
       g.add_edge(router_vertex[router],
                  mainframe_vertex[mainframe])
 
+  # add users
+  for dslam, vertex in dslam_vertex.items():
+      buildings_of_dslam = np.array(building_dslam) == dslam
+      buildings_ids = list(map(unique_replacer_reverse,
+                               np.array(buildings)[buildings_of_dslam]))
+
+      n_lines = sum(G_complete.vp['n_lines'].a[buildings_ids])
+
+      for _ in range(n_lines):
+          user = g.add_vertex()
+          g.add_edge(user, vertex)
+
   # check obtained graph is a tree
   assert len(list(g.vertices())) == len(list(g.edges())) + 1
 
   components = label_components(g)[1]
   assert np.all(components == components[0])
 
-  # setup n_lines (!=0 only in dlams)
-  g.vp['n_lines'] = g.new_vertex_property("int")
+  # count users: check they are the right amount
+  total_n_lines = 0
   for v in g.vertices():
-      g.vp['n_lines'][v] = 0
+      if g.vertex(v).in_degree():
+          total_n_lines += 1
 
-  for dslam, vertex in dslam_vertex.items():
-      buildings_of_dslam = np.array(building_dslam) == dslam
-      buildings_ids = list(map(reverse_replacer,
-                               np.array(buildings)[buildings_of_dslam]))
+  assert total_n_lines == G_complete.vp['n_lines'].a.sum()
 
-      g.vp['n_lines'][vertex] = sum(G_complete.vp['n_lines'].a[buildings_ids])
 
-  assert g.vp['n_lines'].a.sum() == G_complete.vp['n_lines'].a.sum()
+
+  # mark the root (to pick it for sure)
+  g.vp['root'] = g.new_vertex_property("bool")
+  g.vp['root'].a = False
+  g.vp['root'][mainframe_vertex[0]] =True
 
   g.save('data/aachen_net/abstract_topology.graphml')
 #+END_SRC
+
+#+RESULTS:
 
 # # eval: (add-hook 'after-save-hook 'org-babel-tangle-this-file t t)
 
