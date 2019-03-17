@@ -1642,7 +1642,7 @@ Plot detail of obtained graph.
 #+END_SRC
 
 * Output abstract topology
-Write network tree in a `txt` file for making the job for Rust parser easy.
+Write network tree in a proper `graphml` file.
 
 #+BEGIN_SRC python :noweb yes :var graph_path=flatten(graph_path) :tangle scripts/aachen_net/22_output_topology.py
   <<imports_&_defaults>>
@@ -1652,7 +1652,6 @@ Write network tree in a `txt` file for making the job for Rust parser easy.
   G_complete = load_graph(graph_path + "_complete.graphml")
   G_dslam = load_graph(graph_path + "_DSLAM_heuristic.graphml")
   G_2router = load_graph(graph_path + "_2router_heuristic.graphml")
-  G_mainframe = load_graph(graph_path + "_mainframe_heuristic.graphml")
 
   max_vertex = max(int(v) for v in G_complete.vertices())
 
@@ -1775,12 +1774,11 @@ Write network tree in a `txt` file for making the job for Rust parser easy.
   # count users: check they are the right amount
   total_n_lines = 0
   for v in g.vertices():
-      if g.vertex(v).in_degree():
+      # find leaves
+      if g.vertex(v).in_degree() == 0:
           total_n_lines += 1
 
   assert total_n_lines == G_complete.vp['n_lines'].a.sum()
-
-
 
   # mark the root (to pick it for sure)
   g.vp['root'] = g.new_vertex_property("bool")
