@@ -6,5 +6,9 @@
 
 cd /home/lovisott/master_thesis/optimization/
 
+# ~/.local/bin/virtualenv venv -p python3.6
+# source venv/bin/activate
+# pip install numpy pandas scipy networkx
+
 source venv/bin/activate
 python -O tbf_solution.py
