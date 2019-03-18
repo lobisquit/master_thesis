@@ -7,6 +7,24 @@ from graph_tool.all import *
 
 from problem_def import *
 
+cache = {}
+def get_subtree_leaves(g, v):
+    if v in cache:
+        return cache[v]
+
+    if isinstance(v, Vertex):
+        v = int(v)
+
+    if g.vertex(v).in_degree() == 0:
+        cache[v] = v
+        return [v]
+    else:
+        child_leaves = []
+        for child, _, _ in g.get_in_edges(v):
+            child_leaves += get_subtree_leaves(g, child)
+
+        cache[v] = child_leaves
+        return child_leaves
 
 def run_optimization(p_nothing, p_streaming):
     g = load_graph('../data/aachen_net/abstract_topology.graphml')

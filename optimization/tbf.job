@@ -1,0 +1,10 @@
+#!/bin/bash
+
+# create ouput files in job directory
+#$ -o /home/lovisott/master_thesis/optimization/out.txt
+#$ -e /home/lovisott/master_thesis/optimization/err.txt
+
+cd /home/lovisott/master_thesis/optimization/
+
+source venv/bin/activate
+python -O tbf_solution.py

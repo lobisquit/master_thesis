@@ -1,7 +1,6 @@
 from random import random
 
 import numpy as np
-from graph_tool.all import *
 from numpy.random import normal, rand
 
 MAX_DSLAM_BW = 1e9 # bps
@@ -41,22 +40,3 @@ def get_realization(p_nothing, p_streaming):
         return BW_MIN_STREAM, BW_TOLERANCE_STREAM, MARGIN
     else:
         return BW_MIN_WEB, BW_TOLERANCE_WEB, MARGIN
-
-cache = {}
-def get_subtree_leaves(g, v):
-    if v in cache:
-        return cache[v]
-
-    if isinstance(v, Vertex):
-        v = int(v)
-
-    if g.vertex(v).in_degree() == 0:
-        cache[v] = v
-        return [v]
-    else:
-        child_leaves = []
-        for child, _, _ in g.get_in_edges(v):
-            child_leaves += get_subtree_leaves(g, child)
-
-        cache[v] = child_leaves
-        return child_leaves

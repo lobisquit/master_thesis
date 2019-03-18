@@ -1,9 +1,9 @@
 import itertools
 from random import seed
 
+import networkx as nx
 import numpy as np
 import pandas as pd
-from graph_tool.all import *
 from scipy.optimize import LinearConstraint, minimize
 
 from problem_def import *
@@ -20,14 +20,21 @@ def equality_bw(father, children, n_nodes):
     limit = np.zeros( (n_nodes, 1) )
     return LinearConstraint(A, limit, limit)
 
-g = load_graph('../data/aachen_net/abstract_topology.graphml')
+g = nx.read_graphml('../data/aachen_net/abstract_topology.graphml')
 
-leaves = [int(v) for v in g.vertices() if g.vertex(v).in_degree() == 0]
+# fix loading problems
+renamer = dict(zip(
+    list(g.nodes()),
+    [int(s[1:]) for s in g.nodes()]
+))
+g = nx.relabel_nodes(g, renamer)
+
+leaves = [node for node in g.nodes() if len(g.in_edges(node)) == 0]
 
 # setup problem variables
-bws_min    = np.zeros( (g.num_vertices(), ))
-tolerances = np.zeros( (g.num_vertices(), ))
-margins    = np.zeros( (g.num_vertices(), ))
+bws_min    = np.zeros( (len(g.nodes()), ))
+tolerances = np.zeros( (len(g.nodes()), ))
+margins    = np.zeros( (len(g.nodes()), ))
 
 for leaf in leaves:
     bw_min, tolerance, margin = get_realization(p_nothing, p_streaming)
@@ -40,24 +47,24 @@ active_user = (bws_min > 0)
 
 # flow condition for bandwidth
 constraints = []
-mainframe = np.where(g.vp['root'].a)[0][0]
-routers = g.get_in_edges(mainframe)[:, 0]
+mainframe = [node for node, attrs in g.nodes(data=True) if attrs['root']][0]
+routers = list(list(zip(*g.in_edges(mainframe)))[0])
 
 # constraints function shall return 0 when condition is met
 
-constraints += [ equality_bw(mainframe, routers, g.num_vertices()) ]
+constraints += [ equality_bw(mainframe, routers, len(g.nodes())) ]
 
 for router in routers:
-    dslams = g.get_in_edges(router)[:, 0]
+    dslams = list(list(zip(*g.in_edges(router)))[0])
 
-    constraints += [ equality_bw(router, dslams, g.num_vertices()) ]
+    constraints += [ equality_bw(router, dslams, len(g.nodes())) ]
 
     for dslam in dslams:
-        dslam_leaves = g.get_in_edges(dslam)[:, 0]
+        dslam_leaves = list(list(zip(*g.in_edges(dslam)))[0])
         users = [leaf for leaf in dslam_leaves if active_user[leaf]]
 
         # set flow condition only on active users
-        constraints += [ equality_bw(dslam, users, g.num_vertices()) ]
+        constraints += [ equality_bw(dslam, users, len(g.nodes())) ]
 
 def reverse_obj(x):
     return obj_function(-np.reshape(x, (-1, 1)),
