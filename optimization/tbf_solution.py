@@ -97,90 +97,116 @@ def dummy_validator(g, bws):
 
     return True
 
-p_nothing = 0.2
-p_streaming = 0.6
+def run_optimization(p_nothing, p_streaming):
+    g = nx.read_graphml('abstract_topology.graphml')
 
-g = nx.read_graphml('abstract_topology.graphml')
+    # fix loading problems
+    renamer = dict(zip(
+        list(g.nodes()),
+        [int(s[1:]) for s in g.nodes()]
+    ))
+    g = nx.relabel_nodes(g, renamer)
 
-# fix loading problems
-renamer = dict(zip(
-    list(g.nodes()),
-    [int(s[1:]) for s in g.nodes()]
-))
-g = nx.relabel_nodes(g, renamer)
+    n_nodes = len(g.nodes())
+    leaves = [node for node in g.nodes() if len(g.in_edges(node)) == 0]
 
-n_nodes = len(g.nodes())
-leaves = [node for node in g.nodes() if len(g.in_edges(node)) == 0]
+    users = []
+    bws_min    = np.zeros( (n_nodes,) )
+    tolerances = np.zeros( (n_nodes,) )
+    margins    = np.zeros( (n_nodes,) )
 
-users = []
-bws_min    = np.zeros( (n_nodes,) )
-tolerances = np.zeros( (n_nodes,) )
-margins    = np.zeros( (n_nodes,) )
+    for leaf in leaves:
+        bw_min, tolerance, margin = get_realization(p_nothing, p_streaming)
 
-for leaf in leaves:
-    bw_min, tolerance, margin = get_realization(p_nothing, p_streaming)
+        if bw_min > 0:
+            users.append(leaf)
 
-    if bw_min > 0:
-        users.append(leaf)
+            bws_min[leaf] = bw_min
+            tolerances[leaf] = tolerance
+            margins[leaf] = margin
 
-        bws_min[leaf] = bw_min
-        tolerances[leaf] = tolerance
-        margins[leaf] = margin
+    streaming_users = np.where(bws_min == bws_min.max())[0]
 
-streaming_users = np.where(bws_min == bws_min.max())[0]
+    users = np.array(users)
+    n_users = len(users)
+    is_valid = build_validator(users, g, len(leaves))
 
-users = np.array(users)
-n_users = len(users)
-is_valid = build_validator(users, g, len(leaves))
+    # initial guess
+    bws = np.zeros( (n_nodes,) )
+    bws[users] = 500e3
 
-# initial guess
-bws = np.zeros( (n_nodes,) )
-bws[users] = 500e3
+    assert is_valid(bws), "Initial solution not valid"
 
-assert is_valid(bws), "Initial solution not valid"
+    # start with a nice perturbation
+    temperature = 500e3 # bit/s
+    size = 10
 
-# start with a nice perturbation
-temperature = 500e3 # bit/s
-size = 10
+    SIZE_DROP = 0.9
+    TEMP_DROP = 0.99
+    EPOCH = 10e3
+    MAX_BLOCKED_ITERS = n_users
 
-SIZE_DROP = 0.9
-TEMP_DROP = 0.99
-EPOCH = 10e3
-MAX_BLOCKED_ITERS = n_users
+    n_iter = 1
+    n_blocked_iters = 1
+    while True:
+        user = np.random.choice(streaming_users,
+                                size=(np.ceil(size).astype(int),))
 
-n_iter = 1
-n_blocked_iters = 1
-while True:
-    user = np.random.choice(streaming_users,
-                            size=(np.ceil(size).astype(int),))
+        delta = np.random.random(user.shape) * temperature
 
-    delta = np.random.random(user.shape) * temperature
+        # given problem specification, going forward is (almost always) a good
+        # idea: never go back
+        bws[user] += delta
 
-    # given problem specification, going forward is (almost always) a good
-    # idea: never go back
-    bws[user] += delta
+        if is_valid(bws):
+            n_blocked_iters = 1
+        else:
+            # revert change
+            bws[user] -= delta
+            n_blocked_iters += 1
 
-    if is_valid(bws):
-        n_blocked_iters = 1
-    else:
-        # revert change
-        bws[user] -= delta
-        n_blocked_iters += 1
+        n_iter += 1
 
-    n_iter += 1
+        if n_blocked_iters % MAX_BLOCKED_ITERS == 0:
+            print("EXIT: idle for {} iterations".format(n_blocked_iters))
+            break
 
-    # change perturbation
-    if n_blocked_iters % MAX_BLOCKED_ITERS == 0:
-        print("EXIT: idle for {} iterations".format(n_blocked_iters))
-        break
+        # change perturbation
+        if n_iter % EPOCH == 0:
+            temperature *= TEMP_DROP
+            size *= SIZE_DROP
 
-    if n_iter % EPOCH == 0:
-        temperature *= TEMP_DROP
-        size *= SIZE_DROP
+        if n_iter % 10000 == 0:
+            obj = obj_function(bws, bws_min, tolerances, margins)
+            logger.debug("OBJ: {}, T {}".format(obj, temperature))
 
-    if n_iter % 10000 == 0:
-        obj = obj_function(bws, bws_min, tolerances, margins)
-        logger.info("OBJ: {}, T {}".format(obj, temperature))
+    obj = obj_function(bws, bws_min, tolerances, margins)
+    logger.debug("RESULT: {}".format(obj))
 
-obj = obj_function(bws, bws_min, tolerances, margins)
-logger.info("RESULT: {}".format(obj))
+    return obj, n_users
+
+N_SEEDS = 1
+N_NOTHING = 1
+p_streaming = 0.5
+
+results = []
+for s in range(N_SEEDS):
+    np.random.seed(s)
+    seed(s)
+
+    for i, p_nothing in enumerate(np.linspace(0.1, 0.9, N_NOTHING)):
+        logger.info("seed {}/{}, p_nothing {}/{}".format(s, N_SEEDS, i, N_NOTHING))
+
+        obj, n_users = run_optimization(p_nothing, p_streaming)
+        results.append({
+            'obj': obj,
+            'n_users': n_users,
+            'p_nothing': p_nothing,
+            'p_streaming': p_streaming,
+            'seed': s
+        })
+
+pd.DataFrame(results).to_csv(
+    '../data/optimization/heuristic.csv',
+    index=None
+)
