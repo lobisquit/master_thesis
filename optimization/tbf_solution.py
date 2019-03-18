@@ -144,8 +144,10 @@ def run_optimization(p_nothing, p_streaming):
     SIZE_DROP = 0.9
     TEMP_DROP = 0.99
     EPOCH = 10e3
-    MAX_BLOCKED_ITERS = n_users
+    MAX_BLOCKED_ITERS = 10
+    MAX_BLOCKED_ITERS_STEP = 1e-5
 
+    old_obj = -np.inf
     n_iter = 1
     n_blocked_iters = 1
     while True:
@@ -167,10 +169,6 @@ def run_optimization(p_nothing, p_streaming):
 
         n_iter += 1
 
-        if n_blocked_iters % MAX_BLOCKED_ITERS == 0:
-            print("EXIT: idle for {} iterations".format(n_blocked_iters))
-            break
-
         # change perturbation
         if n_iter % EPOCH == 0:
             temperature *= TEMP_DROP
@@ -179,6 +177,20 @@ def run_optimization(p_nothing, p_streaming):
         if n_iter % 10000 == 0:
             obj = obj_function(bws, bws_min, tolerances, margins)
             logger.debug("OBJ: {}, T {}".format(obj, temperature))
+
+            # analyze improvement
+            if abs(obj - old_obj) < MAX_BLOCKED_ITERS_STEP:
+                n_blocked_iters += 1
+            else:
+                n_blocked_iters = 0
+
+            # update previous obj function value
+            old_obj = obj
+
+            # stop if it has been negligible for too long
+            if n_blocked_iters == MAX_BLOCKED_ITERS:
+                logger.info("Negligible improvement in last rounds: declare convergence")
+                break
 
     obj = obj_function(bws, bws_min, tolerances, margins)
     logger.debug("RESULT: {}".format(obj))
