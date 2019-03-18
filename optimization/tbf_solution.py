@@ -12,15 +12,14 @@ p_nothing = 0.2
 p_streaming = 0.6
 
 def equality_bw(father, children, n_nodes):
-    A = np.zeros( (n_nodes, 1) )
+    A = np.zeros( (n_nodes, ) )
 
     A[father] = -1
     A[children] = 1
 
-    limit = np.zeros( (n_nodes, 1) )
-    return LinearConstraint(A, limit, limit)
+    return LinearConstraint(np.reshape(A, (1, -1)), 0, 0)
 
-g = nx.read_graphml('../data/aachen_net/abstract_topology.graphml')
+g = nx.read_graphml('abstract_topology.graphml')
 
 # fix loading problems
 renamer = dict(zip(
@@ -67,12 +66,11 @@ for router in routers:
         constraints += [ equality_bw(dslam, users, len(g.nodes())) ]
 
 def reverse_obj(x):
-    return obj_function(-np.reshape(x, (-1, 1)),
-                        np.reshape(bws_min, (-1, 1)),
-                        np.reshape(tolerances, (-1, 1)),
-                        np.reshape(margins, (-1, 1)))
+    return obj_function(-x,
+                        bws_min,
+                        tolerances,
+                        margins)
 
-
-x0 = np.ones((1, len(bws_min))) * 1e-9
+x0 = np.ones( (len(bws_min), 1) ) * 1e-9
 result = minimize(reverse_obj, x0, constraints=constraints)
 print(result)
