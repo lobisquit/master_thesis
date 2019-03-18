@@ -1,23 +1,83 @@
 import itertools
-from random import seed
+from random import choice, random, seed
 
 import networkx as nx
 import numpy as np
 import pandas as pd
 from scipy.optimize import LinearConstraint, minimize
+from scipy.sparse import csr_matrix
 
 from problem_def import *
 
+cache = {}
+def get_subtree_leaves(g, v):
+    if v in cache:
+        return cache[v]
+
+    if g.in_degree(v) == 0:
+        cache[v] = v
+        return [v]
+    else:
+        child_leaves = []
+        for child, _ in g.in_edges(v):
+            child_leaves += get_subtree_leaves(g, child)
+
+        cache[v] = child_leaves
+        return child_leaves
+
+def get_children(g, v):
+    in_edges = g.in_edges(v)
+    sources, targets = list(zip(*in_edges))
+
+    return list(sources)
+
+def build_validator(users, g, n_leaves):
+    n_nodes = len(g.nodes())
+    n_constraints = n_nodes - n_leaves
+
+    # constraints matrix
+    A = csr_matrix((n_constraints, n_nodes))
+    b = np.zeros( (n_constraints, 1) )
+
+    current_node_idx = 0
+
+    mainframe = [node for node, attrs in g.nodes(data=True) if attrs['root']][0]
+
+    # set mainframe constraint
+    A[current_node_idx, get_subtree_leaves(g, mainframe)] = 1
+    b[current_node_idx] = MAX_MAINFRAME_BW
+    current_node_idx += 1
+
+    for router in get_children(g, mainframe):
+
+        for dslam in get_children(g, router):
+            A[current_node_idx, get_subtree_leaves(g, dslam)] = 1
+            b[current_node_idx] = MAX_DSLAM_BW
+            current_node_idx += 1
+
+        A[current_node_idx, get_subtree_leaves(g, router)] = 1
+        b[current_node_idx] = MAX_ROUTER_BW
+        current_node_idx += 1
+
+    def is_valid(bws):
+        test = A.dot(bws) - b
+        return np.all(test < 0)
+
+    return is_valid
+
+def perturb(bws, users, max_perturb):
+    user = choice(users)
+    delta = random() * max_perturb
+
+    # given problem specification, going forward is (almost always) a good
+    # idea: never go back
+    new_bws = bws.copy()
+    new_bws[user] += delta
+
+    return new_bws
+
 p_nothing = 0.2
 p_streaming = 0.6
-
-def equality_bw(father, children, n_nodes):
-    A = np.zeros( (n_nodes, ) )
-
-    A[father] = -1
-    A[children] = 1
-
-    return LinearConstraint(np.reshape(A, (1, -1)), 0, 0)
 
 g = nx.read_graphml('abstract_topology.graphml')
 
@@ -28,49 +88,59 @@ renamer = dict(zip(
 ))
 g = nx.relabel_nodes(g, renamer)
 
+n_nodes = len(g.nodes())
 leaves = [node for node in g.nodes() if len(g.in_edges(node)) == 0]
 
-# setup problem variables
-bws_min    = np.zeros( (len(g.nodes()), ))
-tolerances = np.zeros( (len(g.nodes()), ))
-margins    = np.zeros( (len(g.nodes()), ))
+users = []
+bws_min    = np.zeros( (n_nodes,) )
+tolerances = np.zeros( (n_nodes,) )
+margins    = np.zeros( (n_nodes,) )
 
 for leaf in leaves:
     bw_min, tolerance, margin = get_realization(p_nothing, p_streaming)
 
-    bws_min[leaf] = bw_min
-    tolerances[leaf] = tolerance
-    margins[leaf] = margin
+    if bw_min > 0:
+        users.append(leaf)
 
-active_user = (bws_min > 0)
+        bws_min[leaf] = bw_min
+        tolerances[leaf] = tolerance
+        margins[leaf] = margin
 
-# flow condition for bandwidth
-constraints = []
-mainframe = [node for node, attrs in g.nodes(data=True) if attrs['root']][0]
-routers = list(list(zip(*g.in_edges(mainframe)))[0])
+users = np.array(users)
+is_valid = build_validator(users, g, len(leaves))
 
-# constraints function shall return 0 when condition is met
+# initial guess
+bws = np.zeros( (n_nodes,) )
+bws[users] = 1
 
-constraints += [ equality_bw(mainframe, routers, len(g.nodes())) ]
+# start with a nice perturbation
+temperature = 1e5 # bit/s
 
-for router in routers:
-    dslams = list(list(zip(*g.in_edges(router)))[0])
+TEMP_DROP = 0.9
+TEMP_STEP = 1000
+MAX_BLOCKED_ITERS = 10000
 
-    constraints += [ equality_bw(router, dslams, len(g.nodes())) ]
+n_iter = 1
+n_blocked_iters = 1
+while True:
+    new_bws = perturb(bws, users, temperature)
 
-    for dslam in dslams:
-        dslam_leaves = list(list(zip(*g.in_edges(dslam)))[0])
-        users = [leaf for leaf in dslam_leaves if active_user[leaf]]
+    if is_valid(bws):
+        bws = new_bws
+        n_blocked_iters = 1
+    else:
+        n_blocked_iters += 1
 
-        # set flow condition only on active users
-        constraints += [ equality_bw(dslam, users, len(g.nodes())) ]
+    n_iter += 1
 
-def reverse_obj(x):
-    return obj_function(-x,
-                        bws_min,
-                        tolerances,
-                        margins)
+    # change perturbation
+    if n_blocked_iters % MAX_BLOCKED_ITERS == 0:
+        print("EXIT: idle for {} iterations".format(n_blocked_iters))
+        break
 
-x0 = np.ones( (len(bws_min), 1) ) * 1e-9
-result = minimize(reverse_obj, x0, constraints=constraints)
-print(result)
+    print("Temperature", temperature, 'n_iter', n_iter)
+
+    if n_iter % TEMP_STEP == 0:
+        temperature *= TEMP_DROP
+
+print("OBJ:", obj_function(bws, bws_min, tolerances, margins))
