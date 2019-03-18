@@ -2,6 +2,7 @@ import itertools
 from random import seed
 
 import numpy as np
+import pandas as pd
 from graph_tool.all import *
 
 from problem_def import *
@@ -33,25 +34,6 @@ def run_optimization(p_nothing, p_streaming):
     g.vp['bw_margin'].a[leaves] = margins
 
     g.vp['bw'].a = g.vp['bw_min'].a
-
-    cache = {}
-    def get_subtree_leaves(g, v):
-        if v in cache:
-            return cache[v]
-
-        if isinstance(v, Vertex):
-            v = int(v)
-
-        if g.vertex(v).in_degree() == 0:
-            cache[v] = v
-            return [v]
-        else:
-            child_leaves = []
-            for child, _, _ in g.get_in_edges(v):
-                child_leaves += get_subtree_leaves(g, child)
-
-            cache[v] = child_leaves
-            return child_leaves
 
     mainframe = np.where(g.vp['root'].a)[0][0]
     routers = g.get_in_edges(mainframe)[:, 0]
@@ -94,15 +76,28 @@ def run_optimization(p_nothing, p_streaming):
 
     return y, n_users
 
+N_SEEDS = 4
+N_NOTHING = 4
 p_streaming = 0.5
 
 results = []
-for s in range(20):
-    print("step", s)
+for s in range(N_SEEDS):
+    print("seed {}/{}".format(s, N_SEEDS))
     np.random.seed(s)
     seed(s)
 
-    for i, p_nothing in enumerate(np.linspace(0.1, 0.9, 10)):
-        print(i, end='\r')
+    for i, p_nothing in enumerate(np.linspace(0.1, 0.9, N_NOTHING)):
+        print("p_nothing {}/{}".format(i, N_NOTHING), end='\r')
         obj, n_users = run_optimization(p_nothing, p_streaming)
-        results.append({'obj': obj, "n_users": n_users})
+        results.append({
+            'obj': obj,
+            'n_users': n_users,
+            'p_nothing': p_nothing,
+            'p_streaming': p_streaming,
+            'seed': s
+        })
+
+pd.DataFrame(results).to_csv(
+    '../data/optimization/traditional.csv',
+    index=None
+)
