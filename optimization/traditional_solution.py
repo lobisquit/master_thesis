@@ -94,7 +94,7 @@ def run_optimization(p_nothing, p_streaming):
 
     return y, n_users
 
-N_SEEDS = 4
+N_SEEDS = 20
 N_NOTHING = 4
 p_streaming = 0.5
 
