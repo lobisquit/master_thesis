@@ -12,14 +12,14 @@ from scipy.sparse import csr_matrix, lil_matrix
 from problem_def import *
 
 logger = logging.getLogger('aachen_net.org')
-logger.setLevel(logging.INFO)
+logger.setLevel(logging.DEBUG)
 logger.propagate = False
 
 formatter = logging.Formatter("%(asctime)s::%(levelname)s::%(module)s::%(message)s",
                               "%Y-%m-%d %H:%M:%S")
 
 ch = logging.StreamHandler()
-ch.setLevel(logging.INFO)
+ch.setLevel(logging.DEBUG)
 ch.setFormatter(formatter)
 logger.addHandler(ch)
 
@@ -185,8 +185,8 @@ def run_optimization(p_nothing, p_streaming):
 
     return obj, n_users
 
-N_SEEDS = 1
-N_NOTHING = 1
+N_SEEDS = 20
+N_NOTHING = 4
 p_streaming = 0.5
 
 results = []
