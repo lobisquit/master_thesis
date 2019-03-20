@@ -124,8 +124,6 @@ def run_optimization(p_nothing, p_streaming):
             a[leaf] = single_a
             b[leaf] = single_b
 
-    print(np.histogram(bws_min))
-
     streaming_users = np.where(bws_min > 10)[0]
 
     users = np.array(users)
