@@ -107,9 +107,11 @@ def run_optimization(p_nothing, p_streaming):
     g = nx.relabel_nodes(g, renamer)
 
     n_nodes = len(g.nodes())
-    leaves = [node for node in g.nodes() if len(g.in_edges(node)) == 0]
+    leaves = [ node
+               for node in g.nodes()
+               if len(g.in_edges(node)) == 0]
 
-    users = []
+    users = np.zeros((n_nodes,), dtype=bool)
     bws_min = np.zeros( (n_nodes,) )
     a = np.zeros( (n_nodes,) )
     b = np.zeros( (n_nodes,) )
@@ -118,18 +120,14 @@ def run_optimization(p_nothing, p_streaming):
         single_a, single_b, bw_min = get_realization(p_nothing, p_streaming)
 
         if single_a != 0:
-            users.append(leaf)
+            users[leaf] = True
 
             bws_min[leaf] = bw_min
             a[leaf] = single_a
             b[leaf] = single_b
 
-    print(np.histogram(bws_min))
-
-    streaming_users = np.where(bws_min > 10)[0]
-
     users = np.array(users)
-    n_users = len(users)
+    n_users = users.sum()
     is_valid = build_validator(users, g, len(leaves))
 
     # initial guess
@@ -140,20 +138,33 @@ def run_optimization(p_nothing, p_streaming):
 
     # start with a nice perturbation
     temperature = 500e3 # bit/s
-    size = 10
+    size = 30
 
     SIZE_DROP = 0.9
     TEMP_DROP = 0.99
     EPOCH = 10e3
-    MAX_BLOCKED_ITERS = 10
-    MAX_BLOCKED_ITERS_STEP = 1e-5
+    MAX_BLOCKED_ITERS = 6e4
+    MAX_BLOCKED_ITERS_STEP = 1e-4
 
     old_obj = -np.inf
     n_iter = 1
     n_blocked_iters = 1
+
+    is_to_probe = np.ones((n_nodes, ), dtype=bool)
+
+    # precumpute single utilities
+    utilities = utility(bws, a, b)
+
     while True:
-        user = np.random.choice(streaming_users,
-                                size=(np.ceil(size).astype(int),))
+        active_users = users # np.logical_or(users, is_to_probe)
+
+        # pick user according to worse utility
+        user = np.random.choice(
+            a=np.where(active_users)[0],
+            size=( np.ceil(size).astype(int), ),
+            # utility is always negative
+            p=utilities[active_users] / utilities[active_users].sum()
+        )
 
         delta = np.random.random(user.shape) * temperature
 
@@ -163,10 +174,14 @@ def run_optimization(p_nothing, p_streaming):
 
         if is_valid(bws):
             n_blocked_iters = 1
+
+            # update corresponding utility
+            utilities[user] = utility(bws[user], a[user], b[user])
         else:
             # revert change
             bws[user] -= delta
             n_blocked_iters += 1
+            is_to_probe[user] = False
 
         n_iter += 1
 
@@ -175,24 +190,31 @@ def run_optimization(p_nothing, p_streaming):
             temperature *= TEMP_DROP
             size *= SIZE_DROP
 
-        if n_iter % 10000 == 0:
-            obj = obj_function(bws, a, b)
-            logger.debug("OBJ: {}, p_nothing {}, p_streaming {}, T {}"\
-                         .format(obj, p_nothing, p_streaming, temperature))
+        obj = np.log(utilities[users]).mean()
 
-            # analyze improvement
-            if abs(obj - old_obj) < MAX_BLOCKED_ITERS_STEP:
-                n_blocked_iters += 1
-            else:
-                n_blocked_iters = 0
+        # just checks
+        assert np.all(utilities[users] <= 1), "Wrong utilities"
+        assert obj == obj_function(bws, a, b), "Objective function does not correspond"
 
-            # update previous obj function value
-            old_obj = obj
+        # analyze improvement
+        if abs(obj - old_obj) < MAX_BLOCKED_ITERS_STEP:
+            n_blocked_iters += 1
+        else:
+            n_blocked_iters = 0
 
-            # stop if it has been negligible for too long
-            if n_blocked_iters == MAX_BLOCKED_ITERS:
-                logger.info("Negligible improvement in last rounds: declare convergence")
-                break
+        # update previous obj function value
+        old_obj = obj
+
+        # stop if it has been negligible for too long
+        if n_blocked_iters > MAX_BLOCKED_ITERS:
+            logger.info("Negligible improvement in last rounds: declare convergence {} > {}"\
+                        .format(n_blocked_iters, MAX_BLOCKED_ITERS))
+            break
+
+        if n_iter % 1000 == 0:
+            print("OBJ: {}, p_nothing {}, p_streaming {}, T {}, n_iter {}, size {}, n_blocked_iters {}"\
+                  .format(obj, p_nothing, p_streaming, temperature, n_iter, size, n_blocked_iters))
+
 
     obj = obj_function(bws, a, b)
     logger.debug("RESULT: {}".format(obj))
