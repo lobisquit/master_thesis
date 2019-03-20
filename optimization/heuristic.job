@@ -11,4 +11,4 @@ cd /home/lovisott/master_thesis/optimization/
 # pip install numpy pandas scipy networkx
 
 source venv/bin/activate
-python -O tbf_solution.py
+python -O heuristic_solution.py
