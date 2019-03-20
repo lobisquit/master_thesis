@@ -58,7 +58,7 @@ def build_validator(users, g, n_leaves):
 
     # set mainframe constraint
     A[current_node_idx, get_subtree_leaves(g, mainframe)] = 1
-    b[current_node_idx] = MAX_MAINFRAME_BW
+    b[current_node_idx] = 1e15
     current_node_idx += 1
 
     for router in get_children(g, mainframe):
@@ -110,21 +110,23 @@ def run_optimization(p_nothing, p_streaming):
     leaves = [node for node in g.nodes() if len(g.in_edges(node)) == 0]
 
     users = []
-    bws_min    = np.zeros( (n_nodes,) )
-    tolerances = np.zeros( (n_nodes,) )
-    margins    = np.zeros( (n_nodes,) )
+    bws_min = np.zeros( (n_nodes,) )
+    a = np.zeros( (n_nodes,) )
+    b = np.zeros( (n_nodes,) )
 
     for leaf in leaves:
-        bw_min, tolerance, margin = get_realization(p_nothing, p_streaming)
+        single_a, single_b, bw_min = get_realization(p_nothing, p_streaming)
 
-        if bw_min > 0:
+        if single_a != 0:
             users.append(leaf)
 
             bws_min[leaf] = bw_min
-            tolerances[leaf] = tolerance
-            margins[leaf] = margin
+            a[leaf] = single_a
+            b[leaf] = single_b
 
-    streaming_users = np.where(bws_min == bws_min.max())[0]
+    print(np.histogram(bws_min))
+
+    streaming_users = np.where(bws_min > 10)[0]
 
     users = np.array(users)
     n_users = len(users)
@@ -174,8 +176,9 @@ def run_optimization(p_nothing, p_streaming):
             size *= SIZE_DROP
 
         if n_iter % 10000 == 0:
-            obj = obj_function(bws, bws_min, tolerances, margins)
-            logger.debug("OBJ: {}, T {}".format(obj, temperature))
+            obj = obj_function(bws, a, b)
+            logger.debug("OBJ: {}, p_nothing {}, p_streaming {}, T {}"\
+                         .format(obj, p_nothing, p_streaming, temperature))
 
             # analyze improvement
             if abs(obj - old_obj) < MAX_BLOCKED_ITERS_STEP:
@@ -191,7 +194,7 @@ def run_optimization(p_nothing, p_streaming):
                 logger.info("Negligible improvement in last rounds: declare convergence")
                 break
 
-    obj = obj_function(bws, bws_min, tolerances, margins)
+    obj = obj_function(bws, a, b)
     logger.debug("RESULT: {}".format(obj))
 
     return obj, n_users

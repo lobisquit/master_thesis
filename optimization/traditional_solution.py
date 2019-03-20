@@ -30,28 +30,30 @@ def run_optimization(p_nothing, p_streaming):
     g = load_graph('../data/aachen_net/abstract_topology.graphml')
 
     g.vp['bw'] = g.new_vertex_property("double")
-    g.vp['bw_min'] = g.new_vertex_property("double")
-    g.vp['bw_tolerance'] = g.new_vertex_property("double")
-    g.vp['bw_margin'] = g.new_vertex_property("double")
+    g.vp['expected_bw'] = g.new_vertex_property("double")
+
+    # utility params
+    g.vp['a'] = g.new_vertex_property("double")
+    g.vp['b'] = g.new_vertex_property("double")
 
     g.vp['bw'].a = np.nan
-    g.vp['bw_min'].a = np.nan
-    g.vp['bw_tolerance'].a = np.nan
-    g.vp['bw_margin'].a = np.nan
+    g.vp['a'].a = np.nan
+    g.vp['b'].a = np.nan
+    g.vp['expected_bw'].a = np.nan
 
     leaves = [int(v) for v in g.vertices() if g.vertex(v).in_degree() == 0]
-    bws_min, tolerances, margins = zip(*[
+    a, b, expected_bw = zip(*[
         get_realization(p_nothing, p_streaming)
         for _ in leaves
     ])
 
-    n_users = np.count_nonzero(bws_min)
+    n_users = np.count_nonzero(a)
 
-    g.vp['bw_min'].a[leaves] = bws_min
-    g.vp['bw_tolerance'].a[leaves] = tolerances
-    g.vp['bw_margin'].a[leaves] = margins
+    g.vp['a'].a[leaves] = a
+    g.vp['b'].a[leaves] = b
+    g.vp['expected_bw'].a[leaves] = expected_bw
 
-    g.vp['bw'].a = g.vp['bw_min'].a
+    g.vp['bw'].a[leaves] = g.vp['expected_bw'].a[leaves]
 
     mainframe = np.where(g.vp['root'].a)[0][0]
     routers = g.get_in_edges(mainframe)[:, 0]
@@ -88,9 +90,8 @@ def run_optimization(p_nothing, p_streaming):
     # compute objective function
 
     y = obj_function(g.vp['bw'].a[leaves],
-                     g.vp['bw_min'].a[leaves],
-                     g.vp['bw_tolerance'].a[leaves],
-                     g.vp['bw_margin'].a[leaves])
+                     g.vp['a'].a[leaves],
+                     g.vp['b'].a[leaves])
 
     return y, n_users
 
@@ -100,12 +101,13 @@ p_streaming = 0.5
 
 results = []
 for s in range(N_SEEDS):
-    print("seed {}/{}".format(s, N_SEEDS))
     np.random.seed(s)
     seed(s)
 
     for i, p_nothing in enumerate(np.linspace(0.1, 0.9, N_NOTHING)):
-        print("p_nothing {}/{}".format(i, N_NOTHING), end='\r')
+        print("seed {}/{} p_nothing {}/{}"\
+              .format(s+1, N_SEEDS, i+1, N_NOTHING), end='\r')
+
         obj, n_users = run_optimization(p_nothing, p_streaming)
         results.append({
             'obj': obj,

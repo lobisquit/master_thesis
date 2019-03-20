@@ -5,27 +5,26 @@ from numpy.random import normal, rand
 
 MAX_DSLAM_BW = 1e9 # bps
 MAX_ROUTER_BW = 10e9 # bps
-MAX_MAINFRAME_BW = 10000e9 # bps
 
-BW_TOLERANCE_WEB = 200e3 # bps
-BW_TOLERANCE_STREAM = 1e6 # bps
+STREAM_PROBS = [0.85, 0.10, 0.05]
+STREAM_PARAMS = [ (-3.035, -.5061),
+                  (-4.850, -.6470),
+                  (-17.53, -1.048) ]
 
-BW_MIN_WEB = 500e3 # bps
-BW_MIN_STREAM = 5e6 # bps
+STREAM_BW = [1e6, 3e6, 5e6]
 
-MARGIN = 0.95
 
-def utility(value, critic_value, tolerance, margin):
-    exponent = (value - critic_value) / tolerance
-    return 1 / (1 + ((1 - margin) / margin) ** exponent)
+# obtained via `find_web_parameters.py`
+WEB_BW = 500e3
+WEB_PARAMS = (-14.98544276, -0.87800541)
 
-def obj_function(bws, bws_min, tolerances, margins):
-    active_mask = bws_min != 0
-    utilities = utility(bws[active_mask],
-                        bws_min[active_mask] + tolerances[active_mask],
-                        tolerances[active_mask],
-                        margins[active_mask])
+def utility(x, a, b):
+    return a * np.power(x, b) + 1
 
+def obj_function(bw, a, b):
+    active_mask = a != 0
+
+    utilities = utility(bw[active_mask], a[active_mask], b[active_mask])
     return np.log(utilities).mean()
 
 def get_realization(p_nothing, p_streaming):
@@ -37,6 +36,9 @@ def get_realization(p_nothing, p_streaming):
 
     # streaming user (conditional probability)
     if random() < p_streaming:
-        return BW_MIN_STREAM, BW_TOLERANCE_STREAM, MARGIN
+        # randomly pick the three possible streamers
+        profile = np.random.choice(3, p=STREAM_PROBS)
+        return (*STREAM_PARAMS[profile], STREAM_BW[profile])
     else:
-        return BW_MIN_WEB, BW_TOLERANCE_WEB, MARGIN
+        # a b c
+        return (*WEB_PARAMS, WEB_BW)
