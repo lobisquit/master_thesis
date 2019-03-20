@@ -38,7 +38,7 @@ def get_realization(p_nothing, p_streaming):
     if random() < p_streaming:
         # randomly pick the three possible streamers
         profile = np.random.choice(3, p=STREAM_PROBS)
-        return (*STREAM_PARAMS[profile], STREAM_BW[profile])
+        return STREAM_PARAMS[profile] + (STREAM_BW[profile], )
     else:
         # a b c
-        return (*WEB_PARAMS, WEB_BW)
+        return WEB_PARAMS + (WEB_BW, )
