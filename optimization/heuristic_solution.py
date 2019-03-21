@@ -198,7 +198,8 @@ def run_optimization(p_nothing, p_streaming):
     return obj, n_users
 
 N_SEEDS = 20
-N_NOTHING = 4
+N_NOTHING = 10
+N_STREAM = 3
 p_streaming = 0.5
 
 results = []
@@ -206,17 +207,21 @@ for s in range(N_SEEDS):
     np.random.seed(s)
     seed(s)
 
-    for i, p_nothing in enumerate(np.linspace(0.1, 0.9, N_NOTHING)):
-        logger.info("seed {}/{}, p_nothing {}/{}".format(s, N_SEEDS, i, N_NOTHING))
+    for j, p_streaming in enumerate(np.linspace(0.1, 0.9, N_STREAM)):
+        for i, p_nothing in enumerate(np.linspace(0.1, 0.9, N_NOTHING)):
+            logger.info("seed {}/{}, p_streaming {}/{}, p_nothing {}/{}"\
+                        .format(s, N_SEEDS,
+                                j, N_STREAM,
+                                i, N_NOTHING))
 
-        obj, n_users = run_optimization(p_nothing, p_streaming)
-        results.append({
-            'obj': obj,
-            'n_users': n_users,
-            'p_nothing': p_nothing,
-            'p_streaming': p_streaming,
-            'seed': s
-        })
+            obj, n_users = run_optimization(p_nothing, p_streaming)
+            results.append({
+                'obj': obj,
+                'n_users': n_users,
+                'p_nothing': p_nothing,
+                'p_streaming': p_streaming,
+                'seed': s
+            })
 
 pd.DataFrame(results).to_csv(
     '../data/optimization/heuristic.csv',

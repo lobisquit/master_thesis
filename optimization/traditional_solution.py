@@ -1,4 +1,5 @@
 import itertools
+import logging
 from random import seed
 
 import numpy as np
@@ -6,6 +7,18 @@ import pandas as pd
 from graph_tool.all import *
 
 from problem_def import *
+
+logger = logging.getLogger('aachen_net.org')
+logger.setLevel(logging.DEBUG)
+logger.propagate = False
+
+formatter = logging.Formatter("%(asctime)s::%(levelname)s::%(module)s::%(message)s",
+                              "%Y-%m-%d %H:%M:%S")
+
+ch = logging.StreamHandler()
+ch.setLevel(logging.DEBUG)
+ch.setFormatter(formatter)
+logger.addHandler(ch)
 
 cache = {}
 def get_subtree_leaves(g, v):
@@ -96,7 +109,8 @@ def run_optimization(p_nothing, p_streaming):
     return y, n_users
 
 N_SEEDS = 20
-N_NOTHING = 4
+N_NOTHING = 10
+N_STREAM = 3
 p_streaming = 0.5
 
 results = []
@@ -104,18 +118,21 @@ for s in range(N_SEEDS):
     np.random.seed(s)
     seed(s)
 
-    for i, p_nothing in enumerate(np.linspace(0.1, 0.9, N_NOTHING)):
-        print("seed {}/{} p_nothing {}/{}"\
-              .format(s+1, N_SEEDS, i+1, N_NOTHING), end='\r')
+    for j, p_streaming in enumerate(np.linspace(0.1, 0.9, N_STREAM)):
+        for i, p_nothing in enumerate(np.linspace(0.1, 0.9, N_NOTHING)):
+            logger.info("seed {}/{}, p_streaming {}/{}, p_nothing {}/{}"\
+                        .format(s, N_SEEDS,
+                                j, N_STREAM,
+                                i, N_NOTHING))
 
-        obj, n_users = run_optimization(p_nothing, p_streaming)
-        results.append({
-            'obj': obj,
-            'n_users': n_users,
-            'p_nothing': p_nothing,
-            'p_streaming': p_streaming,
-            'seed': s
-        })
+            obj, n_users = run_optimization(p_nothing, p_streaming)
+            results.append({
+                'obj': obj,
+                'n_users': n_users,
+                'p_nothing': p_nothing,
+                'p_streaming': p_streaming,
+                'seed': s
+            })
 
 pd.DataFrame(results).to_csv(
     '../data/optimization/traditional.csv',
