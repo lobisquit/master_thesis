@@ -36,10 +36,13 @@
 #+LATEX_HEADER_EXTRA: \newacronym{pop}{PoP}{Point of Presence}
 #+LATEX_HEADER_EXTRA: \newacronym{dslam}{DSLAM}{Digital Subscriber Line Access Multiplexer}
 #+latex_header_extra: \newacronym{qos}{QoS}{Quality of Service}
+#+latex_header_extra: \newacronym{qoe}{QoE}{Quality of Experience}
+#+latex_header_extra: \newacronym{cbr}{CBR}{Constant Bitrate}
 #+latex_header_extra: \newacronym{forces}{ForCES}{Forwarding and Control Element Separation}
 #+latex_header_extra: \newacronym{ilp}{ILP}{Integer Linear Programming}
 #+latex_header_extra: \newacronym{sdn}{SDN}{Software Defined Network}
 
+#+LATEX_HEADER: \DeclareMathOperator*{\argmax}{arg\,max}
 #+LATEX_HEADER: \makeatletter
 #+LATEX_HEADER: \newenvironment{bigalgorithm}
 #+LATEX_HEADER:   {% \begin{bigalgorithm}
@@ -60,6 +63,7 @@
 #+LATEX_HEADER:    \end{center}
 #+LATEX_HEADER:   }
 #+LATEX_HEADER: \makeatother
+#+latex_header_extra: \newacronym{isp}{ISP}{Internet Service Provider}
 
 * Utility code :ignore:
 ** PlantUML common style :ignore:
@@ -1320,6 +1324,10 @@ they will prove to be good ones, i.e. to be close to the theoretical optimum.
 Previous optimization steps returned a plausible topology for Aachen city access
 network.
 
+As mentioned earlier, the next step we take is to optimize it, in order to
+assess weather the more flexible framework provided by [[ac:sdn][SDN]] can benefit the
+overall performance.
+
 *** Network structure
 As presented in autoref:methodology-network_design, the obtained network
 topology is organized in a hierarchical tree of switches, whose task is to merge
@@ -1337,6 +1345,10 @@ interface, labeled as ``NIC''.
 The central network administrator can employ these traffic shapers to give or
 revoke priority from a given source, with the ultimate goal of keeping the
 network balanced.
+
+In our setting, all data flows are supposed to be [[ac:cbr][CBR]]: the central unit has then
+the task of allocating the corresponding bandwidth according to the network
+conditions.
 
 #+NAME: fig:simulator_downlink
 #+BEGIN_SRC plantuml :file ../figures/simulator_downlink.eps :noweb yes
@@ -1438,16 +1450,18 @@ network balanced.
 #+RESULTS[760c84bff898e8caa3d4fa8fdd17e68e456dc42c]: fig:simulator_uplink
 [[file:../figures/simulator_uplink.eps]]
 
-*** Objective definition
+*** Quality of Experience
 In order to improve the network service for its users, first we have to define
-what we mean for \emph{improvement}. We decided to maximize user [[ac:qos][QoS]], defined as
-a number in $[0,\,1]$, ranging from unusable to perfect link.
+what we mean for \emph{improvement}. We decided to maximize user [[ac:qoe][QoE]], defined as
+a number in $[0,\,1]$, ranging from unusable to perfect link. Each user $i$ is
+then assigned a \emph{utility function}, mapping available bandwidth $\rho_i$ to
+perceived quality.
 
-Following what proposed in Cisco Service Level Agreement recommendations, each
-type of user application is assigned a certain number of constraints to satisfy
-in order for it to work properly. For example, video streaming requires moderate
-packet loss and a decent average delay, while the main concern for traditional
-web page traffic is the page load time. cite:CiscoSLA
+These function are taken from literature, and more specifically from works that
+study user experience is linked to measurable and objective connection metrics.
+cite:Georgopoulos2013,Schatz2011 Their shape is shown in fig...
+
+# TODO set fig, redo plot with new values
 
 #+NAME: utility_example
 #+BEGIN_SRC asymptote :file ../figures/utility_example.pdf :noweb yes :tangle ciao.asy
@@ -1524,6 +1538,43 @@ web page traffic is the page load time. cite:CiscoSLA
 #+LABEL: utility_example
 #+RESULTS[52f6ec3f067dd8083c848821ccab803bc0174838]: utility_example
 [[file:../figures/utility_example.pdf]]
+
+*** Fairness on resource allocation
+In order to satisfy all users, we need to reach an operation point for the
+network that guarantees optimal and fair flow control.
+
+Each users, in fact, wants to maximize its own utility, but doing so it harms
+the [[ac:qos][QoS]] of its fellows. The [[ac:isp][ISP]] has then to act as an arbiter, allocating
+available resources in a fair way. The optimal solution of this problem was
+proven to be the so-called Nash arbitration scheme of the \emph{game} played
+among these actors. cite:Mazumdar1991
+
+Such point is unique and pareto-optimal, and it can be found maximizing the
+product of users utilities. This gives us a straightforward criterion in order
+to rank all possible network configurations.
+
+In order to avoid issues related to floating point precision in computers, a
+different, but equivalent formulation is employed in this thesis.
+
+\begin{equation}
+  f(\vec{\rho}) = \prod_i u_i(\rho_i) \implies
+  \argmax_{\vec{\rho}} ~ f(\vec{\rho}) = \argmax_{\vec{\rho}} ~ \sum_i \log(u_i(\rho_i)
+\end{equation}
+
+\smallskip
+
+Traditionally, when handling different flows, \emph{proportional fairness} is
+applied. According to this rule, each switching unit allocates bandwidth in
+\emph{proportion} to user demand.
+
+This has proven to be a reliable way to distribute network resources, but it
+does not take into account user perception of the services that can vary
+according to the application, see TODO fig utilities.
+
+\smallskip
+
+In autoref:results-network_optimization we will show how these two strategies
+rank, in terms of [[ac:qoe][QoE]], in our reference scenario.
 
 * Results
 :PROPERTIES:
@@ -1687,6 +1738,11 @@ the proper level of detail if needed.
 #+ATTR_LATEX: :height 4.5in
 #+CAPTION: The mainframe, red dot, is located in an industrial complex and is connected to all second level routers.
 [[file:../figures/heuristic_mainframe.png]]
+
+** Network optimization
+:PROPERTIES:
+:CUSTOM_ID: results-network_optimization
+:END:
 
 * Conclusions
 :PROPERTIES:
