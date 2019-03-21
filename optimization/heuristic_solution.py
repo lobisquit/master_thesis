@@ -197,7 +197,7 @@ def run_optimization(p_nothing, p_streaming):
 
     return obj, n_users
 
-N_SEEDS = 20
+N_SEEDS = 2
 N_NOTHING = 10
 N_STREAM = 3
 p_streaming = 0.5
