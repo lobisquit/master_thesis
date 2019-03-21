@@ -200,7 +200,6 @@ def run_optimization(p_nothing, p_streaming):
 N_SEEDS = 2
 N_NOTHING = 10
 N_STREAM = 3
-p_streaming = 0.5
 
 results = []
 for s in range(N_SEEDS):

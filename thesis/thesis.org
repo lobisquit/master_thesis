@@ -38,7 +38,6 @@
 #+latex_header_extra: \newacronym{qos}{QoS}{Quality of Service}
 #+latex_header_extra: \newacronym{forces}{ForCES}{Forwarding and Control Element Separation}
 #+latex_header_extra: \newacronym{ilp}{ILP}{Integer Linear Programming}
-#+latex_header_extra: \newacronym{tbf}{TBF}{Token Bucket Filter}
 #+latex_header_extra: \newacronym{sdn}{SDN}{Software Defined Network}
 
 #+LATEX_HEADER: \makeatletter
@@ -245,7 +244,7 @@ LaTeX support for svg files sucks.
 #+BEGIN_SRC org :exports none
   + background: what are we talking about?
     - SDN => self-optimizing networks
-    - flow balancing (TBF)
+    - flow balancing
     - routing adaptation
 
   + what they do now?
@@ -533,8 +532,8 @@ This section will discuss which theoretical framework and tools that have been u
 throughout the analysis and the motivation behind them.
 
 First, in autoref:methodology-geographical_analysis, we will analyze the Aachen
-buildings and roads in order to design, in autoref:methodology-network_design, a
-proper access network based on city topology and population density.
+building and road map in order to design, in autoref:methodology-network_design,
+a proper access network based on city topology and population density.
 
 Once obtained a suitable structure, its parameters are optimized in
 autoref:methodology-flow_optimization using a genetic algorithm, building an
@@ -583,7 +582,7 @@ have to perform what it is called an /educated guess/, meaning a good estimation
 based on available information.
 
 The evaluation will be performed using OpenStreetMap cite:OpenStreetMap in
-conjunction with the /Open Data Portal/ of the city of Aachen [fn:1]: the former
+conjunction with the /Open Data Portal/ of the city of Aachen: [fn:1] the former
 provides buildings and roads positions, while the latter describes how
 population is distributed across the city districts.
 
@@ -599,23 +598,18 @@ Due to the level of detail of these datasets, two assumptions are needed to
 proceed and extract a reasonable diagram for the access city network.
 
 First, we suppose cables to be put along streets and not to cross (even public)
-terrains. This is common practice in contexts like ours, since all the roadwork
-the city is frequently under is exploited to perform maintenance and build new
-parts of the network.
+terrains. This is common practice, since roadworks are usually exploited to
+perform maintenance and build new parts of the communication network.
 
 Second, we consider the population of a given area to be uniformly distributed
 across a fraction of its buildings, so-called /residential/ ones, randomly
-picked across all the constructions. \\
+picked among all the constructions. \\
 We have to take this strong hypothesis because the OpenStreetMap dataset lacks
-information about the building use and its height in most entries.
+information about the building use and height in most entries.
 
-I consider these two points acceptable, since we want to analyze how the access
-network of a city like Aachen behaves, not to replicate it in perfect detail.
-
-This information is then condensed in an abstract graph, with streets as edges
-and road crossing as vertices. The former were given corresponding lane length,
-while the latter were assigned the supposed number of people living in the
-surrounding area.
+These two points can be accepted in this work as the end goal is to study how
+the access network of a city like Aachen behaves, not to replicate it in perfect
+detail.
 
 ** Network design
 :PROPERTIES:
@@ -638,30 +632,28 @@ surrounding area.
   - problem complexity: number of variables, constraints (in theory)
 #+END_SRC
 
-Previous pre-processing on Aachen city map allowed us to summarize in an
-undirected graph $G=(V, \,E)$ all relevant information about the streets
-topology, buildings and estimated number of users.
+This information is then condensed in an abstract graph $G=(V, \,E)$, with
+streets as edges and road crossings as vertices. The former were given
+corresponding lane length, while the latter were assigned the supposed number of
+people living in the surrounding area.
 
-As specified earlier, each node $i$ is assigned a number of users $u_i$ to serve
-and, since that they represent a physical line, edges are given a length value
-$l_e$: both these parameters will be used later to evaluate the access network
-cost.
+More specifically, each node $i \in V$ is assigned a number of users $u_i$ to
+serve and, since that they represent a physical line, edges in $E$ are given a
+length value $l_e$: both these parameters will be used later to evaluate the
+access network cost.
 
 In this chapter we will exploit this information to find the optimal network
 configuration, given some assumptions and requirements derived from best
 practices in access network design. cite:CiscoWAN
 
 *** Topology considerations
-As depicted in autoref:fig:network_tree we suppose our access network to be made of
-layer-2 type switches and to be logically shaped as a tree.
-
-This seemingly strong assumption is confirmed to be common practice in such
-access networks, where more complex and elaborate topologies are too expensive
-and offer no substantial benefit. cite:CiscoWAN
+As depicted in autoref:fig:network_tree we suppose our access network to be made
+of layer-2 type switches and to be logically shaped as a tree. This is indeed
+common practice in such access networks, where more complex and elaborate
+topologies are too expensive and offer no substantial benefit. cite:CiscoWAN
 
 In this configuration the path from users to the provider mainframe is fixed and
-must cross two kinds of intermediate nodes, a [[acp:dslam][DSLAM]] and a router, whose main
-task is to aggregate all the traffic further and further.
+must cross two kinds of intermediate nodes, a [[acp:dslam][DSLAM]] and a router.
 
 #+BEGIN_SRC plantuml :file ../figures/network_tree.eps :noweb yes
   <<plantuml_skin>>
@@ -771,30 +763,27 @@ From a technological point of view the network is considered to be relatively
 modern, since the infrastructure has been renewed on the past years in
 conjuction with works on main city roads.
 
-That is the reason why we suppose all main links to be fiber optic ones running
+That is the reason why we suppose all main links to be fiber optic running
 state-of-the-art VDSL/VDSL2. The minor fraction of legacy ADSL and copper-cable
 users can be well approximated as VDSL connections at the same distance, in
 terms of bandwidth and other network metrics.
-
-# TODO citation needed
 
 In order to guarantee a suitable [[ac:qos][QoS]], all connected network components have to
 be close enough to each other: this is taken into account though a maximum
 distance parameter $d_M$.
 
-Finally, to make the tree a plausible topology each switch is allowed to serve a
-limited number $n_M$ of lower level nodes, given by the number of physical ports
-of the device.
+Finally, each switch is allowed to serve a limited number $n_M$ of lower level
+nodes, given by the number of physical ports of the device.
 
 *** Solution approach
 :PROPERTIES:
 :CUSTOM_ID: solution-approach
 :END:
 
-In smaller context, an handmade network is often enough to meet all wanted
-conditions while being reasonably cheap. This is not our case, since the set of
-possible topologies is far too vast for a manual evaluation: a programmatic
-strategy is then necessary to proceed.
+In smaller contexts, a manually design of the network suffices to meet all the
+technological constraints while being reasonably cheap. This is not our case,
+since the set of possible topologies is far too vast for a manual evaluation: a
+programmatic strategy is then necessary to proceed.
 
 Problems on graphs similar to the one we face are often solved using either [[ac:ilp][ILP]]
 or an heuristic approach. cite:Koch1998,Rehfeldt2015,Diane1993,Leitner2014 \\
@@ -804,15 +793,14 @@ and time. \\
 The latter instead does not strive to give the optimum, but can hopefully
 achieve decent results in a more reasonable amount of time.
 
-My first attempt involved writing the mathematical model to describe the
-multi-layered system as a whole, but it was immediately clear that it would have
-been to complex, as the solver can handle a limited amount of variables and
-constraints.
+A mathematical model can be written to describe the multi-layered system as a
+whole, but its complexity would have made it impossible to handle by any solver,
+both in terms of number of variables and constraints.
 
-To overcome this issue I moved to a different way of designing the topology.
-Instead of positioning all the nodes at once, the solver would place the leaves
-of the tree, meaning the [[ac:dslam][DSLAM]]s, first and then move up to the higher-level
-elements. \\
+To overcome this issue a different way of designing the topology has to be
+devised. Instead of positioning all the nodes at once, the proposed algorithm
+would place the leaves of the tree, meaning the [[ac:dslam][DSLAM]]s, first and then move up
+to the higher-level elements. \\
 This is closer to what is done in practice, as each step is examined and
 evaluated according to criteria, such as soundness and future-proofing of the
 infrastructure, that are difficult to explain to the solver.
@@ -918,9 +906,9 @@ of the nodes that have been omitted from the tree. This is accounted as a lump
 sum for the connection of each network switch, called from now on cluster
 /head/, to the mainframe both in terms of cables and intermediate nodes.
 
-Both the exact and approximated approach that will be propose the access network
-structure will consider a topology built in this fashion, starting from the
-periphery and moving towards the core of the network.
+Both the exact and approximate approach that will be proposed in this thesis
+will build the access network in this fashion, starting from the periphery and
+moving towards the core of the network.
 
 All relevant parameters have been collected in [[autoref:quantities_constraints]] and
 will be taken for granted from now on.
@@ -959,7 +947,7 @@ In autoref:induction_G each undirected edge in $E$ is doubled with the two
 corresponding directed arcs; then an artificial node $r$ is added to the
 vertices set and connected to each of the nodes in $V$.
 
-Each arc $(i,\,j) \in A$ is assigned a length, in meters $l_{ij}$, given by the
+Each arc $(i,\,j) \in A$ is assigned a length $l_{ij}$, in meters, given by the
 geographical distance between its endpoints. Artificial arcs $(r,\,j)$ do not
 correspond to physical connections and so $l_{rj} = 0 ~~ \forall j \in V$.
 
@@ -1111,12 +1099,12 @@ With this setup our network access configuration will simply be a direct tree, o
 
 Because of the system requirements we also have to keep track of the distance
 $d_i$ of each node $i \in V \cup \{r\}$ from its head and the number of users $n_e$ served
-by each link in $A$, ensuring they don't exceed their limits.
+by each link in $A$, ensuring they do not exceed their limits.
 
-Given this setup, our optimization problem can be written as
+Given this setup, our optimization problem can be written as follows:
 
 \begin{align}
-  \text{minimize ~~}
+  \min_{ \stackrel{\{x_e\}_{e \in E}}{\{u_t\}_{t \in T}}}
   & \left( \sum_{t \in T} d_t \, u_t \right) \, c_c
     + \left( \sum_{e \in E} x_e \, l_e \right) \, c_e
     + \left( \sum_{e \in \delta^+(r)} x_e \right) \, c_r
@@ -1218,15 +1206,16 @@ In fact, when tested on our specific case with tens of thousands of nodes and
 edges, the program could not output the solution within a reasonable amount of
 time and resources.
 
-An heuristic approach had to be devised: I chose for the peculiarities of the
-problem a greedy approach, inspired by the hierarchical clustering.
+An heuristic approach had to be devised: for the peculiarities of the problem it
+is indeed suitable a \emph{greedy} approach, inspired by hierarchical clustering.
 
 The basic idea is to progressively join single nodes of the graph in bigger and
-bigger /clusters/ until it is cheaper to do so. \\
-Such merges are allowed whenever the previously mentioned [[ac:qos][QoS]] constraints are
-met and adjacent subsets are preferred. To be precise, distance between each
-couple of groups is defined as the distance of the closest elements: this is
-done to privilege more cohesive and compact pairs.
+bigger /clusters/ until the total cost decreases: once a merge results in a more
+expensive network, the algorithm stops. \\
+Such merges are allowed whenever the mentioned [[ac:qos][QoS]] constraints are met and
+adjacent subsets are preferred. To be precise, distance between each couple of
+groups is defined as the distance of the closest elements: this is done to
+privilege more cohesive and compact pairs.
 
 This procedure is repeated until all possible choices have been considered or
 the next merge increases the cost of the network.
@@ -1276,10 +1265,10 @@ Pseudo-code is available in [[autoref:lst:alg:heuristic]].
 \end{bigalgorithm}
 
 The cost of each sub-network is not evaluated on the best possible
-configuration, but instead goes for an sub-optimal one. \\
+configuration, but instead goes for a sub-optimal one. \\
 This is required for the algorithm to be feasible, as the Steiner-tree-like
-problem that it has to be solved in order to connect all cluster nodes to
-a common sub-root is yet again too complex.
+problem that it has to be solved in order to connect all cluster nodes to a
+common sub-root is yet again too complex.
 
 As can be seen in [[autoref:lst:alg:heuristic_obj]], each node close enough to the
 cluster is evaluated as a candidate root of the corresponding spanning tree. The
@@ -1309,7 +1298,7 @@ and the terminals of the set.
   \end{algorithmic}
 \end{bigalgorithm}
 
-For now all this approximations are mandatory for the algorithm to be fast
+For now all these approximations are mandatory for the algorithm to be fast
 enough to deal with our case of study, but in [[autoref:results-network_design]]
 they will prove to be good ones, i.e. to be close to the theoretical optimum.
 
@@ -1321,39 +1310,33 @@ they will prove to be good ones, i.e. to be close to the theoretical optimum.
 #+BEGIN_SRC org :exports none
   - network structure
     - flow control only viable tuning of the logical network
-    - components in deeper focus, mention TBF
-  - TBF theory
-    - params
-    - expected behaviour
-    - common practice
+    - components in deeper focus
   - training approach
     - definition of objective function <~ game theory applied
-    - genetic algorithm and/or simulated annhealing
-      - why an heuristic ~> dynamic solution hopefully
-      - "theory" of the tecnique
+    - waterfilling
+    - heuristic waterfilling-inspired approach
 #+END_SRC
 
 Previous optimization steps returned a plausible topology for Aachen city access
 network.
 
 *** Network structure
-As presented in autoref:methodology-network_design, obtained network topology is
-organized in a hierarchical tree of switches, whose task is to merge all uplink
-communications towards the mainframe and split the downlink ones among the
-various destinations.
+As presented in autoref:methodology-network_design, the obtained network
+topology is organized in a hierarchical tree of switches, whose task is to merge
+all uplink communications towards the mainframe and split the downlink ones
+among the various destinations.
 
 This structure resembles what was previously described in
 autoref:fig:network_tree, and is further detailed in
-autoref:fig:simulator_uplink and autoref:fig:simulator_downlink.
+autoref:fig:simulator_downlink and autoref:fig:simulator_uplink.
 
-As shown in these diagrams, each outgoing flow passes through a [[ac:tbf][TBF]]: this unit
-controls the rate of the packets before they enter the transmitting interface,
-labeled as ``NIC''.
+As shown in these diagrams, each outgoing flow passes through a controller: this
+unit controls the rate of the packets before they enter the transmitting
+interface, labeled as ``NIC''.
 
-The central network controller will use these traffic shapers to give or revoke
-priority from a given source, with the ultimate goal of keeping the network
-balanced. Their functioning will be explained in detail in upcoming
-autoref:methodology-tbf.
+The central network administrator can employ these traffic shapers to give or
+revoke priority from a given source, with the ultimate goal of keeping the
+network balanced.
 
 #+NAME: fig:simulator_downlink
 #+BEGIN_SRC plantuml :file ../figures/simulator_downlink.eps :noweb yes
@@ -1367,9 +1350,9 @@ autoref:methodology-tbf.
   node "DSLAM" as dslam3
 
   node ROUTER {
-  queue "TBF" as ROUTER_tbf1 #f6ff9b
-  queue "TBF" as ROUTER_tbf2 #f6ff9b
-  queue "TBF" as ROUTER_tbf3 #f6ff9b
+  queue "CTR" as ROUTER_ctr1 #f6ff9b
+  queue "CTR" as ROUTER_ctr2 #f6ff9b
+  queue "CTR" as ROUTER_ctr3 #f6ff9b
   queue "NIC" as ROUTER_queue
   queue "NIC" as interface1
   queue "NIC" as interface2
@@ -1384,13 +1367,13 @@ autoref:methodology-tbf.
   dslam2 <-- interface2
   dslam3 <-- interface3
 
-  interface1 <-- ROUTER_tbf1
-  interface2 <-- ROUTER_tbf2
-  interface3 <-- ROUTER_tbf3
+  interface1 <-- ROUTER_ctr1
+  interface2 <-- ROUTER_ctr2
+  interface3 <-- ROUTER_ctr3
 
-  ROUTER_tbf1 <-- ROUTER_queue
-  ROUTER_tbf2 <-- ROUTER_queue
-  ROUTER_tbf3 <-- ROUTER_queue
+  ROUTER_ctr1 <-- ROUTER_queue
+  ROUTER_ctr2 <-- ROUTER_queue
+  ROUTER_ctr3 <-- ROUTER_queue
 
   ROUTER_queue <-- mf
 
@@ -1404,7 +1387,7 @@ autoref:methodology-tbf.
 # #+ATTR_LATEX: :width 8cm
 #+CAPTION: Logical node structure for downlink traffic.
 #+LABEL: fig:simulator_downlink
-#+RESULTS[f7f24508cf19d10974b4497651141623c9352779]: fig:simulator_downlink
+#+RESULTS[b9c70fa3ebb841fc5ece1117e8000300baed9947]: fig:simulator_downlink
 [[file:../figures/simulator_downlink.eps]]
 
 #+NAME: fig:simulator_uplink
@@ -1419,7 +1402,7 @@ autoref:methodology-tbf.
   node "DSLAM" as dslam3
 
   node ROUTER {
-  queue "TBF" as ROUTER_tbf #f6ff9b
+  queue "CTR" as ROUTER_ctr #f6ff9b
   queue "NIC" as ROUTER_queue
   queue "NIC" as interface1
   queue "NIC" as interface2
@@ -1434,11 +1417,11 @@ autoref:methodology-tbf.
   dslam2 --> interface2
   dslam3 --> interface3
 
-  interface1 --> ROUTER_tbf
-  interface2 --> ROUTER_tbf
-  interface3 --> ROUTER_tbf
+  interface1 --> ROUTER_ctr
+  interface2 --> ROUTER_ctr
+  interface3 --> ROUTER_ctr
 
-  ROUTER_tbf --> ROUTER_queue
+  ROUTER_ctr --> ROUTER_queue
 
   ROUTER_queue --> mf
 
@@ -1452,158 +1435,8 @@ autoref:methodology-tbf.
 # #+ATTR_LATEX: :width 8cm
 #+CAPTION: Logical node structure for uplink traffic.
 #+LABEL: fig:simulator_uplink
-#+RESULTS[25dbf7a61220364bf16e96ec79bafc95564a5839]: fig:simulator_uplink
+#+RESULTS[760c84bff898e8caa3d4fa8fdd17e68e456dc42c]: fig:simulator_uplink
 [[file:../figures/simulator_uplink.eps]]
-
-*** Token Bucket Filter
-:PROPERTIES:
-:CUSTOM_ID: methodology-tbf
-:END:
-
-\glsreset{tbf}
-
-The [[ac:tbf][TBF]] is a classless discipline for managing packet queues. Through its
-parameters, described later, it can be tuned to limit bandwidth and burstiness
-of the data flow to acceptable values.
-
-The analogy, often employed to describe this algorithm, is the one of the token
-bucket, outlined in autoref:fig:tbf_diagram. This bucket is constantly refilled
-at rate $\lambda$ and, once its level reaches $M$, all new coins are discarded.
-In order for packets of a certain size to be served, the corresponding amount of
-tokens must be removed from the bucket. If not available, the data will wait in
-a queue for the needed amount of time.
-
-#+NAME: fig:tbf_diagram
-#+BEGIN_SRC asymptote :file ../figures/tbf_diagram.pdf :noweb yes
-  <<asymptote_preamble>>
-
-  size(10cm);
-
-  // params
-  real r = 1;
-  real x = 4*r;
-
-  real token_size = r/4;
-  int[] packet_sizes = {3, 2, 1, 3, 2};
-
-  pen highlighter = mediumyellow;
-  int n_tokens = 3;
-
-  real tq_height = 5*token_size;
-  real tq_padding = r/6;
-
-  // traffic queue
-  draw((0, 0) -- (x, 0));
-  draw((x, 0) -- (x, 2*r));
-  draw((0, 2*r) -- (x, 2*r));
-
-  // token queue
-  draw(box((x + r, 3*r), (x + 3*r, 3*r + tq_height)));
-  real bar_x = x + r - tq_padding * 2;
-  draw((bar_x, 3*r) -- (bar_x, 3*r + tq_height),
-       bar=Bars,
-       L=Label("Bucket size $M\,$", align=W));
-
-  // connectors
-  draw((x + 2*r, 3*r) -- (x + 2*r, 2*r), arrow=Arrow);
-  draw((x, r) -- (x + r, r), arrow=Arrow);
-
-  // circle
-  draw(circle((x + 2*r, r), r));
-
-  draw((x + 2*r + r*sin(pi/4), r - r*cos(pi/4)) -- (x + 2*r - r*sin(pi/4), r + r*cos(pi/4)));
-
-  draw(rotate(-45)*Label("1 token", align=NE), (x + 2*r, r));
-  draw(rotate(-45)*Label("1 byte", align=SW), (x + 2*r, r));
-
-  // input flows
-  draw((-2*r, r) -- (r, r),
-       arrow=Arrow,
-       L=Label("Input packets", align=N));
-
-  real arrow_l = r;
-  draw((x + 2*r, 3*r + tq_height + arrow_l) -- (x + 2*r, 3*r + tq_height - tq_padding),
-       arrow=Arrow,
-       L=Label("Token generation $\lambda$", align=N, position=BeginPoint));
-
-  // output flow
-  draw((x + 2*r + r*sin(pi/4), r - r*cos(pi/4)) -- (x + 2*r + r*tan(pi/4), 0) -- (x + 4.5*r, 0),
-       arrow=Arrow,
-       L=Label("NIC", align=E, position=EndPoint));
-
-  // draw tokens
-  for (int n = 0; n < n_tokens; ++n) {
-    real y = 3*r + n * token_size;
-
-    real x1 = x + r + tq_padding;
-    real x2 = x + 3*r - tq_padding;
-
-    if (n < packet_sizes[0]) {
-      fill(box((x1, y), (x2, y + token_size)), highlighter);
-    }
-    draw(box((x1, y), (x2, y + token_size)));
-  }
-
-  // draw packets
-  for (int n = 0; n < packet_sizes.length; ++n) {
-    real packet_start = 0;
-    for (int j = 0; j < n; ++j) {
-      packet_start += packet_sizes[j];
-    }
-
-    real x1 = x - packet_start * token_size;
-    real x2 = x1 - packet_sizes[n] * token_size;
-
-    real y1 = tq_padding;
-    real y2 = 2*r - tq_padding;
-
-    if (n == 0) {
-      fill(box((x1, y1), (x2, y2)), highlighter);
-    }
-    else {
-      fill(box((x1, y1), (x2, y2)), lightgrey);
-    }
-
-    draw(box((x1, y1), (x2, y2)));
-  }
-#+END_SRC
-
-#+CAPTION: Packets are forwarded once enough tokens are available in the bucket.
-#+ATTR_LATEX: :width 10cm
-#+LABEL: fig:tbf_diagram
-#+RESULTS[eecadcd2335c30f84a1528201475d3c9318e151f]: fig:tbf_diagram
-[[file:../figures/tbf_diagram.pdf]]
-
-As can be noticed in previous explanation, this algorithms are very simple to
-implement, making them suitable for a wide range of practical contexts.
-Moreover, their entire behavior can be modified and tuned simply by settings two
-numbers, $\lambda$ and $M$.
-
-The former parameter, called \emph{token rate} [token/s], is the upper bound for
-the average bitrate the [[ac:tbf][TBF]] can output, given by the 1:1 exchange rate between
-token and bytes.
-
-The latter, called \emph{burst size} [byte], limits the amount of data sent to
-the network in small time windows. In our setup, bursts happen when the bucket
-is operating normally, but a great number of packets arrives and exhausts all
-available tokens. However large the input rate no more than $M$ bytes can exit
-one after the other, as explained earlier in filter behaviour.
-
-With careful choice of its parameters, a [[ac:tbf][TBF]] can shape a bursty traffic,
-difficult to handle by network switches, into a more predictable and constant
-flow. Moreover, setting them properly, our controller will be able to coordinate
-all packet streams to avoid congestion and ensure [[ac:qos][QoS]] requirements for our
-users.
-
-As mentioned in [[ac:tbf][TBF]] definition, its queue discipline is \emph{classless}, as it
-does not discriminate data based on source or destination addresses, transport
-protocol, corresponding application, etc. The only feature considered is in fact
-packet size, needed to reserve the right amount of tokens to each element in the
-queue.
-
-This feature makes the [[ac:tbf][TBF]] a flexible and powerful tool, that can be deployed
-even in low-power network devices, whose processing power cannot handle advanced
-classification algorithms, such as Deep Packet Inspection.
 
 *** Objective definition
 In order to improve the network service for its users, first we have to define
