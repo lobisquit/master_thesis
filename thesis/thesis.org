@@ -256,6 +256,29 @@ LaTeX support for svg files sucks.
   rcParams.update(font_spec)
 #+END_SRC
 
+** R preamble                                                       :ignore:
+#+NAME: R_preamble
+#+BEGIN_SRC R
+  .libPaths("/opt/R/x86_64-pc-linux-gnu-library")
+
+  library(reshape2)
+  library(ggplot2)
+  library(scales)
+  library(extrafont)
+  library(gridExtra)
+  library(latex2exp)
+  library(readr)
+  library(dplyr)
+  library(data.table)
+  library(purrr)
+
+  loadfonts()
+
+  my_theme <- theme_bw() +
+    theme(
+      text = element_text(family = "Fira Sans")
+    )
+#+END_SRC
 * Introduction
 :PROPERTIES:
 :CUSTOM_ID: introduction
@@ -1353,17 +1376,14 @@ This structure resembles what was previously described in
 autoref:fig:network_tree, and is further detailed in
 autoref:fig:simulator_downlink and autoref:fig:simulator_uplink.
 
-As shown in these diagrams, each outgoing flow passes through a controller: this
-unit controls the rate of the packets before they enter the transmitting
-interface, labeled as ``NIC''.
+As shown in these diagrams, each outgoing flow passes through a controller,
+whose task is to govern and limit the data rate before it enters the
+transmitting interface, labeled as ``NIC''. All these units can be coordinated
+by the central administrator in order to give or revoke priority from a given
+source.
 
-The central network administrator can employ these traffic shapers to give or
-revoke priority from a given source, with the ultimate goal of keeping the
-network balanced.
-
-In our setting, all data flows are supposed to be [[ac:cbr][CBR]]: the central unit has then
-the task of allocating the corresponding bandwidth according to the network
-conditions.
+Since in our setting all data flows are supposed to be [[ac:cbr][CBR]], deciding bandwidth
+allocation is the definitive tool to provide users the best service.
 
 #+NAME: fig:simulator_downlink
 #+BEGIN_SRC plantuml :file ../figures/simulator_downlink.eps :noweb yes
@@ -1466,159 +1486,84 @@ conditions.
 [[file:../figures/simulator_uplink.eps]]
 
 *** Quality of Experience
-In order to improve the network service for its users, first we have to define
-what we mean for \emph{improvement}. We decided to maximize user [[ac:qoe][QoE]], defined as
-a number in $[0,\,1]$, ranging from unusable to perfect link. Each user $i$ is
-then assigned a \emph{utility function}, mapping available bandwidth $\rho_i$ to
-perceived quality.
+:PROPERTIES:
+:CUSTOM_ID: methodology-qoe
+:END:
 
-These function are taken from literature, and more specifically from works that
-study user experience is linked to measurable and objective connection metrics.
-cite:Georgopoulos2013,Schatz2011
+In order to improve the network, first we have to define what \emph{improvement}
+means. We decided to maximize user [[ac:qoe][QoE]], defined as a number in $[0,\,1]$,
+ranging from unusable to perfect link. Each user $i$ is then given a
+\emph{utility function}, mapping available bandwidth $\rho_i$ to perceived
+quality.
 
-#+NAME: utilities
-#+BEGIN_SRC python :noweb yes :exports results :results file output
-  <<python_preamble>>
+The functions employed in this thesis were obtained, by multiple research
+groups, collecting user opinion of the service with different available
+bandwidth. cite:Georgopoulos2013,Schatz2011 These studies highlight a link
+between [[ac:qoe][QoE]] and this well defined network metric, described by
+autoref:eq:utility_general.
 
-  import numpy as np
+\begin{equation} \label{eq:utility_general}
+u(\rho) = a \, \rho^b + 1
+\end{equation}
 
-  def utility(x, a, b):
-      return a * np.power(x, b) + 1
-
-  profiles = {
-      'Streaming HD': (-3.035, -.5061),
-      'Streaming MD': (-4.850, -.6470),
-      'Streaming LD': (-17.53, -1.048),
-      'Web broswing': (-14.98544276, -0.87800541)
-  }
-
-  x = np.logspace(2, 4, 100)
-
-  fig = plt.figure(frameon=False, figsize=(4, 3))
-  ax = fig.gca()
-  ax.set_xscale('log')
-
-  for profile in profiles:
-      y = utility(x, *profiles[profile])
-      plt.plot(x, y, label=profile)
-
-  plt.legend()
-  plt.title('Utility profiles')
-  plt.xlabel('Bandwidth', fontweight='regular')
-  plt.ylabel('Utility', fontweight='regular')
-
-  out_path = "../figures/utilities.pdf"
-  plt.tight_layout(pad=0)
-  plt.savefig(out_path)
-
-  # plt.show()
-
-  print(out_path, end='')
-#+END_SRC
-
-#+CAPTION: Utilities connect available bandwidth to user satisfaction.
-#+ATTR_LATEX: :height 3in
-#+LABEL: fig:utilities
-#+RESULTS[80ed12479a7eb0a9f5d21e8f3683793b345346ac]: utilities
-[[file:../figures/utilities.pdf]]
-
-As shown in autoref:fig:utilities, requested videos can be either Low Definition
-(360p), Medium Definition (720p), or High Definition (1080p).
-
-According to \emph{Google Video Quality Report}, these quality rates are
-distributed as 5%, 10% and 85% respectively. These proportions will be followed
-when simulating the network, in order for the end results to be realistic.
-
-#+NAME: video_quality_report
-#+BEGIN_SRC python :noweb yes :exports results :results file output
-  <<python_preamble>>
-
-  labels = 'Low Definition', 'Medium Definition', 'High Definition'
-  sizes = (5, 10, 85)
-  explode = (0.1, 0.1, 0)
-
-  fig = plt.figure(frameon=False, figsize=(4, 2))
-  ax = fig.gca()
-  ax.pie(sizes, explode=(0.1, 0.1, 0.1), labels=labels, autopct='%1.0f%%', startangle=0)
-  ax.axis('equal')  # Equal aspect ratio ensures that pie is drawn as a circle.
-
-  out_path = "../figures/streamers_profiles.pdf"
-  plt.tight_layout(pad=0)
-  plt.savefig(out_path)
-
-  # plt.show()
-
-  print(out_path, end='')
-#+END_SRC
-
-#+CAPTION: Distribution of video quality among YouTube users. cite:GoogleVideoQualityReport
-#+ATTR_LATEX: :height 2in
-#+LABEL: fig:video_quality_report
-#+RESULTS[bec44a5a0c483a75d987ba16e85eac166702ddac]: video_quality_report
-[[file:../figures/streamers_profiles.pdf]]
+where $a$ and $b$ are instead application specific coefficients and $\rho$ is
+the assigned bandwidth.
 
 *** Fairness on resource allocation
-In order to satisfy all users, we need to reach an operation point for the
-network that guarantees optimal and fair flow control.
+In order to manage the network optimally, we need to reach an operation point
+$\vec{\rho}$ that balances demands of all parties involved.
 
-Each users, in fact, wants to maximize its own utility, but doing so it harms
-the [[ac:qos][QoS]] of its fellows. The [[ac:isp][ISP]] has then to act as an arbiter, allocating
-available resources in a fair way. The optimal solution of this problem was
-proven to be the so-called Nash arbitration scheme of the \emph{game} played
-among these actors. cite:Mazumdar1991
+Traditionally, the \emph{proportional fairness} principle is applied when
+handling different flows. According to this rule, each switching unit allocates
+bandwidth in \emph{proportion} to user demand. This has proven to be a reliable
+way to distribute network resources, but it does not take into account the
+service quality perception, that varies with the application.
+
+Each user tends to maximize this subjective metric, called \emph{utility}, when
+asking for bandwidth, but doing so it harms the [[ac:qos][QoS]] of its fellows. The [[ac:isp][ISP]] has
+then to act as an arbiter, allocating available resources in a fair way. The
+optimal solution of this problem was proven to be the so-called \emph{Nash
+arbitration scheme} of the \emph{game} played among these actors.
+cite:Mazumdar1991
 
 Such point is unique and pareto-optimal, and it can be found maximizing $f$,
-product of users utilities. This gives us a straightforward criterion in order
-to rank all possible network configurations.
-
-In order to avoid issues related to floating point precision in computers, a
-different, but equivalent formulation is employed in this thesis.
+product of all the utilities. This gives us a straightforward criterion in order
+to rank all possible network configurations. Just to avoid issues related to CPU
+floating point precision, a different but equivalent formulation is evaluated in
+simulations.
 
 \begin{equation}
   f(\vec{\rho}) = \prod_i u_i(\rho_i) \implies
   \argmax_{\vec{\rho}} ~ f(\vec{\rho}) = \argmax_{\vec{\rho}} ~ \sum_i \log u_i(\rho_i)
 \end{equation}
 
-\smallskip
 
-Traditionally, when handling different flows, \emph{proportional fairness} is
-applied. According to this rule, each switching unit allocates bandwidth in
-\emph{proportion} to user demand.
-
-This has proven to be a reliable way to distribute network resources in the
-past, but it does not take into account user perception of the services that can
-vary according to the application, see TODO fig utilities.
-
-\smallskip
-
-In autoref:results-network_optimization we will show how these two strategies
-rank, in terms of [[ac:qoe][QoE]], in our reference scenario.
+In autoref:results-network_optimization we will then show if the traditional
+approach to manage an access network is indeed fair or not, with respect to the
+optimal strategy.
 
 *** Flow balancing optimization
-From a theoretical point of view, the fair and optimal working point has been
-described in the last section as the Nash arbitration scheme $\rho$, solution of
-the following mathematical problem.
+More formally, the fair working point is identified as the Nash arbitration
+scheme $\vec{\rho}$, solution of the following mathematical problem.
 
 \begin{align}
   \max_{\vec{\rho}} ~~ & \sum_{i=1}^n \log u_i(\rho_i) \\
   \text{given~~}
                  & \sum_{i=1}^n \rho_i \le \rho_{MAX} \\
-                 & \sum_{i \in DSLAM_j} \rho_i \le \rho_{D,\,MAX} ~ \forall j \in D \label{eq:dslam_max} \\
-                 & \sum_{i \in ROUTER_j} \rho_i \le \rho_{R,\,MAX} ~ \forall j \in R \label{eq:router_max}
+                 & \forall j \in D, \,\sum_{i \in DSLAM_j} \rho_i \le \rho_{D,\,MAX}  \label{eq:dslam_max} \\
+                 & \forall j \in R, \,\sum_{i \in ROUTER_j} \rho_i \le \rho_{R,\,MAX} \label{eq:router_max}
 \end{align}
 
 where $n$ is the total number of users and each [[ac:dslam][DSLAM]] and router, belonging to
 sets $D$ and $R$, are assigned a subset of users $DSLAM_j$ and $ROUTER_j$ and a
-maximum bandwidth $\rho_{D,\,MAX}$ and $\rho_{R,\,MAX}$ respectively.
+maximum bandwidth $\rho_{D,\,MAX}$ and $\rho_{R,\,MAX}$, respectively.
 
 This can be seen as a \emph{water-filling} problem, as a limited resource
-$\rho_{MAX}$ has to be allocated to the users maximising a convex objective
-function.
+$\rho_{MAX}$ has to be allocated maximising a concave objective function.
 
-Unfortunately, our case is complicated by the two additional constraints
-# autoref:eq:dslam_max and autoref:eq:router_max:
-no algorithm is known in literature that is able to solve the problem optimally.
-cite:Xing2018
+Unfortunately, however, our case is complicated by the two additional
+constraints autoref:eq:dslam_max and autoref:eq:router_max: no algorithm is
+currently known in literature able to solve the problem optimally. cite:Xing2018
 
 A sub-optimal solution has then to be searched using an heuristic algorithm.
 Given the monotonicity of the objective function, the following iterative
@@ -1819,41 +1764,113 @@ As described in [[autoref:methodology-network_optimization]], we will consider t
 possible ways to allocate the total available bandwidth to the access network
 users: proportional fairness and the Nash arbitration scheme. While the former
 is computed exactly, the latter needs to be approximated via an heuristic
-algorithm, see autoref:lst:alg:heuristic_flow.
+algorithm, provided in autoref:lst:alg:heuristic_flow.
 
-These strategies will be tested under different conditions the network can find
-itself, specifically lower or higher offered traffic or different user profiles.
-The former property will be described in our simulations via $p_{active}$
-parameter, that will be the probability a certain user is communicating or not.
-In order to account for the latter factor, first applications are randomly split
-into video streaming and web page browsing, according to probability
-$p_{streaming}$.
+These strategies will be tested under different network conditions, specifically
+lower or higher offered traffic or different user profiles. The former property
+will be described in our simulations via $p_{active}$ parameter, that will be
+the probability a certain user is communicating or not. In order to account for
+the latter factor, applications are randomly split into video streaming and web
+page browsing, according to probability $p_{streaming}$.
 
-All videos
+Requested videos can be either Low Definition (360p), Medium Definition (720p),
+or High Definition (1080p). According to \emph{Google Video Quality Report},
+each one of those is experienced by 5%, 10% and 85% of the users respectively.
 
+#+NAME: video_quality_report
+#+BEGIN_SRC python :noweb yes :exports results :results file output
+  <<python_preamble>>
 
+  labels = 'Low Definition', 'Medium Definition', 'High Definition'
+  sizes = (5, 10, 85)
+  explode = (0.1, 0.1, 0)
+
+  fig = plt.figure(frameon=False, figsize=(4, 2))
+  ax = fig.gca()
+  ax.pie(sizes, explode=(0.1, 0.1, 0.1), labels=labels, autopct='%1.0f%%', startangle=0)
+  ax.axis('equal')  # Equal aspect ratio ensures that pie is drawn as a circle.
+
+  out_path = "../figures/streamers_profiles.pdf"
+  plt.tight_layout(pad=0)
+  plt.savefig(out_path)
+
+  # plt.show()
+
+  print(out_path, end='')
+#+END_SRC
+
+#+CAPTION: Distribution of video quality among YouTube users. cite:GoogleVideoQualityReport
+#+ATTR_LATEX: :height 2in
+#+LABEL: fig:video_quality_report
+#+RESULTS[bec44a5a0c483a75d987ba16e85eac166702ddac]: video_quality_report
+[[file:../figures/streamers_profiles.pdf]]
+
+Each type of traffic is assigned a utility function, as shown in
+autoref:fig:utilities, that links user perception to available resources. As
+mentioned in autoref:methodology-qoe, these relationships were measured
+empirically polling a number of users enjoying different bandwidth levels.
+
+#+NAME: utilities
+#+BEGIN_SRC R :exports results :results file value :noweb yes
+  <<R_preamble>>
+
+  library(pracma)
+
+  utility <- function(x, a, b) {
+    return(a * `^`(x, b) + 1)
+  }
+
+  as <- c(-3.035, -4.850, -17.53, -14.98544276)
+  bs  <- c(-.5061, -.6470, -1.048, -0.8780054)
+  types  <- c('Streaming HD',
+             'Streaming MD',
+             'Streaming LD',
+             'Web broswing')
+
+  x <- logspace(2, 4, 100)
+
+  data <- data.frame('type'=c(), 'Bandwidth'=c(), 'Utility profiles'=c())
+
+  for (index in seq(from=1, to=length(as), by=1)) {
+    current_data <- data.frame(
+      'Utility profiles'=types[index],
+      'Bandwidth'=x,
+      'Utility'=utility(x, as[index], bs[index])
+    )
+    data <- rbind(data, current_data)
+  }
+
+  current <- ggplot(data, aes(x=Bandwidth, y=Utility, color=Utility.profiles)) +
+    labs(x='Bandwidth [kbit/s]', color='Utility profiles') +
+    scale_x_continuous(trans='log', breaks=c(100, 1000, 10000)) +
+    geom_line() +
+    my_theme
+
+  ## print(current)
+
+  out_path <- '../figures/utilities.pdf'
+  ggsave(plot = current,
+         filename = out_path,
+         width = 5,
+         height = 3,
+         unit = 'in',
+         dpi = 300,
+         device = 'pdf')
+
+  print(out_path)
+#+END_SRC
+
+#+CAPTION: Utilities connect available bandwidth to user satisfaction.
+#+ATTR_LATEX: :height 3in
+#+LABEL: fig:utilities
+#+RESULTS[008700d760fd52c73f6e90e6e9a089c26a190499]: utilities
+[[file:../figures/utilities.pdf]]
+
+# TODO scrivere dei risultati
 
 #+NAME: optimization_plotter
-#+BEGIN_SRC R :exports none
-  .libPaths("/opt/R/x86_64-pc-linux-gnu-library")
-
-  library(reshape2)
-  library(ggplot2)
-  library(scales)
-  library(extrafont)
-  library(gridExtra)
-  library(latex2exp)
-  library(readr)
-  library(dplyr)
-  library(data.table)
-  library(purrr)
-
-  loadfonts()
-
-  my_theme <- theme_bw() +
-      theme(
-          text = element_text(family = "Fira Sans")
-      )
+#+BEGIN_SRC R :exports none :noweb yes
+  <<R_preamble>>
 
   traditional <- read.csv("../data/optimization/traditional.csv", header = TRUE)
   traditional$type <- "Heuristic"
@@ -1906,7 +1923,7 @@ p_streaming = 0.1
 #+ATTR_LATEX: :width \linewidth :placement [t]
 #+LABEL: fig:obj_vs_p_nothing0.1
 #+CAPTION: Performance for $p_{streaming}$ = 0.1
-#+RESULTS[9cb850c13add9a2bb7fdc8c253e5d9e398279275]: fig:obj_vs_p_nothing0.1
+#+RESULTS[9bd307d37033151a56e0501c609a108a2d4b76f1]: fig:obj_vs_p_nothing0.1
 [[file:../figures/obj_vs_p_nothing_0.100000.pdf]]
 
 
@@ -1920,7 +1937,7 @@ p_streaming = 0.5
 #+ATTR_LATEX: :width \linewidth :placement [t]
 #+LABEL: fig:obj_vs_p_nothing0.5
 #+CAPTION: Performance for $p_{streaming}$ = 0.5
-#+RESULTS[f3331d15eba07e09b62fe19cb2a15171d2d42f06]: fig:obj_vs_p_nothing0.5
+#+RESULTS[bc539a96db2598fbafa24ecc510a5c21189d902c]: fig:obj_vs_p_nothing0.5
 [[file:../figures/obj_vs_p_nothing_0.500000.pdf]]
 
 #+NAME: fig:obj_vs_p_nothing0.9
@@ -1933,7 +1950,7 @@ p_streaming = 0.9
 #+ATTR_LATEX: :width \linewidth :placement [t]
 #+LABEL: fig:obj_vs_p_nothing0.9
 #+CAPTION: Performance for $p_{streaming}$ = 0.9
-#+RESULTS[26d3e0273f40b13e134a98bf3803cca2ffcf7373]: fig:obj_vs_p_nothing0.9
+#+RESULTS[878fd4cbd050284034b884c07c52e47f4232db3a]: fig:obj_vs_p_nothing0.9
 [[file:../figures/obj_vs_p_nothing_0.900000.pdf]]
 
 * Conclusions
