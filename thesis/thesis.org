@@ -32,16 +32,6 @@
 #+LaTeX_HEADER: \setlength{\parindent}{0cm}
 #+LATEX_HEADER: \setlength{\parskip}{0.25em}
 
-#+LATEX_HEADER: \usepackage{glossaries}
-#+LATEX_HEADER_EXTRA: \newacronym{pop}{PoP}{Point of Presence}
-#+LATEX_HEADER_EXTRA: \newacronym{dslam}{DSLAM}{Digital Subscriber Line Access Multiplexer}
-#+latex_header_extra: \newacronym{qos}{QoS}{Quality of Service}
-#+latex_header_extra: \newacronym{qoe}{QoE}{Quality of Experience}
-#+latex_header_extra: \newacronym{cbr}{CBR}{Constant Bitrate}
-#+latex_header_extra: \newacronym{forces}{ForCES}{Forwarding and Control Element Separation}
-#+latex_header_extra: \newacronym{ilp}{ILP}{Integer Linear Programming}
-#+latex_header_extra: \newacronym{sdn}{SDN}{Software Defined Network}
-
 #+LATEX_HEADER: \DeclareMathOperator*{\argmax}{arg\,max}
 #+LATEX_HEADER: \makeatletter
 #+LATEX_HEADER: \newenvironment{bigalgorithm}
@@ -63,10 +53,20 @@
 #+LATEX_HEADER:    \end{center}
 #+LATEX_HEADER:   }
 #+LATEX_HEADER: \makeatother
+
+#+LATEX_HEADER: \usepackage{glossaries}
+#+LATEX_HEADER_EXTRA: \newacronym{pop}{PoP}{Point of Presence}
+#+LATEX_HEADER_EXTRA: \newacronym{dslam}{DSLAM}{Digital Subscriber Line Access Multiplexer}
+#+latex_header_extra: \newacronym{qos}{QoS}{Quality of Service}
+#+latex_header_extra: \newacronym{qoe}{QoE}{Quality of Experience}
+#+latex_header_extra: \newacronym{cbr}{CBR}{Constant Bitrate}
+#+latex_header_extra: \newacronym{forces}{ForCES}{Forwarding and Control Element Separation}
+#+latex_header_extra: \newacronym{ilp}{ILP}{Integer Linear Programming}
+#+latex_header_extra: \newacronym{sdn}{SDN}{Software Defined Network}
 #+latex_header_extra: \newacronym{isp}{ISP}{Internet Service Provider}
 
 * Utility code :ignore:
-** PlantUML common style :ignore:
+** PlantUML common style                                            :ignore:
 #+BEGIN_COMMENT
 PlantUML skin, reusable for all diagrams
 #+END_COMMENT
@@ -164,7 +164,7 @@ PlantUML skin, reusable for all diagrams
   }
 #+END_SRC
 
-** Download university logos :ignore:
+** Download university logos                                        :ignore:
 #+BEGIN_COMMENT
 Download all needed files for titlepage and convert them.
 LaTeX support for svg files sucks.
@@ -182,7 +182,7 @@ LaTeX support for svg files sucks.
   inkscape ../figures/logo_rwth.svg --export-pdf=../figures/logo_rwth.pdf
 #+END_SRC
 
-** Latex title page :ignore:
+** Latex title page                                                 :ignore:
 #+BEGIN_EXPORT latex
 \newgeometry{top=1in, bottom=1in, inner=1in, outer=1in}
 \begin{titlepage}
@@ -228,7 +228,7 @@ LaTeX support for svg files sucks.
 \restoregeometry
 #+END_EXPORT
 
-** Asymptote preamble :ignore:
+** Asymptote preamble                                               :ignore:
 #+NAME: asymptote_preamble
 #+BEGIN_SRC asymptote :exports none
   settings.outformat="pdf";
@@ -238,6 +238,22 @@ LaTeX support for svg files sucks.
 
   // texpreamble("\usepackage{charter}");
   // texpreamble("\usepackage[charter]{mathdesign}");
+#+END_SRC
+
+** Python preamble                                                  :ignore:
+#+NAME: python_preamble
+#+BEGIN_SRC python :exports none
+  import matplotlib.pyplot as plt
+
+  from matplotlib import rcParams
+
+  font_spec = {
+      'font.family':'sans-serif',
+      'font.sans-serif':['Fira Sans'],
+      'font.weight': 'regular',
+      'axes.titleweight': 'regular'
+  }
+  rcParams.update(font_spec)
 #+END_SRC
 
 * Introduction
@@ -539,9 +555,8 @@ First, in autoref:methodology-geographical_analysis, we will analyze the Aachen
 building and road map in order to design, in autoref:methodology-network_design,
 a proper access network based on city topology and population density.
 
-Once obtained a suitable structure, its parameters are optimized in
-autoref:methodology-flow_optimization using a genetic algorithm, building an
-effectively self-learning framework.
+Once obtained a suitable structure, the controller is tuned in order to enhance
+network performance for all its users.
 
 ** Geographical analysis
 :PROPERTIES:
@@ -1306,9 +1321,9 @@ For now all these approximations are mandatory for the algorithm to be fast
 enough to deal with our case of study, but in [[autoref:results-network_design]]
 they will prove to be good ones, i.e. to be close to the theoretical optimum.
 
-** Flow balancing optimization
+** Network optimization
 :PROPERTIES:
-:CUSTOM_ID: methodology-flow_optimization
+:CUSTOM_ID: methodology-network_optimization
 :END:
 
 #+BEGIN_SRC org :exports none
@@ -1459,85 +1474,88 @@ perceived quality.
 
 These function are taken from literature, and more specifically from works that
 study user experience is linked to measurable and objective connection metrics.
-cite:Georgopoulos2013,Schatz2011 Their shape is shown in fig...
+cite:Georgopoulos2013,Schatz2011
 
-# TODO set fig, redo plot with new values
+#+NAME: utilities
+#+BEGIN_SRC python :noweb yes :exports results :results file output
+  <<python_preamble>>
 
-#+NAME: utility_example
-#+BEGIN_SRC asymptote :file ../figures/utility_example.pdf :noweb yes :tangle ciao.asy
-  <<asymptote_preamble>>
+  import numpy as np
 
-  size(x=0, y=7cm);
+  def utility(x, a, b):
+      return a * np.power(x, b) + 1
 
-  real m = 0.15;
-  real deltax = 0.2;
-  real xcenter = 0.6;
-
-  real padding = 0.2;
-  real xmax = xcenter + 0.6;
-  real xmin = 0;
-
-  real ymax = 1;
-  real ymin = 0;
-
-  draw((xmin, 0) -- (xmax + padding, 0), arrow=Arrow);
-  draw((0, ymin - padding) -- (0, ymax + padding), arrow=Arrow);
-
-  label("$x$", (xmax + padding, 0), align=E);
-  label("$y$", (0, ymax + padding), align=N);
-
-  label("$1$", (0, 1), align=W);
-  label("$0$", (0, 0), align=W);
-
-  import graph;
-  real f1(real x) {
-    return 1/(1 + ((1-m)/m)^((x - xcenter)/deltax));
+  profiles = {
+      'Streaming HD': (-3.035, -.5061),
+      'Streaming MD': (-4.850, -.6470),
+      'Streaming LD': (-17.53, -1.048),
+      'Web broswing': (-14.98544276, -0.87800541)
   }
 
-  real f2(real x) {
-    if (x < xcenter) {
-      return 1;
-    }
-    else {
-      return 0;
-    }
-  }
+  x = np.logspace(2, 4, 100)
 
-  draw(graph(f2, xmin, xcenter), dashed + grey, legend=Label("Ideal utility", fontsize(10)));
-  draw(graph(f1, xmin, xmax), legend=Label("Smoothed utility", fontsize(10)));
+  fig = plt.figure(frameon=False, figsize=(4, 3))
+  ax = fig.gca()
+  ax.set_xscale('log')
 
-  path p1 = (xcenter + deltax, 0) -- (xcenter + deltax, m);
-  draw(p1, grey, arrow=Arrows);
-  label("$m$", p1, align=W);
+  for profile in profiles:
+      y = utility(x, *profiles[profile])
+      plt.plot(x, y, label=profile)
 
-  path p2 = (xcenter + 0, -padding/4) -- (xcenter + deltax, -padding/4);
-  draw(p2, grey, arrow=Arrows);
-  label("$\Delta x$", p2, align=S);
+  plt.legend()
+  plt.title('Utility profiles')
+  plt.xlabel('Bandwidth', fontweight='regular')
+  plt.ylabel('Utility', fontweight='regular')
 
-  path p3 = (xcenter -deltax, 0) -- (xcenter -deltax, 1 - m);
-  draw(p3, grey, arrow=Arrows);
-  label("$1 - m$", p3, align=W);
+  out_path = "../figures/utilities.pdf"
+  plt.tight_layout(pad=0)
+  plt.savefig(out_path)
 
-  path p4 = (xcenter - deltax, -padding/4) -- (xcenter + 0, -padding/4);
-  draw(p4, grey, arrow=Arrows);
-  label("$\Delta x$", p4, align=S);
+  # plt.show()
 
-  // path p5 = (xcenter, -padding) -- (xcenter, 1 + padding);
-  path p5 = (xcenter, -padding*1.2) -- (xcenter, 0);
-  draw(p5, black);
-  label("$x_c$", (xcenter, -padding*1.2), align=S);
-
-  dot( (xcenter + deltax, m) );
-  dot( (xcenter - deltax, 1-m) );
-
-  attach(legend(p=invisible, linelength=1cm, xmargin=0), point(E), NE);
+  print(out_path, end='')
 #+END_SRC
 
-#+CAPTION: A smoothed version of the shifted unit step is employed, to guide the optimization.
-#+ATTR_LATEX: :height 7cm
-#+LABEL: utility_example
-#+RESULTS[52f6ec3f067dd8083c848821ccab803bc0174838]: utility_example
-[[file:../figures/utility_example.pdf]]
+#+CAPTION: Utilities connect available bandwidth to user satisfaction.
+#+ATTR_LATEX: :height 3in
+#+LABEL: fig:utilities
+#+RESULTS[80ed12479a7eb0a9f5d21e8f3683793b345346ac]: utilities
+[[file:../figures/utilities.pdf]]
+
+As shown in autoref:fig:utilities, requested videos can be either Low Definition
+(360p), Medium Definition (720p), or High Definition (1080p).
+
+According to \emph{Google Video Quality Report}, these quality rates are
+distributed as 5%, 10% and 85% respectively. These proportions will be followed
+when simulating the network, in order for the end results to be realistic.
+
+#+NAME: video_quality_report
+#+BEGIN_SRC python :noweb yes :exports results :results file output
+  <<python_preamble>>
+
+  labels = 'Low Definition', 'Medium Definition', 'High Definition'
+  sizes = (5, 10, 85)
+  explode = (0.1, 0.1, 0)
+
+  fig = plt.figure(frameon=False, figsize=(4, 2))
+  ax = fig.gca()
+  ax.pie(sizes, explode=(0.1, 0.1, 0.1), labels=labels, autopct='%1.0f%%', startangle=0)
+  ax.axis('equal')  # Equal aspect ratio ensures that pie is drawn as a circle.
+
+  out_path = "../figures/streamers_profiles.pdf"
+  plt.tight_layout(pad=0)
+  plt.savefig(out_path)
+
+  # plt.show()
+
+  print(out_path, end='')
+#+END_SRC
+
+#+CAPTION: Distribution of video quality among YouTube users. cite:GoogleVideoQualityReport
+#+ATTR_LATEX: :height 2in
+#+LABEL: fig:video_quality_report
+#+RESULTS[bec44a5a0c483a75d987ba16e85eac166702ddac]: video_quality_report
+[[file:../figures/streamers_profiles.pdf]]
 
 *** Fairness on resource allocation
 In order to satisfy all users, we need to reach an operation point for the
@@ -1549,7 +1567,7 @@ available resources in a fair way. The optimal solution of this problem was
 proven to be the so-called Nash arbitration scheme of the \emph{game} played
 among these actors. cite:Mazumdar1991
 
-Such point is unique and pareto-optimal, and it can be found maximizing the
+Such point is unique and pareto-optimal, and it can be found maximizing $f$,
 product of users utilities. This gives us a straightforward criterion in order
 to rank all possible network configurations.
 
@@ -1558,7 +1576,7 @@ different, but equivalent formulation is employed in this thesis.
 
 \begin{equation}
   f(\vec{\rho}) = \prod_i u_i(\rho_i) \implies
-  \argmax_{\vec{\rho}} ~ f(\vec{\rho}) = \argmax_{\vec{\rho}} ~ \sum_i \log(u_i(\rho_i)
+  \argmax_{\vec{\rho}} ~ f(\vec{\rho}) = \argmax_{\vec{\rho}} ~ \sum_i \log u_i(\rho_i)
 \end{equation}
 
 \smallskip
@@ -1567,14 +1585,67 @@ Traditionally, when handling different flows, \emph{proportional fairness} is
 applied. According to this rule, each switching unit allocates bandwidth in
 \emph{proportion} to user demand.
 
-This has proven to be a reliable way to distribute network resources, but it
-does not take into account user perception of the services that can vary
-according to the application, see TODO fig utilities.
+This has proven to be a reliable way to distribute network resources in the
+past, but it does not take into account user perception of the services that can
+vary according to the application, see TODO fig utilities.
 
 \smallskip
 
 In autoref:results-network_optimization we will show how these two strategies
 rank, in terms of [[ac:qoe][QoE]], in our reference scenario.
+
+*** Flow balancing optimization
+From a theoretical point of view, the fair and optimal working point has been
+described in the last section as the Nash arbitration scheme $\rho$, solution of
+the following mathematical problem.
+
+\begin{align}
+  \max_{\vec{\rho}} ~~ & \sum_{i=1}^n \log u_i(\rho_i) \\
+  \text{given~~}
+                 & \sum_{i=1}^n \rho_i \le \rho_{MAX} \\
+                 & \sum_{i \in DSLAM_j} \rho_i \le \rho_{D,\,MAX} ~ \forall j \in D \label{eq:dslam_max} \\
+                 & \sum_{i \in ROUTER_j} \rho_i \le \rho_{R,\,MAX} ~ \forall j \in R \label{eq:router_max}
+\end{align}
+
+where $n$ is the total number of users and each [[ac:dslam][DSLAM]] and router, belonging to
+sets $D$ and $R$, are assigned a subset of users $DSLAM_j$ and $ROUTER_j$ and a
+maximum bandwidth $\rho_{D,\,MAX}$ and $\rho_{R,\,MAX}$ respectively.
+
+This can be seen as a \emph{water-filling} problem, as a limited resource
+$\rho_{MAX}$ has to be allocated to the users maximising a convex objective
+function.
+
+Unfortunately, our case is complicated by the two additional constraints
+# autoref:eq:dslam_max and autoref:eq:router_max:
+no algorithm is known in literature that is able to solve the problem optimally.
+cite:Xing2018
+
+A sub-optimal solution has then to be searched using an heuristic algorithm.
+Given the monotonicity of the objective function, the following iterative
+approach is employed.
+
+\begin{bigalgorithm}
+  \label{lst:alg:heuristic_flow}
+  \begin{algorithmic}
+    \caption{Flow optimization algorithm}
+    \State Initialize all users, each with their utility $u_i$
+    \State Set $\rho_i = 0$, $\forall i=0, \ldots, n$
+    \State Set stop\_condition = False
+    \State Set initial temperature $T$
+    \While{stop\_condition is False}
+    \State Randomly choose $k$ among $\{1, ..., n\}$
+    \State Perturb $\rho_k$ of a uniform random quantity in $[0,\, T]$
+    \If{ $\rho_k$ does not respect constraints \autoref{eq:dslam_max} and \autoref{eq:router_max}}
+    \State Revert perturbation on $k$
+    \EndIf
+    \If{ Objective function $f$ improvement is negligible }
+    \State stop\_condition = True
+    \EndIf
+    \State Decrement $T$
+    \EndWhile
+    \Return $\vec{\rho}$
+  \end{algorithmic}
+\end{bigalgorithm}
 
 * Results
 :PROPERTIES:
@@ -1744,11 +1815,133 @@ the proper level of detail if needed.
 :CUSTOM_ID: results-network_optimization
 :END:
 
+As described in [[autoref:methodology-network_optimization]], we will consider two
+possible ways to allocate the total available bandwidth to the access network
+users: proportional fairness and the Nash arbitration scheme. While the former
+is computed exactly, the latter needs to be approximated via an heuristic
+algorithm, see autoref:lst:alg:heuristic_flow.
+
+These strategies will be tested under different conditions the network can find
+itself, specifically lower or higher offered traffic or different user profiles.
+The former property will be described in our simulations via $p_{active}$
+parameter, that will be the probability a certain user is communicating or not.
+In order to account for the latter factor, first applications are randomly split
+into video streaming and web page browsing, according to probability
+$p_{streaming}$.
+
+All videos
+
+
+
+#+NAME: optimization_plotter
+#+BEGIN_SRC R :exports none
+  .libPaths("/opt/R/x86_64-pc-linux-gnu-library")
+
+  library(reshape2)
+  library(ggplot2)
+  library(scales)
+  library(extrafont)
+  library(gridExtra)
+  library(latex2exp)
+  library(readr)
+  library(dplyr)
+  library(data.table)
+  library(purrr)
+
+  loadfonts()
+
+  my_theme <- theme_bw() +
+      theme(
+          text = element_text(family = "Fira Sans")
+      )
+
+  traditional <- read.csv("../data/optimization/traditional.csv", header = TRUE)
+  traditional$type <- "Heuristic"
+
+  heuristic <- read.csv("../data/optimization/heuristic.csv", header = TRUE)
+  heuristic$type <- "Traditional"
+
+  dataset <- rbind(traditional, heuristic)
+
+  summary <- group_by(dataset, p_nothing, p_streaming, type) %>% summarize(obj=mean(obj))
+  summary$obj <- exp(summary$obj)
+
+  summary <- summary[summary$p_streaming == p_streaming, ]
+  padding <- (
+    max(exp(summary$obj[summary$type == 'Traditional'])) -
+    min(exp(summary$obj[summary$type == 'Traditional']))
+  ) / 100
+
+  current <- ggplot(summary, aes(x=1-p_nothing, y=obj, color=type)) +
+      geom_line() +
+      geom_errorbar(aes(ymin=obj - padding,
+                        ymax=obj + padding)) +
+      labs(x=TeX("$P_{active}$"),
+           y="Objective function",
+           color='Strategy') +
+      scale_x_continuous(breaks=unique(summary$p_nothing), labels=round(unique(summary$p_nothing), 2)) +
+      my_theme
+
+  ## print(current)
+
+  out_path <- sprintf('../figures/obj_vs_p_nothing_%f.pdf', p_streaming)
+  ggsave(plot = current,
+         filename = out_path,
+         width = 5,
+         height = 3,
+         unit = 'in',
+         dpi = 300,
+         device = 'pdf')
+
+  print(out_path)
+#+END_SRC
+
+#+NAME: fig:obj_vs_p_nothing0.1
+#+BEGIN_SRC R :exports results :results file value :noweb yes
+p_streaming = 0.1
+
+<<optimization_plotter>>
+#+END_SRC
+
+#+ATTR_LATEX: :width \linewidth :placement [t]
+#+LABEL: fig:obj_vs_p_nothing0.1
+#+CAPTION: Performance for $p_{streaming}$ = 0.1
+#+RESULTS[9cb850c13add9a2bb7fdc8c253e5d9e398279275]: fig:obj_vs_p_nothing0.1
+[[file:../figures/obj_vs_p_nothing_0.100000.pdf]]
+
+
+#+NAME: fig:obj_vs_p_nothing0.5
+#+BEGIN_SRC R :exports results :results file value :noweb yes
+p_streaming = 0.5
+
+<<optimization_plotter>>
+#+END_SRC
+
+#+ATTR_LATEX: :width \linewidth :placement [t]
+#+LABEL: fig:obj_vs_p_nothing0.5
+#+CAPTION: Performance for $p_{streaming}$ = 0.5
+#+RESULTS[f3331d15eba07e09b62fe19cb2a15171d2d42f06]: fig:obj_vs_p_nothing0.5
+[[file:../figures/obj_vs_p_nothing_0.500000.pdf]]
+
+#+NAME: fig:obj_vs_p_nothing0.9
+#+BEGIN_SRC R :exports results :results file value :noweb yes
+p_streaming = 0.9
+
+<<optimization_plotter>>
+#+END_SRC
+
+#+ATTR_LATEX: :width \linewidth :placement [t]
+#+LABEL: fig:obj_vs_p_nothing0.9
+#+CAPTION: Performance for $p_{streaming}$ = 0.9
+#+RESULTS[26d3e0273f40b13e134a98bf3803cca2ffcf7373]: fig:obj_vs_p_nothing0.9
+[[file:../figures/obj_vs_p_nothing_0.900000.pdf]]
+
 * Conclusions
 :PROPERTIES:
 :CUSTOM_ID: conclusion
 :END:
 
+\clearpage
 bibliographystyle:plain
 bibliography:biblio.bib
 
