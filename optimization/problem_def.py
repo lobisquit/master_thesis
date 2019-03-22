@@ -13,11 +13,10 @@ STREAM_PARAMS = [ (-3.035, -.5061),
                   (-17.53, -1.048) ]
 
 STREAM_BW = [
-    5e6
+    5e6,
     3e6,
     1e6,
 ]
-
 
 # obtained via `find_web_parameters.py`
 WEB_BW = 500e3
