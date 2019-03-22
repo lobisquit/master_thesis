@@ -7,11 +7,16 @@ MAX_DSLAM_BW = 1e9 # bps
 MAX_ROUTER_BW = 10e9 # bps
 
 STREAM_PROBS = [0.85, 0.10, 0.05]
+
 STREAM_PARAMS = [ (-3.035, -.5061),
                   (-4.850, -.6470),
                   (-17.53, -1.048) ]
 
-STREAM_BW = [1e6, 3e6, 5e6]
+STREAM_BW = [
+    5e6
+    3e6,
+    1e6,
+]
 
 
 # obtained via `find_web_parameters.py`
