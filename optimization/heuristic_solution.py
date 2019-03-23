@@ -143,7 +143,7 @@ def run_optimization(p_nothing, p_streaming):
     SIZE_DROP = 0.9
     TEMP_DROP = 0.99
     EPOCH = 10e3
-    MAX_BLOCKED_ITERS = 10
+    MAX_BLOCKED_ITERS = 1000
     MAX_BLOCKED_ITERS_STEP = 1e-5
 
     old_obj = -np.inf
@@ -190,6 +190,8 @@ def run_optimization(p_nothing, p_streaming):
             # stop if it has been negligible for too long
             if n_blocked_iters == MAX_BLOCKED_ITERS:
                 logger.info("Negligible improvement in last rounds: declare convergence")
+                break
+            if temperature < 1000:
                 break
 
     obj = obj_function(bws, a, b)
