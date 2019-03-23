@@ -8,18 +8,6 @@ from graph_tool.all import *
 
 from problem_def import *
 
-logger = logging.getLogger('aachen_net.org')
-logger.setLevel(logging.DEBUG)
-logger.propagate = False
-
-formatter = logging.Formatter("%(asctime)s::%(levelname)s::%(module)s::%(message)s",
-                              "%Y-%m-%d %H:%M:%S")
-
-ch = logging.StreamHandler()
-ch.setLevel(logging.DEBUG)
-ch.setFormatter(formatter)
-logger.addHandler(ch)
-
 cache = {}
 def get_subtree_leaves(g, v):
     if v in cache:
@@ -39,7 +27,7 @@ def get_subtree_leaves(g, v):
         cache[v] = child_leaves
         return child_leaves
 
-def run_optimization(p_nothing, p_streaming):
+def run_optimization(p_nothing, p_streaming, logger):
     g = load_graph('../data/aachen_net/abstract_topology.graphml')
 
     g.vp['bw'] = g.new_vertex_property("double")
@@ -102,39 +90,54 @@ def run_optimization(p_nothing, p_streaming):
 
     # compute objective function
 
-    y = obj_function(g.vp['bw'].a[leaves],
+    obj = obj_function(g.vp['bw'].a[leaves],
                      g.vp['a'].a[leaves],
                      g.vp['b'].a[leaves])
 
-    return y, n_users
+    utilities = utility(g.vp['bw'].a[leaves], a, b)
+    logger.debug("RESULT: {}".format(obj))
 
-N_SEEDS = 2
-N_NOTHING = 10
-N_STREAM = 3
-p_streaming = 0.5
+    return obj, n_users, utilities
 
-results = []
-for s in range(N_SEEDS):
-    np.random.seed(s)
-    seed(s)
+if __name__ == '__main__':
+    logger = logging.getLogger('aachen_net.org')
+    logger.setLevel(logging.DEBUG)
+    logger.propagate = False
 
-    for j, p_streaming in enumerate(np.linspace(0.1, 0.9, N_STREAM)):
-        for i, p_nothing in enumerate(np.linspace(0.1, 0.9, N_NOTHING)):
-            logger.info("seed {}/{}, p_streaming {}/{}, p_nothing {}/{}"\
-                        .format(s, N_SEEDS,
-                                j, N_STREAM,
-                                i, N_NOTHING))
+    formatter = logging.Formatter("%(asctime)s::%(levelname)s::%(module)s::%(message)s",
+                                  "%Y-%m-%d %H:%M:%S")
 
-            obj, n_users = run_optimization(p_nothing, p_streaming)
-            results.append({
-                'obj': obj,
-                'n_users': n_users,
-                'p_nothing': p_nothing,
-                'p_streaming': p_streaming,
-                'seed': s
-            })
+    ch = logging.StreamHandler()
+    ch.setLevel(logging.DEBUG)
+    ch.setFormatter(formatter)
+    logger.addHandler(ch)
 
-pd.DataFrame(results).to_csv(
-    '../data/optimization/traditional.csv',
-    index=None
-)
+    N_SEEDS = 2
+    N_NOTHING = 10
+    N_STREAM = 3
+
+    results = []
+    for s in range(N_SEEDS):
+        np.random.seed(s)
+        seed(s)
+
+        for j, p_streaming in enumerate(np.linspace(0.1, 0.9, N_STREAM)):
+            for i, p_nothing in enumerate(np.linspace(0.1, 0.9, N_NOTHING)):
+                logger.info("seed {}/{}, p_streaming {}/{}, p_nothing {}/{}"\
+                            .format(s, N_SEEDS,
+                                    j, N_STREAM,
+                                    i, N_NOTHING))
+
+                obj, n_users, _ = run_optimization(p_nothing, p_streaming, logger)
+                results.append({
+                    'obj': obj,
+                    'n_users': n_users,
+                    'p_nothing': p_nothing,
+                    'p_streaming': p_streaming,
+                    'seed': s
+                })
+
+    pd.DataFrame(results).to_csv(
+        '../data/optimization/traditional.csv',
+        index=None
+    )

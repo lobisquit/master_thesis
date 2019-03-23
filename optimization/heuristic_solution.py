@@ -10,18 +10,6 @@ from scipy.sparse import csr_matrix, lil_matrix
 
 from problem_def import *
 
-logger = logging.getLogger('aachen_net.org')
-logger.setLevel(logging.DEBUG)
-logger.propagate = False
-
-formatter = logging.Formatter("%(asctime)s::%(levelname)s::%(module)s::%(message)s",
-                              "%Y-%m-%d %H:%M:%S")
-
-ch = logging.StreamHandler()
-ch.setLevel(logging.DEBUG)
-ch.setFormatter(formatter)
-logger.addHandler(ch)
-
 cache = {}
 def get_subtree_leaves(g, v):
     if v in cache:
@@ -96,7 +84,7 @@ def dummy_validator(g, bws):
 
     return True
 
-def run_optimization(p_nothing, p_streaming):
+def run_optimization(p_nothing, p_streaming, logger):
     g = nx.read_graphml('abstract_topology.graphml')
 
     # fix loading problems
@@ -192,37 +180,51 @@ def run_optimization(p_nothing, p_streaming):
                 logger.info("Negligible improvement in last rounds: declare convergence")
                 break
 
+    utilities = utility(bws, a, b)
     obj = obj_function(bws, a, b)
     logger.debug("RESULT: {}".format(obj))
 
-    return obj, n_users
+    return obj, n_users, utilities
 
-N_SEEDS = 2
-N_NOTHING = 10
-N_STREAM = 3
+if __name__ == '__main__':
+    logger = logging.getLogger('aachen_net.org')
+    logger.setLevel(logging.DEBUG)
+    logger.propagate = False
 
-results = []
-for s in range(N_SEEDS):
-    np.random.seed(s)
-    seed(s)
+    formatter = logging.Formatter("%(asctime)s::%(levelname)s::%(module)s::%(message)s",
+                                  "%Y-%m-%d %H:%M:%S")
 
-    for j, p_streaming in enumerate(np.linspace(0.1, 0.9, N_STREAM)):
-        for i, p_nothing in enumerate(np.linspace(0.1, 0.9, N_NOTHING)):
-            logger.info("seed {}/{}, p_streaming {}/{}, p_nothing {}/{}"\
-                        .format(s, N_SEEDS,
-                                j, N_STREAM,
-                                i, N_NOTHING))
+    ch = logging.StreamHandler()
+    ch.setLevel(logging.DEBUG)
+    ch.setFormatter(formatter)
+    logger.addHandler(ch)
 
-            obj, n_users = run_optimization(p_nothing, p_streaming)
-            results.append({
-                'obj': obj,
-                'n_users': n_users,
-                'p_nothing': p_nothing,
-                'p_streaming': p_streaming,
-                'seed': s
-            })
+    N_SEEDS = 2
+    N_NOTHING = 10
+    N_STREAM = 3
 
-pd.DataFrame(results).to_csv(
-    '../data/optimization/heuristic.csv',
-    index=None
-)
+    results = []
+    for s in range(N_SEEDS):
+        np.random.seed(s)
+        seed(s)
+
+        for j, p_streaming in enumerate(np.linspace(0.1, 0.9, N_STREAM)):
+            for i, p_nothing in enumerate(np.linspace(0.1, 0.9, N_NOTHING)):
+                logger.info("seed {}/{}, p_streaming {}/{}, p_nothing {}/{}"\
+                            .format(s, N_SEEDS,
+                                    j, N_STREAM,
+                                    i, N_NOTHING))
+
+                obj, n_users, _ = run_optimization(p_nothing, p_streaming, logger)
+                results.append({
+                    'obj': obj,
+                    'n_users': n_users,
+                    'p_nothing': p_nothing,
+                    'p_streaming': p_streaming,
+                    'seed': s
+                })
+
+    pd.DataFrame(results).to_csv(
+        '../data/optimization/heuristic.csv',
+        index=None
+    )
