@@ -1304,8 +1304,7 @@ Pseudo-code is available in [[autoref:lst:alg:heuristic]].
     \State stop = True
     \EndIf
     \Until { stop = False }
-    \State
-    \State\Return $C$
+    \State \Return $C$
   \end{algorithmic}
 \end{bigalgorithm}
 
@@ -1622,20 +1621,19 @@ Traditionally, the \emph{proportional fairness} principle is applied when
 handling different flows. According to this rule, each switching unit allocates
 bandwidth in \emph{proportion} to user demand. This has proven to be a reliable
 way to distribute network resources, but it does not take into account the
-service quality perception, that varies with the application.
+application-dependent service quality perception.
 
 Each user tends to maximize this subjective metric, called \emph{utility}, when
 asking for bandwidth, but doing so it harms the [[ac:qos][QoS]] of its fellows. The [[ac:isp][ISP]] has
 then to act as an arbiter, allocating available resources in a fair way. The
-optimal solution of this problem was proven to be the so-called \emph{Nash
-arbitration scheme} of the \emph{game} played among these actors.
+optimal solution of this problem was proven to be the so-called
+\emph{Nash arbitration scheme} of the \emph{game} played among these actors.
 cite:Mazumdar1991
 
 Such point is unique and pareto-optimal, and it can be found maximizing $f$,
 product of all the utilities. This gives us a straightforward criterion in order
-to rank all possible network configurations. Just to avoid issues related to CPU
-floating point precision, a different but equivalent formulation is evaluated in
-simulations.
+to rank all possible network configurations. In order to avoid issues related to
+CPU floating point precision, $\log f(\vec{\rho})$ is computed instead in simulations.
 
 \begin{equation}
   f(\vec{\rho}) = \prod_i u_i(\rho_i) \implies
@@ -1648,8 +1646,9 @@ approach to manage an access network is indeed fair or not, with respect to the
 optimal strategy.
 
 *** Flow balancing optimization
-More formally, the fair working point is identified as the Nash arbitration
-scheme $\vec{\rho}$, solution of the following mathematical problem.
+As anticipated in the previous section, the fair working point is identified as
+the Nash arbitration scheme $\vec{\rho}$. More formally, it is solution of the
+following mathematical problem.
 
 \begin{align}
   \max_{\vec{\rho}} ~~ & \sum_{i=1}^n \log u_i(\rho_i) \\
@@ -1671,31 +1670,42 @@ constraints autoref:eq:dslam_max and autoref:eq:router_max: no algorithm is
 currently known in literature able to solve the problem optimally. cite:Xing2018
 
 A sub-optimal solution has then to be searched using an heuristic algorithm.
-Given the monotonicity of the objective function, the following iterative
-approach is employed.
+Given the monotonicity of the objective function, the following procedure is
+employed.
 
 \begin{bigalgorithm}
   \label{lst:alg:heuristic_flow}
   \begin{algorithmic}
     \caption{Flow optimization algorithm}
-    \State Initialize all users, each with their utility $u_i$
+    \State Initialize all users, each with their utility function $u_i$
     \State Set $\rho_i = 0$, $\forall i=0, \ldots, n$
     \State Set stop\_condition = False
-    \State Set initial temperature $T$
     \While{stop\_condition is False}
     \State Randomly choose $k$ among $\{1, ..., n\}$
-    \State Perturb $\rho_k$ of a uniform random quantity in $[0,\, T]$
+    \State Perturb $\rho_k$ of a uniform random quantity in $[0,\, K]$
     \If{ $\rho_k$ does not respect constraints \autoref{eq:dslam_max} and \autoref{eq:router_max}}
     \State Revert perturbation on $k$
     \EndIf
     \If{ Objective function $f$ improvement is negligible }
     \State stop\_condition = True
     \EndIf
-    \State Decrement $T$
+    \State Decrement $K$
     \EndWhile
+    \State
     \Return $\vec{\rho}$
   \end{algorithmic}
 \end{bigalgorithm}
+
+A randomly picked bandwidth $\rho_i$ is iteratively incremented each round of a
+uniform quantity in $[0,\, K]$: such perturbation is left unless any constraint
+of the mathematical problem is violated. Once the operation is no more
+beneficial, i.e. the increment is below a certain tolerance, the algorithm
+stops.
+
+The rationale behind this is akin to what happens in \emph{simulated annealing},
+an heuristic search algorithm where perturbation of constantly decreasing size
+are applied to the starting point in the hope of converging toward a good
+solution. cite:Van1987
 
 * Results
 :PROPERTIES:
@@ -1865,17 +1875,38 @@ the proper level of detail if needed.
 :CUSTOM_ID: results-network_optimization
 :END:
 
-As mentioned before, we will analyze the behaviour of the network for different
-bandwidth demands and application profiles, in order to assess weather a central
-controller can actually improve performance for its users.
+As mentioned in autoref:methodology-network_optimization, we will analyze the
+behaviour of our reference access network for different bandwidth demands and
+application profiles.
 
-Former point is described in our simulations via $p_{active}$ parameter, that is
-the probability a certain user is communicating or not. In order to take of the
-latter factor, instead, applications are randomly split into video streaming and
-web page browsing, according to probability $p_{streaming}$.
+In our simulations, former point is taken care of via $p_{active}$ parameter,
+that is the probability a certain user is communicating or not. In order to
+describe the latter factor, instead, applications are randomly split into video
+streaming and web page browsing, according to probability $p_{streaming}$.
 
-*** objective function vs p_active                                 :ignore:
+Two different allocation strategies are evaluated, namely \emph{traditional}
+proportional fairness, and the more sophisticated Nash arbitration scheme,
+computed via the \emph{heuristic} autoref:lst:alg:heuristic_flow.
 
+With respect to global objective function $f(\rho)$, our proposed solution indeed
+provides a more fair operation point than the traditional one, proving that
+even an approximated solution outperforms what currently done in these kinds of
+scenarios.
+
+This gap can be easily spotted in autoref:fig:obj_vs_p_nothing0.1,
+autoref:fig:obj_vs_p_nothing0.5 and autoref:fig:obj_vs_p_nothing0.9 , where
+different values of $p_{active}$ and $p_{streaming}$ are tested and performance
+is averaged across multiple simulation runs.
+
+Moreover, this difference is more noticeable when offered traffic is higher,
+i.e. when the situation is more difficult to handle from the point of view of
+the administrator. This observation suggests that this novel approach can be
+relevant from a practical point of view, as the infrastructure size and
+complexity, and thus its cost, is often dictated by such worst-case scenario.
+
+As a final remark, the proposed method performance is smoother, more
+predictable, with respect to system parameters, and this again is a strong point
+in the field, making the tool more trustworthy.
 
 #+NAME: optimization_plotter
 #+BEGIN_SRC R :exports none :noweb yes
@@ -1931,7 +1962,7 @@ p_streaming = 0.1
 
 #+ATTR_LATEX: :width 5in :placement [t]
 #+LABEL: fig:obj_vs_p_nothing0.1
-#+CAPTION: Performance for $p_{streaming}$ = 0.1
+#+CAPTION: Performance for $p_{streaming}$ = 0.1, with $95\%$ confidence intervals.
 #+RESULTS[3a7e1f61e204039afb78c821dfd64ef09a0312f0]: obj_vs_p_nothing0.1
 [[file:../figures/obj_vs_p_nothing_0.100000.pdf]]
 
@@ -1944,7 +1975,7 @@ p_streaming = 0.5
 
 #+ATTR_LATEX: :width 5in :placement [t]
 #+LABEL: fig:obj_vs_p_nothing0.5
-#+CAPTION: Performance for $p_{streaming}$ = 0.5
+#+CAPTION: Performance for $p_{streaming}$ = 0.5, with $95\%$ confidence intervals.
 #+RESULTS[aa1ca3384364a67258da6206e60f7b248dbc5b4d]: obj_vs_p_nothing0.5
 [[file:../figures/obj_vs_p_nothing_0.500000.pdf]]
 
@@ -1957,11 +1988,17 @@ p_streaming = 0.9
 
 #+ATTR_LATEX: :width 5in :placement [t]
 #+LABEL: fig:obj_vs_p_nothing0.9
-#+CAPTION: Performance for $p_{streaming}$ = 0.9
+#+CAPTION: Performance for $p_{streaming}$ = 0.9, with $95\%$ confidence intervals.
 #+RESULTS[37b1a7bea1c61e03ed83627db7713ea89816f50d]: obj_vs_p_nothing0.9
 [[file:../figures/obj_vs_p_nothing_0.900000.pdf]]
 
-*** utility distributions                                          :ignore:
+\smallskip
+
+Looking closer to the actual utility distribution among users, four reference
+settings are shown in autoref:fig:utility_distribution0.1 and
+autoref:fig:utility_distribution0.9, consisting of the extremes for $p_{active}$
+and $p_{streaming}$.
+
 #+NAME: utility_distribution
 #+BEGIN_SRC R :exports none :noweb yes
   <<R_preamble>>
@@ -2033,7 +2070,16 @@ p_streaming = 0.9
 #+RESULTS[c28bccf955b649e4e15a2b0255b04d49b3665dd2]: utility_distribution0.9
 [[file:../figures/utility_distribution_0.900000.pdf]]
 
+While with a smaller offered traffic the solutions are similar, they differ at
+the other side of the spectrum, where for example the traditional solution shows
+spikes at very low values of utility that drag the objective function down.
 
+Again, proposed approach is more desirable, as the solution is more ``stable''
+than its counterpart.
+
+\smallskip
+# - room for improvements: move more to the right
+# -
 * Conclusions
 :PROPERTIES:
 :CUSTOM_ID: conclusion
