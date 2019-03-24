@@ -1,11 +1,12 @@
-#+STARTUP: latexpreview
 #+STARTUP: indent
 
 #+PROPERTY: header-args :cache yes
 
 #+OPTIONS: toc:nil title:nil
 
-#+LaTeX_CLASS: article
+#+LATEX_CLASS: report
+#+LATEX_COMPILER: pdflatex
+
 #+LATEX_HEADER: \usepackage{charter}
 #+LATEX_HEADER: \usepackage[charter]{mathdesign}
 
@@ -2073,17 +2074,25 @@ and $p_{streaming}$.
 While with a smaller offered traffic the solutions are similar, they differ at
 the other side of the spectrum, where for example the traditional solution shows
 spikes at very low values of utility that drag the objective function down.
-
 Again, proposed approach is more desirable, as the solution is more ``stable''
 than its counterpart.
 
-\smallskip
-# - room for improvements: move more to the right
-# -
+Despite all these interesting features of this heuristic solution, it is
+currently only a lower bound on the theoretical optimum, obtained solving the
+mathematical problem exactly. Further progress can then be made in the search of
+the best working point.
+
 * Conclusions
 :PROPERTIES:
 :CUSTOM_ID: conclusion
 :END:
+
+- complete work, from bare geographical features to final network tuning
+- the design approach is not limited to the specific context, but can be extended to any scenario
+- interesting for broken emergency networks (Matilde)
+- tuning shows hope for better (and significant) gains, but exact solution for the mathematical problem is needed
+- using utilities is a better and more user-tailored approach than simple QoS metrics
+- delay has to be considered in the equation (future progress)
 
 \clearpage
 bibliographystyle:plain
