@@ -64,6 +64,9 @@
 #+latex_header_extra: \newacronym{ilp}{ILP}{Integer Linear Programming}
 #+latex_header_extra: \newacronym{sdn}{SDN}{Software Defined Network}
 #+latex_header_extra: \newacronym{isp}{ISP}{Internet Service Provider}
+#+latex_header_extra: \newacronym{hd}{HD}{High Definition}
+#+latex_header_extra: \newacronym{md}{MD}{Medium Definition}
+#+latex_header_extra: \newacronym{ld}{LD}{Low Definition}
 
 * Utility code :ignore:
 ** PlantUML common style                                            :ignore:
@@ -258,7 +261,7 @@ LaTeX support for svg files sucks.
 
 ** R preamble                                                       :ignore:
 #+NAME: R_preamble
-#+BEGIN_SRC R
+#+BEGIN_SRC R :exports none
   .libPaths("/opt/R/x86_64-pc-linux-gnu-library")
 
   library(reshape2)
@@ -1498,9 +1501,8 @@ quality.
 
 The functions employed in this thesis were obtained, by multiple research
 groups, collecting user opinion of the service with different available
-bandwidth. cite:Georgopoulos2013,Schatz2011 These studies highlight a link
-between [[ac:qoe][QoE]] and this well defined network metric, described by
-autoref:eq:utility_general.
+bandwidth. cite:Georgopoulos2013,Schatz2011 These studies suggest a precise link
+between [[ac:qoe][QoE]] and the network metric, described by autoref:eq:utility_general.
 
 \begin{equation} \label{eq:utility_general}
 u(\rho) = a \, \rho^b + 1
@@ -1508,6 +1510,109 @@ u(\rho) = a \, \rho^b + 1
 
 where $a$ and $b$ are instead application specific coefficients and $\rho$ is
 the assigned bandwidth.
+
+\smallskip
+
+More specifically, our network will consider two different use-cases:
+traditional web-browsing and video streaming. Videos will either be Low
+Definition (360p), Medium Definition (720p), or High Definition (1080p).
+Following \emph{Google Video Quality Report}, each one of those will be
+experienced by 5%, 10% and 85% of the users respectively.
+cite:GoogleVideoQualityReport
+
+#+NAME: video_quality_report
+#+BEGIN_SRC python :noweb yes :exports results :results file output
+  <<python_preamble>>
+
+  labels = 'Low Definition', 'Medium Definition', 'High Definition'
+  sizes = (5, 10, 85)
+  explode = (0.1, 0.1, 0)
+
+  fig = plt.figure(frameon=False, figsize=(4, 2))
+  ax = fig.gca()
+  ax.pie(sizes, explode=(0.1, 0.1, 0.1), labels=labels, autopct='%1.0f%%', startangle=0)
+  ax.axis('equal')  # Equal aspect ratio ensures that pie is drawn as a circle.
+
+  out_path = "../figures/streamers_profiles.pdf"
+  plt.tight_layout(pad=0)
+  plt.savefig(out_path)
+
+  # plt.show()
+
+  print(out_path, end='')
+#+END_SRC
+
+#+CAPTION: Distribution of video quality among video streaming users. cite:GoogleVideoQualityReport
+#+ATTR_LATEX: :height 2in
+#+LABEL: fig:video_quality_report
+#+RESULTS[bec44a5a0c483a75d987ba16e85eac166702ddac]: video_quality_report
+[[file:../figures/streamers_profiles.pdf]]
+
+Parameters $a$ and $b$ are then tuned in order to properly link user perception of
+the different services to available resources, as shown in autoref:fig:utilities.
+
+#+NAME: utilities
+#+BEGIN_SRC R :exports results :results file value :noweb yes
+  <<R_preamble>>
+
+  library(pracma)
+
+  utility <- function(x, a, b) {
+    return(a * `^`(x, b) + 1)
+  }
+
+  as <- c(-3.035, -4.850, -17.53, -14.98544276)
+  bs  <- c(-.5061, -.6470, -1.048, -0.8780054)
+  types  <- c('Streaming HD',
+             'Streaming MD',
+             'Streaming LD',
+             'Web broswing')
+
+  x <- logspace(2, 4, 100)
+
+  data <- data.frame('type'=c(), 'Bandwidth'=c(), 'Utility profiles'=c())
+
+  for (index in seq(from=1, to=length(as), by=1)) {
+    current_data <- data.frame(
+      'Utility profiles'=types[index],
+      'Bandwidth'=x,
+      'Utility'=utility(x, as[index], bs[index])
+    )
+    data <- rbind(data, current_data)
+  }
+
+  current <- ggplot(data, aes(x=Bandwidth, y=Utility, color=Utility.profiles)) +
+    labs(x='Bandwidth [kbit/s]', color='Utility profiles') +
+    scale_x_continuous(trans='log', breaks=c(100, 1000, 10000)) +
+    geom_line() +
+    my_theme
+
+  ## print(current)
+
+  out_path <- '../figures/utilities.pdf'
+  ggsave(plot = current,
+         filename = out_path,
+         width = 5,
+         height = 3,
+         unit = 'in',
+         dpi = 300,
+         device = 'pdf')
+
+  print(out_path)
+#+END_SRC
+
+#+CAPTION: Utilities connect available bandwidth to user satisfaction of the given service.
+#+ATTR_LATEX: :height 3in
+#+LABEL: fig:utilities
+#+RESULTS[008700d760fd52c73f6e90e6e9a089c26a190499]: utilities
+[[file:../figures/utilities.pdf]]
+
+Observing the four trends, it can be seen that [[ac:hd][HD]], [[ac:md][MD]] and [[ac:ld][LD]] video streaming are
+in decreasing order of bandwidth demand, as expected. Instead, traditional web
+browsing puts itself between [[ac:md][MD]] and [[ac:ld][LD]].
+
+# This position can be explained by the fact that the growing size of pages is
+# not followed by an increasing expectation time by the user.
 
 *** Fairness on resource allocation
 In order to manage the network optimally, we need to reach an operation point
@@ -1760,113 +1865,17 @@ the proper level of detail if needed.
 :CUSTOM_ID: results-network_optimization
 :END:
 
-As described in [[autoref:methodology-network_optimization]], we will consider two
-possible ways to allocate the total available bandwidth to the access network
-users: proportional fairness and the Nash arbitration scheme. While the former
-is computed exactly, the latter needs to be approximated via an heuristic
-algorithm, provided in autoref:lst:alg:heuristic_flow.
+As mentioned before, we will analyze the behaviour of the network for different
+bandwidth demands and application profiles, in order to assess weather a central
+controller can actually improve performance for its users.
 
-These strategies will be tested under different network conditions, specifically
-lower or higher offered traffic or different user profiles. The former property
-will be described in our simulations via $p_{active}$ parameter, that will be
-the probability a certain user is communicating or not. In order to account for
-the latter factor, applications are randomly split into video streaming and web
-page browsing, according to probability $p_{streaming}$.
+Former point is described in our simulations via $p_{active}$ parameter, that is
+the probability a certain user is communicating or not. In order to take of the
+latter factor, instead, applications are randomly split into video streaming and
+web page browsing, according to probability $p_{streaming}$.
 
-Requested videos can be either Low Definition (360p), Medium Definition (720p),
-or High Definition (1080p). According to \emph{Google Video Quality Report},
-each one of those is experienced by 5%, 10% and 85% of the users respectively.
+*** objective function vs p_active                                 :ignore:
 
-#+NAME: video_quality_report
-#+BEGIN_SRC python :noweb yes :exports results :results file output
-  <<python_preamble>>
-
-  labels = 'Low Definition', 'Medium Definition', 'High Definition'
-  sizes = (5, 10, 85)
-  explode = (0.1, 0.1, 0)
-
-  fig = plt.figure(frameon=False, figsize=(4, 2))
-  ax = fig.gca()
-  ax.pie(sizes, explode=(0.1, 0.1, 0.1), labels=labels, autopct='%1.0f%%', startangle=0)
-  ax.axis('equal')  # Equal aspect ratio ensures that pie is drawn as a circle.
-
-  out_path = "../figures/streamers_profiles.pdf"
-  plt.tight_layout(pad=0)
-  plt.savefig(out_path)
-
-  # plt.show()
-
-  print(out_path, end='')
-#+END_SRC
-
-#+CAPTION: Distribution of video quality among YouTube users. cite:GoogleVideoQualityReport
-#+ATTR_LATEX: :height 2in
-#+LABEL: fig:video_quality_report
-#+RESULTS[bec44a5a0c483a75d987ba16e85eac166702ddac]: video_quality_report
-[[file:../figures/streamers_profiles.pdf]]
-
-Each type of traffic is assigned a utility function, as shown in
-autoref:fig:utilities, that links user perception to available resources. As
-mentioned in autoref:methodology-qoe, these relationships were measured
-empirically polling a number of users enjoying different bandwidth levels.
-
-#+NAME: utilities
-#+BEGIN_SRC R :exports results :results file value :noweb yes
-  <<R_preamble>>
-
-  library(pracma)
-
-  utility <- function(x, a, b) {
-    return(a * `^`(x, b) + 1)
-  }
-
-  as <- c(-3.035, -4.850, -17.53, -14.98544276)
-  bs  <- c(-.5061, -.6470, -1.048, -0.8780054)
-  types  <- c('Streaming HD',
-             'Streaming MD',
-             'Streaming LD',
-             'Web broswing')
-
-  x <- logspace(2, 4, 100)
-
-  data <- data.frame('type'=c(), 'Bandwidth'=c(), 'Utility profiles'=c())
-
-  for (index in seq(from=1, to=length(as), by=1)) {
-    current_data <- data.frame(
-      'Utility profiles'=types[index],
-      'Bandwidth'=x,
-      'Utility'=utility(x, as[index], bs[index])
-    )
-    data <- rbind(data, current_data)
-  }
-
-  current <- ggplot(data, aes(x=Bandwidth, y=Utility, color=Utility.profiles)) +
-    labs(x='Bandwidth [kbit/s]', color='Utility profiles') +
-    scale_x_continuous(trans='log', breaks=c(100, 1000, 10000)) +
-    geom_line() +
-    my_theme
-
-  ## print(current)
-
-  out_path <- '../figures/utilities.pdf'
-  ggsave(plot = current,
-         filename = out_path,
-         width = 5,
-         height = 3,
-         unit = 'in',
-         dpi = 300,
-         device = 'pdf')
-
-  print(out_path)
-#+END_SRC
-
-#+CAPTION: Utilities connect available bandwidth to user satisfaction.
-#+ATTR_LATEX: :height 3in
-#+LABEL: fig:utilities
-#+RESULTS[008700d760fd52c73f6e90e6e9a089c26a190499]: utilities
-[[file:../figures/utilities.pdf]]
-
-# TODO scrivere dei risultati
 
 #+NAME: optimization_plotter
 #+BEGIN_SRC R :exports none :noweb yes
@@ -1893,7 +1902,7 @@ empirically polling a number of users enjoying different bandwidth levels.
       geom_line() +
       geom_errorbar(aes(ymin=obj - padding,
                         ymax=obj + padding)) +
-      labs(x=TeX("$P_{active}$"),
+      labs(x=TeX("$p_{active}$"),
            y="Objective function",
            color='Strategy') +
       scale_x_continuous(breaks=unique(summary$p_nothing), labels=round(unique(summary$p_nothing), 2)) +
@@ -1913,45 +1922,117 @@ empirically polling a number of users enjoying different bandwidth levels.
   print(out_path)
 #+END_SRC
 
-#+NAME: fig:obj_vs_p_nothing0.1
+#+NAME: obj_vs_p_nothing0.1
 #+BEGIN_SRC R :exports results :results file value :noweb yes
 p_streaming = 0.1
 
 <<optimization_plotter>>
 #+END_SRC
 
-#+ATTR_LATEX: :width \linewidth :placement [t]
+#+ATTR_LATEX: :width 5in :placement [t]
 #+LABEL: fig:obj_vs_p_nothing0.1
 #+CAPTION: Performance for $p_{streaming}$ = 0.1
-#+RESULTS[9bd307d37033151a56e0501c609a108a2d4b76f1]: fig:obj_vs_p_nothing0.1
+#+RESULTS[3a7e1f61e204039afb78c821dfd64ef09a0312f0]: obj_vs_p_nothing0.1
 [[file:../figures/obj_vs_p_nothing_0.100000.pdf]]
 
-
-#+NAME: fig:obj_vs_p_nothing0.5
+#+NAME: obj_vs_p_nothing0.5
 #+BEGIN_SRC R :exports results :results file value :noweb yes
 p_streaming = 0.5
 
 <<optimization_plotter>>
 #+END_SRC
 
-#+ATTR_LATEX: :width \linewidth :placement [t]
+#+ATTR_LATEX: :width 5in :placement [t]
 #+LABEL: fig:obj_vs_p_nothing0.5
 #+CAPTION: Performance for $p_{streaming}$ = 0.5
-#+RESULTS[bc539a96db2598fbafa24ecc510a5c21189d902c]: fig:obj_vs_p_nothing0.5
+#+RESULTS[aa1ca3384364a67258da6206e60f7b248dbc5b4d]: obj_vs_p_nothing0.5
 [[file:../figures/obj_vs_p_nothing_0.500000.pdf]]
 
-#+NAME: fig:obj_vs_p_nothing0.9
+#+NAME: obj_vs_p_nothing0.9
 #+BEGIN_SRC R :exports results :results file value :noweb yes
 p_streaming = 0.9
 
 <<optimization_plotter>>
 #+END_SRC
 
-#+ATTR_LATEX: :width \linewidth :placement [t]
+#+ATTR_LATEX: :width 5in :placement [t]
 #+LABEL: fig:obj_vs_p_nothing0.9
 #+CAPTION: Performance for $p_{streaming}$ = 0.9
-#+RESULTS[878fd4cbd050284034b884c07c52e47f4232db3a]: fig:obj_vs_p_nothing0.9
+#+RESULTS[37b1a7bea1c61e03ed83627db7713ea89816f50d]: obj_vs_p_nothing0.9
 [[file:../figures/obj_vs_p_nothing_0.900000.pdf]]
+
+*** utility distributions                                          :ignore:
+#+NAME: utility_distribution
+#+BEGIN_SRC R :exports none :noweb yes
+  <<R_preamble>>
+
+  facet_label <- labeller(p_active = function(value) {
+    expression('$p_{active}$')
+  })
+
+  dataset <- read.csv("../data/optimization/utility_distribution.csv.gz", header = TRUE)
+
+  dataset <- dataset[dataset$p_streaming == p_streaming, ]
+  dataset <- dataset[dataset$p_nothing == 0.1 | dataset$p_nothing == 0.9, ]
+
+  ## swap labels (opposite by mistake)
+  library(plyr)
+  dataset$type = revalue(dataset$type, c("Traditional"="Heuristic",
+                                         "Heuristic"="Traditional"))
+
+  dataset$p_active <- paste("p[active]*' = ", 1 - dataset$p_nothing, "'")
+
+  current <- ggplot(dataset, aes(x=utility, fill=type)) +
+    scale_y_continuous(trans='log1p', breaks=c(100, 1000, 10000, 25000, 60000)) +
+    geom_histogram(bins=100, position="identity") +
+    labs(x='Utility', y='Count', title='Utility distribution') +
+    facet_grid(type ~ p_active, labeller=label_parsed) +
+    my_theme +
+    theme(legend.position='none',
+          plot.title = element_text(hjust=0.5),
+          panel.spacing = unit(0.8, "lines")) +
+    scale_fill_brewer(palette="Set2", type='div')
+
+  print(current)
+
+  out_path <- sprintf('../figures/utility_distribution_%f.pdf', p_streaming)
+  ggsave(plot = current,
+         filename = out_path,
+         width = 5,
+         height = 5,
+         unit = 'in',
+         dpi = 300,
+         device = 'pdf')
+
+  print(out_path)
+#+END_SRC
+
+#+NAME: utility_distribution0.1
+#+BEGIN_SRC R :exports results :results file value :noweb yes
+  p_streaming = 0.1 ## 0.1000000 0.3666667 0.6333333 0.9000000
+
+  <<utility_distribution>>
+#+END_SRC
+
+#+ATTR_LATEX: :width 5in :placement [t]
+#+LABEL: fig:utility_distribution0.1
+#+CAPTION: Utility distribution for $p_{streaming} = 0.1$.
+#+RESULTS[3b480dabf54955f0e5e046cbddc4aff048ecb170]: utility_distribution0.1
+[[file:../figures/utility_distribution_0.100000.pdf]]
+
+#+NAME: utility_distribution0.9
+#+BEGIN_SRC R :exports results :results file value :noweb yes
+  p_streaming = 0.9 ## 0.1000000 0.3666667 0.6333333 0.9000000
+
+  <<utility_distribution>>
+#+END_SRC
+
+#+ATTR_LATEX: :width 5in :placement [t]
+#+LABEL: fig:utility_distribution0.9
+#+CAPTION: Utility distribution for $p_{streaming} = 0.9$.
+#+RESULTS[c28bccf955b649e4e15a2b0255b04d49b3665dd2]: utility_distribution0.9
+[[file:../figures/utility_distribution_0.900000.pdf]]
+
 
 * Conclusions
 :PROPERTIES:
