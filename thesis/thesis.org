@@ -602,6 +602,11 @@ user. cite:Andrews1998 Moreover, they consider a cost for edge activation
 proportional to the bandwidth used or an upfront cost, accounting for leasing of
 existent infrastructure of its physical realization.
 
+#+LABEL: fig:andrews_model
+#+ATTR_LATEX: :width 7.2cm
+#+CAPTION: Each node in the tree merges flows coming from leaves and splits the return ones.
+[[file:../figures/andrews_model.pdf]]
+
 A mathematical formulation describing the optimal solution is given in their
 paper, and it is coupled with an approximated solver algorithm, obtained via
 linear programming relaxations, whose penalty with respect to the optimum is
@@ -635,35 +640,11 @@ access network design for a city. Proposed tools are not enough, though, as
 either the conditions or the scale of our reference scenario are out of reach
 for them. Just to mention, Aachen has an estimated number of 40.000 subscribers
 spread across 160.85km^2. So, new tools and formulations need to be devised in
-order to properly solve the problem.
+order to properly solve the problem and possibly achieve better bounds.
+
+# SDN: general concept + small history
 
 
-
-
-
-
-
-
-
-Steiner formulation captures some features of our design goal, but some others
-are not taken into consideration, such as technological limitations
-
-Along with all reachability conditions stated in its definition
-
-
-
-
-Many research groups tackled the same problem when the switch from last-mile
-copper lines to optical fiber required a complete rebuilding and rethinking of
-the infrastructure. Nowadays it is more relevant than ever, as this transition
-is taking place in almost all cities and districts, where legacy technology is
-getting replaced by future-proof one. cite:Waring1991
-
-Andrews \etal suppose the existence of a certain number of users, each of those
-requiring an integral demand $d$ from a central node. cite:Andrews1998
-
-In their model, a distance function $l(\mathord{\cdot})$ among nodes and an
-existing core network are given for
 
 * Methodology
 :PROPERTIES:
@@ -712,7 +693,7 @@ autoref:fig:lambdanet.
 #+LABEL: fig:lambdanet
 #+ATTR_LATEX: :width 10cm
 #+CAPTION: LambdaNet is a national backbone that serves all major German cities and connects the country to the rest of Europe.
-[[../figures/german_backbone.pdf]]
+[[file:../figures/german_backbone.pdf]]
 
 In this thesis we will then suppose that the access network connects all Aachen
 buildings to this main backbone via a single [[ac:pop][PoP]], located in the industrial
