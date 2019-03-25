@@ -55,6 +55,8 @@
 #+LATEX_HEADER:   }
 #+LATEX_HEADER: \makeatother
 
+#+LATEX_HEADER: \newcommand{\etal}{\mbox{\emph{et al.}}}
+
 #+LATEX_HEADER: \usepackage{glossaries}
 #+LATEX_HEADER_EXTRA: \newacronym{pop}{PoP}{Point of Presence}
 #+LATEX_HEADER_EXTRA: \newacronym{dslam}{DSLAM}{Digital Subscriber Line Access Multiplexer}
@@ -68,6 +70,7 @@
 #+latex_header_extra: \newacronym{hd}{HD}{High Definition}
 #+latex_header_extra: \newacronym{md}{MD}{Medium Definition}
 #+latex_header_extra: \newacronym{ld}{LD}{Low Definition}
+#+latex_header_extra: \newacronym{pon}{PON}{Passive Optical Network}
 
 * Utility code :ignore:
 ** PlantUML common style                                            :ignore:
@@ -531,12 +534,17 @@ controller can improve user [[ac:qos][QoS]] in these simple, but very common, se
 
 We specifically focused on the access network of Aachen, historical city in the
 German state of North Rein-Westphalia. As the actual schematics are not
-available to the general public, our network topology was inferred, solving an
-optimization problem, as residential buildings and population distribution
-across the area, performing a so-called \emph{educated guess}.
+available to the general public, our network topology was inferred solving an
+optimization problem using residential buildings and population distribution
+across the area.
 
-The network was run in a custom event driven simulator, both with and without a
-controller, in order to assess the improvement introduced by its action.
+The network was then run in a custom simulator, both with and without a
+controller, in order to assess its contribution on user perceived [[ac:qoe][QoE]].
+
+An operation point the controller is requested to achieve that maximize
+# fairness
+# better than legacy
+
 
 \smallskip
 This thesis is structured as follows.
@@ -554,21 +562,108 @@ autoref:conclusion.
 #+BEGIN_SRC org :exports none
   One subsection for each of the macro-areas
 
-  - maps -> network topology
-    - Steiner tree
-    - ...
+  - access networks design
+
+  - SDN!
+    - applications and general concept
 
   - flow control
-    - fairness in network management ~> Nash arbitration point
-
-  - heuristic control of the network
+    - game between users and ISP -> game theory
+    - fairness in network management -> Nash arbitration scheme
+    - water filling approaches for resource allocation
 #+END_SRC
 
-As mentioned in autoref:introduction, the first step of this thesis is the
+As mentioned in the introduction, the first step of this thesis is the
 estimation of the Aachen city network, given publicly available information on
 city topology and population density.
 
-The \emph{educated guess} was performed solving an optimization problem,
+Once extracted the relevant feature of the geographical area, the design of such
+a network consists in connecting all terminals to a central unit, aggregating
+all user traffic.
+
+# Steiner tree = most general problem
+
+This is equivalent to solve the well-known Steiner tree problem on a graph
+$G=(V,\,E)$, where a subset $T$ of nodes in $V$ have to be reached from a root
+$r \in V$, choosing some edges in $E$ at lower possible cost. This problem is
+proved to be NP-hard and thus has been extensively studied in literature, both
+with exact and approximated solutions.
+cite:Voss1992,Rehfeldt2015,Koch1998,Leitner2014
+
+# TODO Steiner formulation + brief explanation
+
+\smallbreak
+
+# Andrews
+
+This formulation was extended by Andrews \etal, as they consider a number of
+link types with different capacity in order to deliver requested amount to the
+user. cite:Andrews1998 Moreover, they consider a cost for edge activation
+proportional to the bandwidth used or an upfront cost, accounting for leasing of
+existent infrastructure of its physical realization.
+
+A mathematical formulation describing the optimal solution is given in their
+paper, and it is coupled with an approximated solver algorithm, obtained via
+linear programming relaxations, whose penalty with respect to the optimum is
+bounded.
+
+This approach, though, does not take into account the technological limitations,
+such as a limit for traffic aggregator number of ports and maximum cable length.
+
+\smallbreak
+
+Previous point is addressed in Mitcsenkov \etal, where an access network is
+built from reference topographic scenarios, such as suburban, town or city, in
+increasing population density. cite:Mitcsenkov2011 Moreover, they consider for
+the same setting various technologies, such as [[acp:pon][PON]], Active Ethernet and VDSL,
+each one with its own limitations.
+
+Here the mathematical problem, with exact solution but infeasible computation,
+is coupled with heuristic algorithms, tailored to the given physical layer
+assumptions.
+
+Both are run on reference maps, whose ranging from surfaces of 0.5km^2 to
+4.7km^2 and from 400 to 20.000 number of subscribers. These trials show the
+viability of the approach, as the approximated solution is within 10% to 15%
+the theoretical bound provided via an [[ac:ilp][ILP]] solver, while being still fast to
+compute.
+
+\smallbreak
+
+These studies are useful insight about the task we are trying to perform, the
+access network design for a city. Proposed tools are not enough, though, as
+either the conditions or the scale of our reference scenario are out of reach
+for them. Just to mention, Aachen has an estimated number of 40.000 subscribers
+spread across 160.85km^2. So, new tools and formulations need to be devised in
+order to properly solve the problem.
+
+
+
+
+
+
+
+
+
+Steiner formulation captures some features of our design goal, but some others
+are not taken into consideration, such as technological limitations
+
+Along with all reachability conditions stated in its definition
+
+
+
+
+Many research groups tackled the same problem when the switch from last-mile
+copper lines to optical fiber required a complete rebuilding and rethinking of
+the infrastructure. Nowadays it is more relevant than ever, as this transition
+is taking place in almost all cities and districts, where legacy technology is
+getting replaced by future-proof one. cite:Waring1991
+
+Andrews \etal suppose the existence of a certain number of users, each of those
+requiring an integral demand $d$ from a central node. cite:Andrews1998
+
+In their model, a distance function $l(\mathord{\cdot})$ among nodes and an
+existing core network are given for
 
 * Methodology
 :PROPERTIES:
