@@ -71,6 +71,8 @@
 #+latex_header_extra: \newacronym{md}{MD}{Medium Definition}
 #+latex_header_extra: \newacronym{ld}{LD}{Low Definition}
 #+latex_header_extra: \newacronym{pon}{PON}{Passive Optical Network}
+#+latex_header_extra: \newacronym{tcp}{TCP}{Transmission Control Protocol}
+#+latex_header_extra: \newacronym{mos}{MOS}{Mean Opinion Score}
 
 * Utility code :ignore:
 ** PlantUML common style                                            :ignore:
@@ -604,7 +606,7 @@ existent infrastructure of its physical realization.
 
 #+LABEL: fig:andrews_model
 #+ATTR_LATEX: :width 7.2cm
-#+CAPTION: Each node in the tree merges flows coming from leaves and splits the return ones.
+#+CAPTION: Each intermediate node in the tree merges the flows coming from the leaves and splits the return ones. cite:Andrews1998
 [[file:../figures/andrews_model.pdf]]
 
 A mathematical formulation describing the optimal solution is given in their
@@ -644,7 +646,76 @@ order to properly solve the problem and possibly achieve better bounds.
 
 # SDN: general concept + small history
 
+# flow control
+Given our reference scenario, the possibilities offered by an [[acp:sdn][SDN]] approach are
+limited. Since topology is rigidly hierarchical no routing is possible as
+usually, to lower the capital expenditure, no redundant paths are added to
+common customers.
 
+The only tool left on the table is then \emph{flow control}, which is the
+ability to give or revoke priority from a certain stream of packets at switching
+units.
+
+Traditionally this technique has been employed for congestion avoidance, primary
+example being [[ac:tcp][TCP]] strategies to match the bitrate with the actual link capacity.
+cite:Allman2009
+
+Nowadays, flow control is becoming necessary in order to allocate the proper
+amount network resources to each user, depending on its application
+requirements. For example, video streaming shows a different profile than
+traditional web browsing and this needs to be taken into account when
+administrating the infrastructure.
+
+\smallbreak
+
+The link between actual connection metrics to user perceived quality of the
+service, necessary to perform a decent resource distribution, has been studied
+extensively in literature. cite:Georgopoulos2013,Laghari2012,Reichl2011
+
+These research groups estimated [[ac:qoe][QoE]] via the so-called [[ac:mos][MOS]], the average
+subjective evaluation of the service, under a wide spectrum of network
+conditions. Georgopoulos \etal, Laghari \etal focus on the actual measurement
+and try to fit what found with a shifted power function.
+cite:Georgopoulos2013,Laghari2012 Reichl \etal, instead, go for a different
+approach, as they \emph{a-priori} suppose a certain shape of the [[ac:qoe][QoE]] logarithmic
+function and then explain the data with it. This hypothesis is taken in analogy
+to the Weber-Fechner Law, a key principle in psycho-physics connecting the
+magnitude of a physical \emph{stimulus} to its perceived intensity.
+
+\smallbreak
+
+Once individual metrics are evaluated, it is still not clear how to aggregate
+the single [[ac:qoe][QoE]] into a global score, that is meaningful for ... .
+
+A game theoretical framework is proposed in literature in order to tackle this
+problem. When the network is operational, in fact, there is an implicit
+competition between each user that wants in fact to maximize its own
+\emph{utility}. It is the main task of the network administrator to guide
+individual demands to a stable and \emph{fair} operation point. ``Fairness'' is
+indeed an ill-defined concept, that can be seen here as a condition all users
+can connect to the network without being overly penalized.
+
+Pareto-optimal points are suggested by Douligeris \etal to capture this elusive
+concept, as no user can increment its own utility without worsening it at least
+for one of its fellows. cite:Douligeris1987 No criterion is however given in
+order to choose among the possibly infinite number of these desirable solutions.
+
+Mazumdar \etal eventually proposes the so-called \emph{Nash arbitration scheme},
+a stable operation point, located in the throughput space, of the cooperative
+game played among users. cite:Mazumdar1991 Such point is proved to exist and be
+the only one satisfying symmetry, independence of irrelevant alternatives,
+Pareto optimality, when user [[acp:qoe][QoE]] are maximized.
+
+Moreover, they characterize this \emph{scheme} as the point that maximize the
+product of individual user utilities, giving a straightforward way to compute it
+in practice.
+
+It is important to discriminate between the Nash arbitration scheme from the
+popular Nash equilibrium, as the former arises from a \emph{cooperative} game,
+while the latter from a \emhp{competitive} one. Such equilibria are situations
+where no user can increment its own utility, by changing its action, while
+others behaviour stays the same. In our context, these points are not Pareto
+optimal and therefore not interesting for out purposes. cite:Mazumdar1991
 
 * Methodology
 :PROPERTIES:
