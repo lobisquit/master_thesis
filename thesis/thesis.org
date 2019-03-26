@@ -16,7 +16,7 @@
 #+LATEX_HEADER: \usepackage{graphicx}
 #+LATEX_HEADER: \graphicspath{{../figures/}}
 #+LATEX_HEADER: \usepackage{subcaption}
-
+#+LATEX_HEADER: \usepackage{xspace}
 #+LATEX_HEADER: \usepackage{mathtools}
 #+LaTeX_HEADER: \usepackage{booktabs}
 #+LaTeX_HEADER: \usepackage{amsmath}
@@ -55,7 +55,7 @@
 #+LATEX_HEADER:   }
 #+LATEX_HEADER: \makeatother
 
-#+LATEX_HEADER: \newcommand{\etal}{\mbox{\emph{et al.}}}
+#+LATEX_HEADER: \newcommand{\etal}{\mbox{\emph{et al.}}\xspace}
 
 #+LATEX_HEADER: \usepackage{glossaries}
 #+LATEX_HEADER_EXTRA: \newacronym{pop}{PoP}{Point of Presence}
@@ -556,6 +556,20 @@ instruments employed in this analysis, whose results are collected and commented
 in autoref:results. Final remarks and considerations are eventually discussed in
 autoref:conclusion.
 
+
+METHODOLOGY This section will discuss which theoretical framework and tools that
+have been used throughout the analysis and the motivation behind them.
+
+First, in autoref:methodology-geographical_analysis, we will analyze the Aachen
+building and road map in order to design, in autoref:methodology-network_design,
+a proper access network based on city topology and population density.
+
+Once obtained a suitable structure, the controller is tuned in order to enhance
+network performance for all its users.
+
+RESULTS This chapter follows the what was presented in [[autoref:methodology]] and
+shows what can be obtained using those theoretical frameworks and tools.
+
 * State of the art
 :PROPERTIES:
 :CUSTOM_ID: state_of_art
@@ -600,9 +614,9 @@ cite:Voss1992,Rehfeldt2015,Koch1998,Leitner2014
 
 This formulation was extended by Andrews \etal, as they consider a number of
 link types with different capacity in order to deliver requested amount to the
-user. cite:Andrews1998 Moreover, they consider a cost for edge activation
+user. cite:Andrews1998 Moreover, they assign a cost for edge activation
 proportional to the bandwidth used or an upfront cost, accounting for leasing of
-existent infrastructure of its physical realization.
+existent infrastructure or its physical realization.
 
 #+LABEL: fig:andrews_model
 #+ATTR_LATEX: :width 7.2cm
@@ -623,7 +637,7 @@ Previous point is addressed in Mitcsenkov \etal, where an access network is
 built from reference topographic scenarios, such as suburban, town or city, in
 increasing population density. cite:Mitcsenkov2011 Moreover, they consider for
 the same setting various technologies, such as [[acp:pon][PON]], Active Ethernet and VDSL,
-each one with its own limitations.
+each one with its own constraints.
 
 Here the mathematical problem, with exact solution but infeasible computation,
 is coupled with heuristic algorithms, tailored to the given physical layer
@@ -641,16 +655,18 @@ These studies are useful insight about the task we are trying to perform, the
 access network design for a city. Proposed tools are not enough, though, as
 either the conditions or the scale of our reference scenario are out of reach
 for them. Just to mention, Aachen has an estimated number of 40.000 subscribers
-spread across 160.85km^2. So, new tools and formulations need to be devised in
-order to properly solve the problem and possibly achieve better bounds.
+spread across 160.85km^2. So, new tools and formulations will be devised in
+autoref:methodology-network_design, in order to properly solve the problem and
+possibly get closer to the bounds.
 
 # SDN: general concept + small history
 
+
 # flow control
-Given our reference scenario, the possibilities offered by an [[acp:sdn][SDN]] approach are
-limited. Since topology is rigidly hierarchical no routing is possible as
-usually, to lower the capital expenditure, no redundant paths are added to
-common customers.
+Given our reference scenario, the levers offered by an [[acp:sdn][SDN]] approach are limited.
+As topology is a rigid and hierarchical tree, no routing is possible as, to
+lower the capital expenditure, no redundant paths are usually added to
+non-commercial customers.
 
 The only tool left on the table is then \emph{flow control}, which is the
 ability to give or revoke priority from a certain stream of packets at switching
@@ -661,10 +677,9 @@ example being [[ac:tcp][TCP]] strategies to match the bitrate with the actual li
 cite:Allman2009
 
 Nowadays, flow control is becoming necessary in order to allocate the proper
-amount network resources to each user, depending on its application
-requirements. For example, video streaming shows a different profile than
-traditional web browsing and this needs to be taken into account when
-administrating the infrastructure.
+amount resources to users, depending on application requirements. For example,
+video streaming shows a different profile than traditional web browsing and this
+needs to be taken into account when administrating the infrastructure.
 
 \smallbreak
 
@@ -684,53 +699,75 @@ magnitude of a physical \emph{stimulus} to its perceived intensity.
 
 \smallbreak
 
-Once individual metrics are evaluated, it is still not clear how to aggregate
-the single [[ac:qoe][QoE]] into a global score, that is meaningful for ... .
+Once individual metrics are evaluated, it is necessary to aggregate the single
+[[ac:qoe][QoE]] into a global score, in order to choose the best among all possible network
+configurations.
 
 A game theoretical framework is proposed in literature in order to tackle this
 problem. When the network is operational, in fact, there is an implicit
-competition between each user that wants in fact to maximize its own
-\emph{utility}. It is the main task of the network administrator to guide
-individual demands to a stable and \emph{fair} operation point. ``Fairness'' is
-indeed an ill-defined concept, that can be seen here as a condition all users
-can connect to the network without being overly penalized.
+competition between each user wanting to maximize its own \emph{utility}. The
+main task of the administrator is then to guide individual demands to a stable
+and \emph{fair} operation point.
 
-Pareto-optimal points are suggested by Douligeris \etal to capture this elusive
-concept, as no user can increment its own utility without worsening it at least
-for one of its fellows. cite:Douligeris1987 No criterion is however given in
-order to choose among the possibly infinite number of these desirable solutions.
+``Fairness'' is, from a mathematical point of view, an elusive concept, but it
+can be seen here as a condition where all users can enjoy the service without
+being overly penalized.
+
+Pareto-optimal points are suggested by Douligeris \etal to capture this
+requirements, as no user can increment its own utility without worsening it at
+least for one of its fellows. cite:Douligeris1987 No criterion is however
+provided in order to choose among the possibly infinite number of these
+solutions.
 
 Mazumdar \etal eventually proposes the so-called \emph{Nash arbitration scheme},
-a stable operation point, located in the throughput space, of the cooperative
-game played among users. cite:Mazumdar1991 Such point is proved to exist and be
-the only one satisfying symmetry, independence of irrelevant alternatives,
-Pareto optimality, when user [[acp:qoe][QoE]] are maximized.
+a stable operation point of the cooperative game played among users, located in
+throughput space. cite:Mazumdar1991 Such point is proved to exist and be the
+only one satisfying symmetry, independence of irrelevant alternatives, Pareto
+optimality. Moreover, they characterize this \emph{scheme} as the point that
+maximizes the product of individual user utilities, giving a straightforward way
+to compute it in practice.
 
-Moreover, they characterize this \emph{scheme} as the point that maximize the
-product of individual user utilities, giving a straightforward way to compute it
-in practice.
-
-It is important to discriminate between the Nash arbitration scheme from the
+It is important to differentiate between Nash arbitration scheme from the
 popular Nash equilibrium, as the former arises from a \emph{cooperative} game,
-while the latter from a \emhp{competitive} one. Such equilibria are situations
-where no user can increment its own utility, by changing its action, while
-others behaviour stays the same. In our context, these points are not Pareto
-optimal and therefore not interesting for out purposes. cite:Mazumdar1991
+while the latter from a \emph{competitive} one. Such equilibria are situations
+where no user can increment its own utility if others behaviour stays the same.
+cite:Tadelis2013 These points are typically Pareto sub-optimal and therefore not
+relevant for the intended flow control.
+
+An example of this concept is the \emph{prisoner's dilemma}, a non-cooperative
+game played between two actors $A$ and $B$.
+
+The two of them is suspect of a crime, but the prosecutor lacks evidence for
+this. He has however to convict them for a lesser charge. Both of the criminals,
+that have no possible way of communicating each other, can either confess the
+main crime or stay silent.
+
+\begin{table}
+  \centering
+  \begin{tabular}{c|cc}
+    & A confesses & A stays silent\\
+    \hline
+    B confesses & -2, -2 & 0, -3\\
+    B stays silent & -3, 0 & -1, -1\\
+  \end{tabular}
+  \caption{Each couple of strategies leads to two utility scores (years in prison), the first for B and the second for A.}
+  \label{tab:prisoners_dilemma}
+\end{table}
+
+Judging from autoref:tab:prisoners_dilemma, the best course of action, meaning
+the Pareto optimal point, is for the two of them to stay silent. This point,
+however, is not a Nash equilibrium, because is of them has incentive, in this
+situation, to betray the other and spend no time in prison.
+
+This simple toy example shows how Nash equilibria, originating from competitive
+games are often not optimal with respect to the global utility: the operator has
+then to enforce a fruitful coordination, the Nash arbitration scheme,
+controlling packet flows.
 
 * Methodology
 :PROPERTIES:
 :CUSTOM_ID: methodology
 :END:
-
-This section will discuss which theoretical framework and tools that have been used
-throughout the analysis and the motivation behind them.
-
-First, in autoref:methodology-geographical_analysis, we will analyze the Aachen
-building and road map in order to design, in autoref:methodology-network_design,
-a proper access network based on city topology and population density.
-
-Once obtained a suitable structure, the controller is tuned in order to enhance
-network performance for all its users.
 
 ** Geographical analysis
 :PROPERTIES:
@@ -1859,9 +1896,6 @@ solution. cite:Van1987
 :PROPERTIES:
 :CUSTOM_ID: results
 :END:
-
-This chapter follows the what was presented in [[autoref:methodology]] and shows
-what can be obtained using those theoretical frameworks and tools.
 
 ** Geographical analysis
 :PROPERTIES:
