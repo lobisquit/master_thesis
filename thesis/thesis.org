@@ -73,6 +73,7 @@
 #+latex_header_extra: \newacronym{pon}{PON}{Passive Optical Network}
 #+latex_header_extra: \newacronym{tcp}{TCP}{Transmission Control Protocol}
 #+latex_header_extra: \newacronym{mos}{MOS}{Mean Opinion Score}
+#+latex_header_extra: \newacronym{nos}{NOS}{Network Operating System}
 
 * Utility code :ignore:
 ** PlantUML common style                                            :ignore:
@@ -314,15 +315,16 @@ LaTeX support for svg files sucks.
 
 # SDN
 
-Since the creation of the public internet, the nature of the network layer of
-the protocol stack had been static. Each route was either set by hand or
-discovered by the device itself: in both cases no control was given to the
-network administrator to change this behaviour in case of load variations or
-poor performance.
+Since the creation of the public Internet, the configuration of the network
+layer of the protocol stack had been static. Each route was either discovered by
+the device itself or set by the hand of the administrator: in both cases no
+tools were available to quickly modify the behaviour according to changes in
+traffic demand or network structure.
 
-In the last year, this inflexible paradigm was questioned, as the complexity and
-sheer amount of data crossing each connection increased exponentially.
-cite:CiscoVisualNetworking
+In last years, this inflexible paradigm was questioned, as the complexity and
+sheer amount of data exchanged in the Internet grew dramatically. Moreover, the
+traffic all these people are requesting is not yet expected to stabilize,
+according to \textsc{cisco}. cite:CiscoVisualNetworking
 
 #+NAME: fig:internet_user_growth
 #+BEGIN_SRC asymptote :file ../figures/internet_user_growth.pdf :noweb yes
@@ -385,9 +387,9 @@ cite:CiscoVisualNetworking
         ymin=0.5,
         ymax=people[people.length - 1] + 0.5,
         ticks=RightTicks(format=Label("$%.4g \times 10^{\,9}$", fontsize(8)),
-                        modify=OmitTickInterval(4.6, inf),
-                        extend=false,
-                        beginlabel=true),
+                         modify=OmitTickInterval(4.6, inf),
+                         extend=false,
+                         beginlabel=true),
         arrow=Arrow);
 
   label(L="Internet users progression",
@@ -396,63 +398,11 @@ cite:CiscoVisualNetworking
         p=fontsize(10));
 #+END_SRC
 
-#+CAPTION: Number of internet users has steadily increased for the past fifteen years.
+#+CAPTION: Number of Internet users has steadily increased for the past fifteen years.
 #+ATTR_LATEX: :width 8cm
 #+LABEL: fig:internet_user_growth
-#+RESULTS[741d558b5f3167e9b663ac66fa2b42b26986980f]: fig:internet_user_growth
+#+RESULTS[dd898a6e8f1c1a392105d8f4ee3540a56eeb2a81]: fig:internet_user_growth
 [[file:../figures/internet_user_growth.pdf]]
-
-The idea behind this revolution was to decouple the \emph{data plane}, the
-actual physical devices forwarding packets, and the \emph{control plane},
-responsible for the actual routing decision. The latter is placed in one or mode
-devices, called \emph{controllers}, whose task is to orchestrate involved
-routers and switches based on current and forecast network status.
-
-This separation moves the routing logic from the single component to a
-centralized and fully programmable entity, that can perform its decisions based
-on an overall view of the network dynamics.
-
-In a moment of congestion of a particular link, for example, some data flows can
-be diverted to other paths, increasing [[ac:qos][QoS]] for all users. This can be very
-interesting in cable networks, where packet gridlock is indeed the main issue
-for administrators.
-
-#+CAPTION: Data flow of users (squares) are tuned and managed by the SDN controller via the routers (circles).
-#+ATTR_LATEX: :width 8cm
-#+LABEL: fig:network_planes
-[[file:../figures/network_planes.pdf]]
-
-# brief history of the concept
-
-Although the concept had been considered for many years, its first
-implementations were not successful from an adoption point of view. Standards
-like [[ac:forces][ForCES]], published by IETF in 2004, failed to gain traction because of the
-security concerns, regarding possible attacks against the [[ac:sdn][SDN]] controller and
-because vendors were not willing to adopt a common interface, for fear of
-competition.
-
-The first widespread example of open-source API was OpenFlow, proposed in 2008
-by the Stanford computer science department. cite:Mckeown2008 After its
-definition, a multitude of applications were written on top of this new
-standard, such as NOX network operating system cite:Gude2008, and this helped
-further adoption to the point where OpenFlow is now considered industry
-standard.
-
-Many data centers all over the world experimented successfully with it
-cite:Vaughan2011,Uppal2010, in fact, and report significant improvements in
-their infrastructure management and performance.
-
-# shortcomings of proposed solution and applications
-
-Currently there is much hype about OpenFlow, since they are seen as a tool to
-overcome the ``ossification of the Internet'' cite:Hakiri2014, making the whole
-system more flexible to manage.
-
-This is especially interesting since users number has steadily continued to grow
-in the past years, as shown previously in autoref:fig:internet_user_growth.
-Moreover, the traffic all these people are requesting to the Internet
-infrastructure is not yet expected to stabilize, according to \textsc{cisco}.
-cite:CiscoVisualNetworking.
 
 #+NAME: fig:internet_traffic_growth
 #+BEGIN_SRC asymptote :file ../figures/internet_traffic_growth.pdf :noweb yes
@@ -499,9 +449,9 @@ cite:CiscoVisualNetworking.
         ymin=0.5,
         ymax=traffic[traffic.length - 1] + 100,
         ticks=RightTicks(format=Label("$%.4g$EB/month", fontsize(8)),
-                        modify=OmitTickInterval(401, inf),
-                        extend=false,
-                        beginlabel=true),
+                         modify=OmitTickInterval(401, inf),
+                         extend=false,
+                         beginlabel=true),
         arrow=Arrow);
 
   label(L="Internet traffic projection",
@@ -513,12 +463,37 @@ cite:CiscoVisualNetworking.
 #+CAPTION: Internet traffic is expected to explode in the next years.
 #+ATTR_LATEX: :width 8cm
 #+LABEL: fig:internet_traffic_growth
-#+RESULTS[4b42a8c1b680a5f504ed404b1508d1409846c631]: fig:internet_traffic_growth
+#+RESULTS[d0fb950dc24a9d2ca530cdbce49a22ab3c6ccf75]: fig:internet_traffic_growth
 [[file:../figures/internet_traffic_growth.pdf]]
 
-Given the current demand for connectivity and bandwidth, [[ac:sdn][SDN]] can be a
-ground-breaking approach to further improve the networks performance at every
-level.
+In order to prevent the ``ossification of the Internet'' cite:Hakiri2014 it is
+in fact essential to separate the \emph{data plane}, the actual physical devices
+forwarding packets, and the \emph{control plane}, responsible for deciding
+routes.
+
+The latter operations are supervised by one or more devices, called
+\emph{controllers}, whose task is to orchestrate involved routers and switches
+based on current and forecast network status. This moves the routing logic from
+the single component to a centralized and fully programmable entity. These
+infrastructures are therefore called [[acp:sdn][SDNs]].
+
+In a moment of congestion of a particular link, for example, a data flow can be
+diverted to another path, possibly increasing [[ac:qos][QoS]] for all users. This can be
+very interesting in cable networks, where packet gridlock is indeed the main
+issue for administrators.
+
+#+CAPTION: Data flow of users (squares) are tuned and managed by the SDN controller via the routers (circles).
+#+ATTR_LATEX: :width 8cm
+#+LABEL: fig:network_planes
+[[file:../figures/network_planes.pdf]]
+
+# Currently there is much hype about the OpenFlow standard, an open API that
+# enables the central node to control switches and routers. cite:Vaughan2011
+
+Given the current demand for connectivity and bandwidth, [[acp:sdn][SDN]] can be a
+ground-breaking approach to further improve the performance using unconventional
+approaches. Not only flow control, but also user mobility prediction could be
+exploited by the programmable controller logic.
 
 However, as every tool, its makings have to be coupled with a robust knowledge
 on its limits. From a methodological point of view, this is necessary in order
@@ -547,28 +522,27 @@ An operation point the controller is requested to achieve that maximize
 # fairness
 # better than legacy
 
-
-\smallskip
+\bigskip
 This thesis is structured as follows.
+
 First, an overview of past works related to this thesis scope is provided in
-autoref:state_of_art. Then, autoref:methodology introduces the theoretical
-instruments employed in this analysis, whose results are collected and commented
-in autoref:results. Final remarks and considerations are eventually discussed in
-autoref:conclusion.
+autoref:state_of_art.
 
+Then, autoref:methodology introduces the theoretical instruments employed in
+this analysis. First, in autoref:methodology-geographical_analysis, we will show
+how relevant information from Aachen building and road map can be extracted in
+order to design, in autoref:methodology-network_design, a proper access network
+based on city topology and population density. Eventually,
+autoref:methodology-network_optimization will detail how this infrastructure can
+be tuned for maximize user perceived quality of the service.
 
-METHODOLOGY This section will discuss which theoretical framework and tools that
-have been used throughout the analysis and the motivation behind them.
+After applying all these procedures to out case of study, final results are
+collected and commented in autoref:results, split again into geographical
+analysis, network design and optimization, in
+autoref:results-geographical_analysis, autoref:results-network_design and
+autoref:results-network_optimization respectively.
 
-First, in autoref:methodology-geographical_analysis, we will analyze the Aachen
-building and road map in order to design, in autoref:methodology-network_design,
-a proper access network based on city topology and population density.
-
-Once obtained a suitable structure, the controller is tuned in order to enhance
-network performance for all its users.
-
-RESULTS This chapter follows the what was presented in [[autoref:methodology]] and
-shows what can be obtained using those theoretical frameworks and tools.
+Final remarks and considerations are eventually discussed in autoref:conclusion.
 
 * State of the art
 :PROPERTIES:
@@ -593,22 +567,27 @@ As mentioned in the introduction, the first step of this thesis is the
 estimation of the Aachen city network, given publicly available information on
 city topology and population density.
 
-Once extracted the relevant feature of the geographical area, the design of such
-a network consists in connecting all terminals to a central unit, aggregating
-all user traffic.
+\bigbreak
+
+Once extracted the relevant feature of the geographical area, designing of such
+a network is a matter of connecting all terminals to a central unit, aggregating
+user traffic to a single end-point.
 
 # Steiner tree = most general problem
 
-This is equivalent to solve the well-known Steiner tree problem on a graph
-$G=(V,\,E)$, where a subset $T$ of nodes in $V$ have to be reached from a root
-$r \in V$, choosing some edges in $E$ at lower possible cost. It is proved to be
-NP-hard and thus has been extensively studied in literature, both with exact and
-approximated solutions. cite:Voss1992,Rehfeldt2015,Koch1998,Leitner2014
+This is known in literature as the Steiner tree problem. On a graph $G=(V,\,E)$
+a set $T \subset V$ of nodes have to be reached from a root $r \in V$: the goal
+is to select the subset of edges in $E$ that activates those links at minimum
+cost.
 
-A reference representation of the Steiner tree problem is given in
-autoref:eq:steiner_tree_reference, where active edges $e \in E$ are marked by a
-binary variable $x_e$ and a cost $c_e$, while $\delta^{\pm}(\mathord{\cdot})$
-gives the edges entering or exiting its argument, respectively.
+This problem was proven to be NP-hard and has been extensively studied and
+solved both with exact and approximated solutions.
+cite:Voss1992,Rehfeldt2015,Koch1998,Leitner2014
+
+A reference formulation of it is given in autoref:eq:steiner_tree_reference,
+where active edges $e \in E$ are marked by a binary variable $x_e$ and a cost
+$c_e$. Function $\delta^{\pm}(\mathord{\cdot})$ instead gives the edges entering
+or exiting its argument, respectively.
 
 \begin{equation}
   \begin{split}
@@ -629,118 +608,174 @@ gives the edges entering or exiting its argument, respectively.
 
 # Andrews
 
-This formulation was extended by Andrews \etal, as they consider a number of
-link types with different capacity in order to deliver requested amount to the
-user. cite:Andrews1998 Moreover, they assign a cost for edge activation
-proportional to the bandwidth used or an upfront cost, accounting for leasing of
-existent infrastructure or its physical realization.
+In our case, though, reachability is not sufficient to declare a user connected,
+as its traffic has to be supported by all links in the path to the root as well.
+
+Accounting for this factor, Steiner tree was extended by Andrews \etal adding
+flow conditions for bandwidth and link types of different capacity. cite:Andrews1998
+
+Moreover, here fixed edge activation cost $c_e$ becomes proportional to the
+bandwidth used and a fixed cost for the activation is considered.
 
 #+LABEL: fig:andrews_model
 #+ATTR_LATEX: :width 7.2cm
 #+CAPTION: Each intermediate node in the tree merges the flows coming from the leaves and splits the return ones. cite:Andrews1998
 [[file:../figures/andrews_model.pdf]]
 
-A mathematical formulation describing the optimal solution given in their paper,
-and it is coupled with an approximated solver algorithm, that is obtained via
+A mathematical formulation describing the optimal solution is given in their
+paper, and it is coupled with an approximated solver algorithm obtained via
 linear programming relaxations, whose penalty with respect to the optimum is
 bounded.
 
 This approach, though, does not take into account the technological constraints,
-such as the limitations on the number of traffic aggregator ports and cable
+such as a maximum number of ports in traffic aggregators and limits in cable
 length.
 
 \smallbreak
 
-This last point is addressed in Mitcsenkov \etal, where an access network is
-built from reference topographic scenarios, such as suburban, town or city, in
-increasing population density. cite:Mitcsenkov2011 Moreover, they consider for
-the same setting various technologies, such as [[acp:pon][PON]], Active Ethernet and VDSL,
-each one with its own constraints.
+This last point is addressed in Mitcsenkov \etal, where they consider for the
+same setting various technologies, such as [[acp:pon][PON]], Active Ethernet and VDSL, each
+one with its own constraints.
+
+Moreover, the access network is built not from an abstract model, but from a set
+of reference topographic scenarios, such as suburban, town or city, in
+increasing population density. cite:Mitcsenkov2011
 
 Here the mathematical problem, with exact solution but infeasible computation,
-is coupled with heuristic algorithms, tailored to the given physical layer
-assumptions. Both are run on reference maps, whose ranging from surfaces of
-0.5km^2 to 4.7km^2 and from 400 to 20.000 number of subscribers. These trials
-show the viability of the approach, as the approximated solution is within 10%
-to 15% the theoretical bound provided via an [[ac:ilp][ILP]] solver, while being still fast
-to compute.
+is coupled with heuristic algorithms tailored to the given physical layer
+assumptions. Both are run on reference maps, ranging from 0.5km^2 to 4.7km^2 of
+surface and from 400 to 20.000 number of users. These trials show the viability
+of the approach, as the approximated solution is within 10% to 15% the
+theoretical bound provided via an [[ac:ilp][ILP]] solver, while being still fast to compute.
 
 \smallbreak
 
 These studies are useful insights on how to design a practical access network.
 Proposed tools are not enough, though, as either the conditions or the scale of
-our reference scenario are out of reach for them. For example, Aachen has an
-estimated number of 40.000 subscribers spread across 160.85km^2. So, new tools
-and formulations will be devised in autoref:methodology-network_design, in order
-to properly solve the problem and possibly get closer to the theoretical bounds.
+our reference scenario are out of reach for them: as an example, Aachen has an
+estimated number of 40.000 subscribers spread across 160.85km^2, both unfeasible
+for state-of-the-art algorithms.
+
+Therefore, new approaches will be devised in this thesis, in order to properly
+solve the problem and possibly get the approximation closer to the theoretical
+bounds.
+
+\bigbreak
 
 # SDN: general concept + small history
 
+Once built, resulting network has to be properly managed in order to offer a
+decent [[ac:qos][QoS]] to end users, for example adopting congestion avoidance and load
+balancing strategies. However, enforcing these policies in traditional IP
+networks is a daunting task for administrators. cite:Benson2009
+
+This is mainly caused by the need to use vendor-specific interfaces to specify
+switching units behavior, most notably setting and updating routing tables and
+requesting network status report. This inhibits a global orchestration across
+the whole infrastructure, as specific quirks and capabilities of each device
+have to be carefully abstracted. This operation needs to be repeated every time
+one of the protocol changes or a new kind of items is added. Therefore,
+automatic reconfiguration upon failure or dramatic load change is virtually
+non-existent in such systems.
+
+Moreover, IP networks are now mostly \emph{vertically integrated}, meaning that
+policy specification and implementation, known as \emph{control plane} and
+\emph{data plane} respectively, are allocated in the switching units. This
+reduces system flexibility and resilience as, for example, a simple change of
+routing protocol needs careful planning and a lot of man hours to be put in
+practice.
+
+[[ac:sdn][SDN]] is an emerging paradigm that tries to seize the problem by the roots,
+finally separating data and control plane. While the former remains in the
+devices, the latter logic is implemented in controller. Either as a physical
+device itself or a distributed entity, it can be programmed to put in practice
+high-level policies without the administrator to manually delve into all the
+details.
+
+In order for the controller to operate and manage all diverse switching units, a
+proper vendor-agnostic communication interface has to be designed. The first
+widespread example of such a protocol was OpenFlow, proposed in 2008 by the
+Stanford computer science department. cite:Mckeown2008
+
+Each OpenFlow device has multiple tables to match incoming packets to a
+programmable set of rules: these allow modification, forwarding and dropping of
+data, along with sending reports of anomalies and statistics to the controller.
+According to installed policies, each network unit can then act as a switch, a
+router, a firewall and this behaviour can be easily modified by the
+administrator.
+
+The new possibilities and the practical viability of the protocol started to
+attract not only academical contributions, for instance NOX [[ac:nos][NOS]] cite:Gude2008,
+but also industrial interested from many preeminent actors. Google
+cite:Jain2013, WMware cite:WMWareNSX and many operators around the world
+cite:OpenDaylight started to experiment and deploy software-defined solutions in
+their infrastructure, reporting performance and flexibility gains.
+
+\bigbreak
 
 # flow control
 
-Given our reference scenario, the levers offered by an [[acp:sdn][SDN]] approach are limited.
-In order to reduce infrastructure cost, our reference topology is a rigid and
-hierarchical tree: in this context no routing is therefore possible.
+Given our reference scenario, the levers offered by an [[ac:sdn][SDN]] approach are limited.
+As mentioned before, our reference topology is a rigid and hierarchical tree:
+while this minimizes infrastructure cost, no routing is possible in this
+context.
 
 The only tool left on the table is then \emph{flow control}, which is the
-ability to give or revoke priority from a certain stream of packets at switching
-units.
-
-Traditionally this technique has been employed for congestion avoidance, primary
-example being [[ac:tcp][TCP]] strategies to match the bitrate with the actual link capacity.
-cite:Allman2009
-
-Nowadays, flow control is becoming necessary in order to allocate the proper
-amount resources to users depending on their application requirements. For
-example, video streaming shows a different profile than traditional web browsing
-and this factor needs to be taken into account when administrating the
-infrastructure.
+ability to give or revoke priority from stream of packets. Traditionally this
+technique has been employed for congestion avoidance, primary example being
+distributed [[ac:tcp][TCP]] strategies to match the bitrate with the actual link capacity.
+cite:Allman2009 Nowadays, it is becoming necessary in order to assign users the
+proper amount resources their application requires. For instance, video
+streaming shows a different profile than traditional web browsing and this
+factor needs to be taken into account when administrating the network.
 
 \smallbreak
 
-The link between actual connection metrics to user perceived quality of the
-service, necessary to perform a decent resource distribution, has been studied
-extensively in literature. cite:Georgopoulos2013,Laghari2012,Reichl2011
+In order to perform a decent and user-tailored resource distribution, the link
+between actual connection metrics and user perceived quality of the service is
+needed.
 
-These research groups estimated [[ac:qoe][QoE]] via the so-called [[ac:mos][MOS]], the average
-subjective evaluation of the service, under a wide spectrum of network
-conditions. Georgopoulos \etal, Laghari \etal focus on the actual measurement
+Many research groups estimate [[ac:qoe][QoE]] under a wide spectrum of network conditions
+using the so-called [[ac:mos][MOS]], the average subjective evaluation among a group of
+candidates. Georgopoulos \etal, Laghari \etal focus on the actual measurement
 and try to fit what found with a shifted power function.
-cite:Georgopoulos2013,Laghari2012 Reichl \etal, instead, go for a different
-approach, as they \emph{a-priori} suppose a certain shape of the [[ac:qoe][QoE]] logarithmic
-function and then explain the data with it. This hypothesis is taken in analogy
-to the Weber-Fechner Law, a key principle in psycho-physics connecting the
-magnitude of a physical \emph{stimulus} to its perceived intensity.
+cite:Georgopoulos2013,Laghari2012 Instead, Reichl \etal go for a different
+approach, as they \emph{a-priori} suppose [[ac:qoe][QoE]] to be a logarithmic function: this
+hypothesis is taken in analogy to the Weber-Fechner Law, a key principle in
+psycho-physics connecting the magnitude of a \emph{stimulus} to its perceived
+intensity. cite:Reichl2011
+
+These investigation give us analytical tools to effectively simulate and
+reproduce satisfaction for each user.
 
 \smallbreak
 
-Once individual metrics are evaluated, it is necessary to aggregate all user [[ac:qoe][QoE]]
+Once individual metrics are computed, it is necessary to aggregate all these [[acp:qoe][QoE]]
 into a global score, in order to choose the best among all possible network
 configurations.
 
 A game theoretical framework is proposed in literature in order to tackle this
 problem. When the network is operational, in fact, there is an implicit
-competition between each user wanting to maximize its own \emph{utility}. The
-main task of the administrator is then to guide individual demands to a stable
-and \emph{fair} operation point.
+competition between each user wanting to maximize its own \emph{utility} at the
+expense of others bandwidth. The main task of the administrator is then to guide
+individual demands to a stable and \emph{fair} operation point.
 
 ``Fairness'' is, from a mathematical point of view, an elusive concept, but it
-can be seen here as a condition where all users can enjoy the service without
-being overly penalized.
+can be seen here as a condition where all users enjoy the service without being
+overly penalized.
 
 Pareto-optimal strategies are suggested by Douligeris \etal in order to capture
-this requirements, as no user can increment its own utility without worsening it
-at least for one of its fellows. cite:Douligeris1987 No criterion is however
-provided in order to choose among the possibly infinite number of these
+this requirements, as no one can increment its own utility without worsening the
+experience of at least one of its fellows. cite:Douligeris1987 No criterion is
+however provided in order to choose among the possibly infinite number of these
 solutions.
 
 Mazumdar \etal eventually proposes the so-called \emph{Nash arbitration scheme},
 a stable operation point of the cooperative game played among users, located in
 throughput space. cite:Mazumdar1991 Such point is proved to exist and be the
 only one satisfying symmetry, independence of irrelevant alternatives and Pareto
-optimality. Moreover, they prove that this strategy maximizes the product
-of individual user utilities, giving a straightforward way to compute it in
+optimality. Moreover, they show that this strategy maximizes the product of
+individual user utilities, giving a straightforward way to compute it in
 practice.
 
 It is important to differentiate between Nash arbitration scheme from the
@@ -748,13 +783,13 @@ popular Nash equilibrium, as the former arises from a \emph{cooperative} game,
 while the latter from a \emph{competitive} one. Such equilibria are situations
 where no user can increment its own utility if others behaviour stays the same.
 cite:Tadelis2013 These points are typically Pareto sub-optimal and therefore not
-relevant for the intended flow control.
+relevant for our purposes.
 
 An example of this concept is the \emph{prisoner's dilemma}, a non-cooperative
 game played between two actors $A$ and $B$. These two individuals are suspected
 of a crime, but the prosecutor lacks evidence for this, while he has for some
-minor crimes. Both of the criminals, who have no way of communicating to each
-other, can either confess the main crime or stay silent.
+minor charges. Both of the criminals, who have no way of communicating to each
+other, can either confess the main offence or stay silent.
 
 \begin{table}[h]
   \centering
@@ -770,13 +805,13 @@ other, can either confess the main crime or stay silent.
 
 Judging from autoref:tab:prisoners_dilemma, the best course of action, meaning
 the Pareto optimal strategy, is for the two of them to stay silent. This point,
-however, is not a Nash equilibrium, because each one of them has incentive, in
-this situation, to betray the other and spend no time in prison.
+however, is not a Nash equilibrium, because each one has incentive to betray the
+other and spend no time in prison.
 
-This simple toy example shows how Nash equilibria, originating from competitive
-games are often not optimal with respect to the global utility. In our context,
-then, the operator has then to enforce a fruitful coordination, the Nash
-arbitration scheme, among players carefully tuning packet flows.
+This toy example shows how Nash equilibria, originating from competitive games,
+are often not optimal with respect to the global utility. In our context, then,
+the operator has then to enforce a fruitful coordination, the Nash arbitration
+scheme, among players carefully tuning their packet flows.
 
 * Methodology
 :PROPERTIES:
