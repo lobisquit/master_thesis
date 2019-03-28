@@ -5,7 +5,7 @@
 #+OPTIONS: toc:nil title:nil
 
 #+LATEX_CLASS: report
-#+LaTeX_CLASS_OPTIONS: [12pt, twoside, openright, draft]
+#+LaTeX_CLASS_OPTIONS: [12pt, twoside, openright]
 
 #+LATEX_COMPILER: pdflatex
 
@@ -125,7 +125,7 @@
 \restoregeometry
 #+END_EXPORT
 
-** PlantUML common style                                            :ignore:
+** PlantUML common style                                            :noexport:
 #+BEGIN_COMMENT
 PlantUML skin, reusable for all diagrams
 #+END_COMMENT
@@ -223,7 +223,7 @@ PlantUML skin, reusable for all diagrams
   }
 #+END_SRC
 
-** Download university logos                                        :ignore:
+** Download university logos                                        :noexport:
 #+BEGIN_COMMENT
 Download all needed files for titlepage and convert them.
 LaTeX support for svg files sucks.
@@ -241,7 +241,7 @@ LaTeX support for svg files sucks.
   inkscape ../figures/logo_rwth.svg --export-pdf=../figures/logo_rwth.pdf
 #+END_SRC
 
-** Asymptote preamble                                               :ignore:
+** Asymptote preamble                                               :noexport:
 #+NAME: asymptote_preamble
 #+BEGIN_SRC asymptote :exports none
   settings.outformat="pdf";
@@ -253,7 +253,7 @@ LaTeX support for svg files sucks.
   // texpreamble("\usepackage[charter]{mathdesign}");
 #+END_SRC
 
-** Python preamble                                                  :ignore:
+** Python preamble                                                  :noexport:
 #+NAME: python_preamble
 #+BEGIN_SRC python :exports none
   import matplotlib.pyplot as plt
@@ -269,7 +269,7 @@ LaTeX support for svg files sucks.
   rcParams.update(font_spec)
 #+END_SRC
 
-** R preamble                                                       :ignore:
+** R preamble                                                       :noexport:
 #+NAME: R_preamble
 #+BEGIN_SRC R :exports none
   .libPaths("/opt/R/x86_64-pc-linux-gnu-library")
@@ -292,7 +292,7 @@ LaTeX support for svg files sucks.
       text = element_text(family = "Fira Sans")
     )
 #+END_SRC
-* Various lists of things :ignore:
+* Various lists of things :noexport:
 \listoffigures
 \listoftables
 \listofalgorithms
@@ -1884,12 +1884,11 @@ Moreover, it can be found simply maximizing $f$, product of all the utilities:
 this gives us a straightforward criterion to rank all possible network
 configurations.
 
-\begin{equation}
-  f(\vec{\rho}) = \prod_i u_i(\rho_i) \implies
-  \argmax_{\vec{\rho}} ~ f(\vec{\rho}) = \argmax_{\vec{\rho}} ~ \sum_i \log u_i(\rho_i)
+\begin{equation} \label{eq:global_function}
+  f(\vec{\rho}) = \prod_i u_i(\rho_i)
 \end{equation}
-where, in order to avoid issues related to CPU floating point precision, $\log
-f(\vec{\rho})$ is computed instead in simulations.
+where $\rho_i$, \emph{i}-th component of $\vec{\rho}$, is the bandwidth
+assigned to the \emph{i}-th user.
 
 \smallbreak
 
@@ -2124,7 +2123,7 @@ the proper level of detail if needed.
 :CUSTOM_ID: results-network_optimization
 :END:
 
-*** Plot utilities                                                 :ignore:
+*** Plot utilities                                                 :noexport:
 
 #+NAME: optimization_plotter
 #+BEGIN_SRC R :exports none :noweb yes
@@ -2216,24 +2215,25 @@ the proper level of detail if needed.
   print(out_path)
 #+END_SRC
 
-*** Actual chapter                                                 :ignore:
-As mentioned in autoref:methodology-network_optimization, we analyze the
-behaviour of our reference access network for different bandwidth demands and
-application profiles.
+*** Actual chapter
 
-In our simulations, former point is taken care of via $p_{active}$ parameter,
+As mentioned in autoref:methodology-network_optimization, in our experiments we
+study the behaviour of our reference access network for different bandwidth
+demands and service profiles.
+
+More specifically, former point is taken care of via $p_{active}$ parameter,
 that is the probability a certain user is communicating or not. In order to
 describe the latter factor, instead, applications are randomly split into video
-streaming and web page browsing, according to probability $p_{streaming}$.
+streaming and web page browsing, according to a fraction $p_{streaming}$.
 
-Two different allocation strategies are evaluated, \emph{traditional}
-proportional fairness and the more sophisticated Nash arbitration scheme,
-computed via the \emph{heuristic} autoref:lst:alg:heuristic_flow.
+Two different allocation strategies are evaluated, traditional proportional
+fairness and the more sophisticated Nash arbitration scheme, computed via the
+\emph{heuristic} autoref:lst:alg:heuristic_flow.
 
-With respect to global objective function $f(\rho)$, our proposed solution indeed
-provides a more fair operation point than the traditional one, proving that
-even an approximated solution outperforms what currently done in these kinds of
-scenarios.
+With respect to global objective function $f(\rho)$, defined in
+autoref:eq:global_function, our proposed solution indeed provides a more fair
+operation point than the legacy one, proving that even an approximation of the
+optimum outperforms what currently done in these kinds of scenarios.
 
 #+NAME: obj_vs_p_nothing0.1
 #+BEGIN_SRC R :exports results :results file value :noweb yes
@@ -2249,9 +2249,9 @@ p_streaming = 0.1
 [[file:../figures/obj_vs_p_nothing_0.100000.pdf]]
 
 This gap can be easily spotted in autoref:fig:obj_vs_p_nothing0.1,
-autoref:fig:obj_vs_p_nothing0.5 and autoref:fig:obj_vs_p_nothing0.9 , where
-different values of $p_{active}$ and $p_{streaming}$ are tested and performance
-is averaged across multiple simulation runs.
+autoref:fig:obj_vs_p_nothing0.5 and autoref:fig:obj_vs_p_nothing0.9, where
+average performance across multiple runs is computed for different values of
+$p_{active}$ and $p_{streaming}$.
 
 #+NAME: obj_vs_p_nothing0.5
 #+BEGIN_SRC R :exports results :results file value :noweb yes
@@ -2266,15 +2266,15 @@ p_streaming = 0.5
 #+RESULTS[aa1ca3384364a67258da6206e60f7b248dbc5b4d]: obj_vs_p_nothing0.5
 [[file:../figures/obj_vs_p_nothing_0.500000.pdf]]
 
-Moreover, this difference is more noticeable when offered traffic is higher,
-i.e. when the situation is more difficult to handle from the point of view of
-the administrator. This observation suggests that this novel approach can be
-relevant from a practical point of view, as the infrastructure size and
-complexity, and thus its cost, is often dictated by such worst-case scenario.
+Moreover, this difference is more evident when offered traffic is higher, i.e.
+when the situation is more difficult to handle from the point of view of the
+administrator. This observation suggests that this novel approach can be
+relevant from a practical point of view as the infrastructure size and
+complexity, and thus its cost, is often dictated by worst-case scenarios.
 
-As a final remark, the proposed method performance is smoother, more
-predictable, with respect to system parameters, and this again is a strong point
-in the field, making the tool more trustworthy.
+As a final remark on these results, proposed method performance is smoother,
+somewhat more predictable: again is a strong point in the field, as it is more
+robust to system parameters estimation errors.
 
 #+NAME: obj_vs_p_nothing0.9
 #+BEGIN_SRC R :exports results :results file value :noweb yes
@@ -2289,12 +2289,10 @@ p_streaming = 0.9
 #+RESULTS[37b1a7bea1c61e03ed83627db7713ea89816f50d]: obj_vs_p_nothing0.9
 [[file:../figures/obj_vs_p_nothing_0.900000.pdf]]
 
-\smallskip
+\bigskip
 
-Looking closer to the actual utility distribution among users, four reference
-settings are shown in autoref:fig:utility_distribution0.1 and
-autoref:fig:utility_distribution0.9, consisting of the extremes for $p_{active}$
-and $p_{streaming}$.
+We then analyze utility distributions for the two techniques, focusing on
+extreme values of $p_{active}$ and $p_{streaming}$.
 
 #+NAME: utility_distribution0.1
 #+BEGIN_SRC R :exports results :results file value :noweb yes
@@ -2322,23 +2320,28 @@ and $p_{streaming}$.
 #+RESULTS[c28bccf955b649e4e15a2b0255b04d49b3665dd2]: utility_distribution0.9
 [[file:../figures/utility_distribution_0.900000.pdf]]
 
-While with a smaller offered traffic the solutions are similar, they differ at
-the other side of the spectrum, where for example the traditional solution shows
-spikes at very low values of utility that drag the objective function down.
-Again, proposed approach is more desirable, as the solution is more ``stable''
-than its counterpart.
+When offered traffic is lower, as shown in autoref:fig:utility_distribution0.1,
+it is apparent how realizations are overall closer to one, certifying the small,
+but noticeable, gain seen before for the novel approach.
 
-Despite all these interesting features of this heuristic solution, it is
-currently only a lower bound on the theoretical optimum, obtained solving the
-mathematical problem exactly. Further progress can then be made in the search of
-the best working point.
+When instead in autoref:fig:utility_distribution0.9 the number of active users
+is larger the situation is trickier to interpret: again though proposed solution
+tends to move towards the optimal point.
 
-\glsresetall
+\bigskip
 
-* Conclusions
+Despite all these accomplishment of proposed heuristic approach, it is currently
+only a lower bound on the theoretical optimum, exact solution of the
+mathematical problem. Further progress can then be made in the search of the
+best working point.
+
+
+* Conclusion
 :PROPERTIES:
 :CUSTOM_ID: conclusion
 :END:
+
+\glsresetall
 
 This thesis discusses how to design, tune and optimize an access network from
 scratch, using only topographic and demographic information.
@@ -2388,6 +2391,10 @@ development could consider using more connection metrics, such as delay and
 jitter, since bandwidth alone cannot completely describe [[ac:qoe][QoE]] for some
 applications. These works could therefore assess whether a trade-off can be made
 among these quantities to better fit user requirements.
+
+Moreover the Nash arbitration scheme, here only approximated, could be computed
+exactly or, if not possible, approximated via better and more specific heuristic
+algorithms.
 
 \clearpage
 
