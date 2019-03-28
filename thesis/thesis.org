@@ -2333,19 +2333,64 @@ currently only a lower bound on the theoretical optimum, obtained solving the
 mathematical problem exactly. Further progress can then be made in the search of
 the best working point.
 
+\glsresetall
+
 * Conclusions
 :PROPERTIES:
 :CUSTOM_ID: conclusion
 :END:
 
-- complete work, from bare geographical features to final network tuning
-- the design approach is not limited to the specific context, but can be extended to any scenario
-- interesting for broken emergency networks (Matilde)
-- tuning shows hope for better (and significant) gains, but exact solution for the mathematical problem is needed
-- using utilities is a better and more user-tailored approach than simple QoS metrics
-- delay has to be considered in the equation (future progress)
+This thesis discusses how to design, tune and optimize an access network from
+scratch, using only topographic and demographic information.
+
+The end-to-end approach presented, meaning mathematical models and algorithms,
+can be applied to a generic problem as no particular assumption were taken about
+our case of study, the city of Aachen. Here we design a traditional access
+network for an [[ac:isp][ISP]], but the same techniques can be used, for example, to
+implement emergency communication infrastructure for areas subjected to natural
+disasters. In both situations, in fact, a number of people spread over a
+geographical area need to be connected to the main Internet. Either for business
+or pleasure or for calling rescue teams and families, the problem can be treated
+in a similar way.
+
+\smallbreak
+
+Considering the first step, infrastructure design, we can assert that our model
+is more complete and our solutions better than what is available in literature
+at the moment. We can in fact consider properly all technological limitations of
+an FTTH network and allow for ad-hoc considerations in the optimization process.
+Moreover, our bounds with respect to the optimum are narrower than any
+state-of-the-art approach.
+
+\smallbreak
+
+Once built the network, [[ac:sdn][SDN]] principles are applied to its management, entrusting
+packet flow control to a central unit.
+
+Bandwidth distribution is directed by this \emph{controller} according to a
+game-theoretical framework, called \emph{Nash arbitration scheme}. This ensure
+the final configuration to balance packet flows and meet all desirable
+assumptions of \emph{fairness}.
+
+Utility functions, needed to fully characterize the allocation game, are
+application-specific and estimate actual [[ac:qoe][QoE]]. This is a step forward with
+respect to common [[ac:qos][QoS]] metrics, as this way we maximize actual customer
+satisfaction and tailor service for end user peculiarities.
+
+Indeed this strategy pays off, as improvement with respect to the legacy
+\emph{proportional fairness} strategy is measurable and significant in terms of
+performance and reliability.
+
+\smallbreak
+
+As proved in this thesis, adopted approach is indeed promising: future
+development could consider using more connection metrics, such as delay and
+jitter, since bandwidth alone cannot completely describe [[ac:qoe][QoE]] for some
+applications. These works could therefore assess whether a trade-off can be made
+among these quantities to better fit user requirements.
 
 \clearpage
+
 bibliographystyle:plain
 bibliography:biblio.bib
 
