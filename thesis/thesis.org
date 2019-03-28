@@ -76,8 +76,55 @@
 #+latex_header_extra: \newacronym{tcp}{TCP}{Transmission Control Protocol}
 #+latex_header_extra: \newacronym{mos}{MOS}{Mean Opinion Score}
 #+latex_header_extra: \newacronym{nos}{NOS}{Network Operating System}
+#+latex_header_extra: \newacronym{ftth}{FTTH}{Fiber to the home}
 
-* Utility code :ignore:
+* Utility code                                                       :ignore:
+** Latex title page                                                 :ignore:
+#+BEGIN_EXPORT latex
+\newgeometry{top=1in, bottom=1in, inner=1in, outer=1in}
+\begin{titlepage}
+  {\Large University of Padova}
+  \vspace{4mm}
+
+  {\Large Department of Information Engineering}
+
+  \begin{center}
+    \vspace{8mm}
+    {\Large \textsl{Master degree in Telecommunication Engineering}} \\
+    \vspace{8mm}
+    {\scshape\huge Traffic flow optimization \\[0.3em] for urban xDSL based access networks }
+
+    \iftoggle{images_titlepage}{
+      \vspace{8mm}
+      \begin{figure}[h]
+        \centering
+        \includegraphics[height=5cm]{logo_unipd.pdf}
+        \vspace{5mm} \\
+        \includegraphics[height=2cm]{logo_rwth.pdf}
+      \end{figure}
+    }
+
+  \end{center}
+
+  \vfill
+
+  \renewcommand{\arraystretch}{2.5}
+  \begin{tabular}{lr}
+    \large \textsl{Author}               & \hspace{5mm} \large Enrico Lovisotto      \\
+    \large \textsl{Internal supervisor}  & \hspace{5mm} \large Prof. Andrea Zanella  \\
+    \large \textsl{External supervisors} & \hspace{5mm} \large Prof. Petri Mähönen  \\
+                                         & \hspace{5mm} \large Dr. Ljiljana Simić   \\
+  \end{tabular}
+  \vspace{6mm}
+  \begin{flushright}
+    \large April 8, 2019 \\[0.5em]
+    \large Academic year 2018-2019
+  \end{flushright}
+\end{titlepage}
+
+\restoregeometry
+#+END_EXPORT
+
 ** PlantUML common style                                            :ignore:
 #+BEGIN_COMMENT
 PlantUML skin, reusable for all diagrams
@@ -194,52 +241,6 @@ LaTeX support for svg files sucks.
   inkscape ../figures/logo_rwth.svg --export-pdf=../figures/logo_rwth.pdf
 #+END_SRC
 
-** Latex title page                                                 :ignore:
-#+BEGIN_EXPORT latex
-\newgeometry{top=1in, bottom=1in, inner=1in, outer=1in}
-\begin{titlepage}
-  {\Large University of Padova}
-  \vspace{5mm}
-
-  {\Large Department of Information Engineering}
-
-  \begin{center}
-    \vspace{1cm}
-    {\Large \textsl{Master degree in Telecommunication Engineering}} \\
-    \vspace{1cm}
-    {\scshape\huge Traffic flow optimization \\[0.3em] for urban xDSL based access networks }
-
-    \iftoggle{images_titlepage}{
-      \vspace{1cm}
-      \begin{figure}[h]
-        \centering
-        \includegraphics[height=5cm]{logo_unipd.pdf}
-        \vspace{0.5cm} \\
-        \includegraphics[height=2cm]{logo_rwth.pdf}
-      \end{figure}
-    }
-
-  \end{center}
-
-  \vfill
-  \hspace{0.5cm}%
-  \renewcommand{\arraystretch}{2.5}
-  \begin{tabular}{lr}
-    \large \textsl{Author}               & \hspace{5mm} \large Enrico Lovisotto      \\
-    \large \textsl{Internal supervisor}  & \hspace{5mm} \large Prof. Andrea Zanella  \\
-    \large \textsl{External supervisors} & \hspace{5mm} \large Prof. Petri Mähönen  \\
-                                         & \hspace{5mm} \large Dr. Ljiljana Simić   \\
-  \end{tabular}
-  \vspace{1cm}
-
-  \hfill{\large February 6, 2019} \vspace{2mm}
-
-  \hfill{\Large Academic year 2018-2019 \par}
-\end{titlepage}
-
-\restoregeometry
-#+END_EXPORT
-
 ** Asymptote preamble                                               :ignore:
 #+NAME: asymptote_preamble
 #+BEGIN_SRC asymptote :exports none
@@ -291,6 +292,11 @@ LaTeX support for svg files sucks.
       text = element_text(family = "Fira Sans")
     )
 #+END_SRC
+* Various lists of things :ignore:
+\listoffigures
+\listoftables
+\listofalgorithms
+
 * Introduction
 :PROPERTIES:
 :CUSTOM_ID: introduction
