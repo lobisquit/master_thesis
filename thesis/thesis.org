@@ -5,6 +5,8 @@
 #+OPTIONS: toc:nil title:nil
 
 #+LATEX_CLASS: report
+#+LaTeX_CLASS_OPTIONS: [12pt, twoside, openright, draft]
+
 #+LATEX_COMPILER: pdflatex
 
 #+LATEX_HEADER: \usepackage{charter}
@@ -316,10 +318,10 @@ LaTeX support for svg files sucks.
 # SDN
 
 Since the creation of the public Internet, the configuration of the network
-layer of the protocol stack had been static. Each route was either discovered by
-the device itself or set by the hand of the administrator: in both cases no
-tools were available to quickly modify the behaviour according to changes in
-traffic demand or network structure.
+layer of the protocol stack has been static. Each route has either been
+discovered by the device itself or set by the hand of the administrator: in both
+cases no tools were available to quickly modify the behaviour according to
+changes in traffic demand or network structure.
 
 In last years, this inflexible paradigm was questioned, as the complexity and
 sheer amount of data exchanged in the Internet grew dramatically. Moreover, the
@@ -404,6 +406,21 @@ according to \textsc{cisco}. cite:CiscoVisualNetworking
 #+RESULTS[dd898a6e8f1c1a392105d8f4ee3540a56eeb2a81]: fig:internet_user_growth
 [[file:../figures/internet_user_growth.pdf]]
 
+In order to prevent the ``ossification of the Internet'' cite:Hakiri2014 and
+adapt to these new scenarios, it is in fact essential to separate the
+\emph{data plane}, the actual physical devices forwarding packets, from the
+\emph{control plane}, responsible for deciding routes.
+
+The latter operations are supervised by a logically centralized
+\emph{controller}, whose task is to orchestrate involved routers and switches
+based on current and forecast network status. This moves the routing logic from
+the single component to a fully programmable core entity.
+
+In a moment of congestion of a particular link, for example, a data flow can be
+diverted to another path, possibly increasing [[ac:qos][QoS]] for all users. This can be
+very interesting in cable networks, where gridlock is indeed the main issue for
+administrators.
+
 #+NAME: fig:internet_traffic_growth
 #+BEGIN_SRC asymptote :file ../figures/internet_traffic_growth.pdf :noweb yes
   <<asymptote_preamble>>
@@ -466,77 +483,66 @@ according to \textsc{cisco}. cite:CiscoVisualNetworking
 #+RESULTS[d0fb950dc24a9d2ca530cdbce49a22ab3c6ccf75]: fig:internet_traffic_growth
 [[file:../figures/internet_traffic_growth.pdf]]
 
-In order to prevent the ``ossification of the Internet'' cite:Hakiri2014 it is
-in fact essential to separate the \emph{data plane}, the actual physical devices
-forwarding packets, and the \emph{control plane}, responsible for deciding
-routes.
+Given the demand for connectivity and bandwidth, [[acp:sdn][SDN]] are now a ground-breaking
+approach to further improve the performance using unconventional approaches. Not
+only flow control, but also user mobility prediction could be exploited by the
+programmable controller logic.
 
-The latter operations are supervised by one or more devices, called
-\emph{controllers}, whose task is to orchestrate involved routers and switches
-based on current and forecast network status. This moves the routing logic from
-the single component to a centralized and fully programmable entity. These
-infrastructures are therefore called [[acp:sdn][SDNs]].
+However, as every tool, its makings have to be coupled with a robust knowledge
+on its limits. From a methodological point of view, alleged once-and-for-all
+solutions often fall short when context changes from the expected one: this
+information is therefore crucial to make the most out of [[ac:sdn][SDN]].
 
-In a moment of congestion of a particular link, for example, a data flow can be
-diverted to another path, possibly increasing [[ac:qos][QoS]] for all users. This can be
-very interesting in cable networks, where packet gridlock is indeed the main
-issue for administrators.
+As mentioned before, [[acp:sdn][SDNs]] are indeed popular nowadays when dealing with very
+high bandwidth link management in scenarios that are complex because of either
+topology or applications demand. cite:Singh2015
 
 #+CAPTION: Data flow of users (squares) are tuned and managed by the SDN controller via the routers (circles).
 #+ATTR_LATEX: :width 8cm
 #+LABEL: fig:network_planes
 [[file:../figures/network_planes.pdf]]
 
-# Currently there is much hype about the OpenFlow standard, an open API that
-# enables the central node to control switches and routers. cite:Vaughan2011
-
-Given the current demand for connectivity and bandwidth, [[acp:sdn][SDN]] can be a
-ground-breaking approach to further improve the performance using unconventional
-approaches. Not only flow control, but also user mobility prediction could be
-exploited by the programmable controller logic.
-
-However, as every tool, its makings have to be coupled with a robust knowledge
-on its limits. From a methodological point of view, this is necessary in order
-to make the most out of [[ac:sdn][SDN]], since alleged once-and-for-all solutions often
-stumble when context changes from the expected one.
-
-As mentioned before, [[ac:sdn][SDN]] were indeed useful when dealing with very high
-bandwidth link management in scenarios that are complex either because of the
-topology or applications demand. cite:Singh2015
-
-In this thesis we aim then to understand what happens in the other side of the
+In this thesis we aim then to understand what happens at the other side of the
 spectrum, i.e. when dealing with static and simple access networks. At the
 moment no study has been devoted to understand and quantify how much a
-controller can improve user [[ac:qos][QoS]] in these simple, but very common, settings.
+controller can improve [[ac:qos][QoS]] in these simple, but very common, settings.
 
-We specifically focused on the access network of Aachen, historical city in the
+We specifically focus on the access network of Aachen, historical city in the
 German state of North Rein-Westphalia. As the actual schematics are not
-available to the general public, our network topology was inferred solving an
-optimization problem using residential buildings and population distribution
-across the area.
+available to the general public, our network topology is inferred by residential
+buildings and population distribution across the area, solving an optimization
+problem.
 
-The network was then run in a custom simulator, both with and without a
-controller, in order to assess its contribution on user perceived [[ac:qoe][QoE]].
+After this design step we simulate the normal operation of the infrastructure,
+where a certain number of clients requires traffic for their applications. In
+this setting we try to assess whether an [[ac:sdn][SDN]] inspired approach can effectively
+increment [[ac:qoe][QoE]] for the users.
 
-An operation point the controller is requested to achieve that maximize
-# fairness
-# better than legacy
+While state-of-the-art utility functions are employed as service-specific
+quality measures, a comprehensive assessment is performed using a
+game-theoretical framework, known as \emph{Nash arbitration scheme}. Obtained
+operation point is the only one that guarantees a \emph{fair} allocation of
+resources among users and it is proven to maximize the product of the utilities.
+
+More specifically then, our goal is to compare traditional network management
+technique to this novel approach in a real-world scenario.
 
 \bigskip
+
 This thesis is structured as follows.
 
 First, an overview of past works related to this thesis scope is provided in
 autoref:state_of_art.
 
 Then, autoref:methodology introduces the theoretical instruments employed in
-this analysis. First, in autoref:methodology-geographical_analysis, we will show
-how relevant information from Aachen building and road map can be extracted in
-order to design, in autoref:methodology-network_design, a proper access network
-based on city topology and population density. Eventually,
+this analysis. In autoref:methodology-geographical_analysis, we will show how
+relevant information from Aachen building and road map can be extracted in order
+to design, in autoref:methodology-network_design, a proper access network based
+on city topology and population density.
 autoref:methodology-network_optimization will detail how this infrastructure can
-be tuned for maximize user perceived quality of the service.
+be tuned for maximize user perceived [[ac:qoe][QoE]].
 
-After applying all these procedures to out case of study, final results are
+After applying these procedures to our case of study, final results are
 collected and commented in autoref:results, split again into geographical
 analysis, network design and optimization, in
 autoref:results-geographical_analysis, autoref:results-network_design and
@@ -792,6 +798,7 @@ minor charges. Both of the criminals, who have no way of communicating to each
 other, can either confess the main offence or stay silent.
 
 \begin{table}[h]
+  \renewcommand*{\arraystretch}{1.5}
   \centering
   \begin{tabular}{c|cc}
     & A confesses & A stays silent\\
@@ -847,11 +854,6 @@ and provides direct connection to public Internet. Its map, built by ``The
 Internet Topology Zoo'' project cite:topology_zoo, has been plotted in
 autoref:fig:lambdanet.
 
-#+LABEL: fig:lambdanet
-#+ATTR_LATEX: :width 10cm
-#+CAPTION: LambdaNet is a national backbone that serves all major German cities and connects the country to the rest of Europe.
-[[file:../figures/german_backbone.pdf]]
-
 In this thesis we will then suppose that the access network connects all Aachen
 buildings to this main backbone via a single [[ac:pop][PoP]], located in the industrial
 district of the city.
@@ -889,6 +891,13 @@ information about the building use and height in most entries.
 These two points can be accepted in this work as the end goal is to study how
 the access network of a city like Aachen behaves, not to replicate it in perfect
 detail.
+
+\bigskip
+
+#+LABEL: fig:lambdanet
+#+ATTR_LATEX: :width 10cm
+#+CAPTION: LambdaNet is a national backbone that serves all major German cities and connects the country to the rest of Europe.
+[[file:../figures/german_backbone.pdf]]
 
 ** Network design
 :PROPERTIES:
@@ -933,6 +942,22 @@ topologies are too expensive and offer no substantial benefit. cite:CiscoWAN
 
 In this configuration the path from users to the provider mainframe is fixed and
 must cross two kinds of intermediate nodes, a [[acp:dslam][DSLAM]] and a router.
+
+From a technological point of view the network is considered to be relatively
+modern, since the infrastructure has been renewed on the past years in
+conjuction with works on main city roads.
+
+That is the reason why we suppose all main links to be fiber optic running
+state-of-the-art VDSL/VDSL2. The minor fraction of legacy ADSL and copper-cable
+users can be well approximated as VDSL connections at the same distance, in
+terms of bandwidth and other network metrics.
+
+In order to guarantee a suitable [[ac:qos][QoS]], all connected network components have to
+be close enough to each other: this is taken into account though a maximum
+distance parameter $d_M$.
+
+Finally, each switch is allowed to serve a limited number $n_M$ of lower level
+nodes, given by the number of physical ports of the device.
 
 #+BEGIN_SRC plantuml :file ../figures/network_tree.eps :noweb yes
   <<plantuml_skin>>
@@ -1038,21 +1063,7 @@ must cross two kinds of intermediate nodes, a [[acp:dslam][DSLAM]] and a router.
 #+RESULTS[8ea501892da9a680d09dae6c57f8da0bec56e358]:
 [[file:../figures/network_tree.eps]]
 
-From a technological point of view the network is considered to be relatively
-modern, since the infrastructure has been renewed on the past years in
-conjuction with works on main city roads.
-
-That is the reason why we suppose all main links to be fiber optic running
-state-of-the-art VDSL/VDSL2. The minor fraction of legacy ADSL and copper-cable
-users can be well approximated as VDSL connections at the same distance, in
-terms of bandwidth and other network metrics.
-
-In order to guarantee a suitable [[ac:qos][QoS]], all connected network components have to
-be close enough to each other: this is taken into account though a maximum
-distance parameter $d_M$.
-
-Finally, each switch is allowed to serve a limited number $n_M$ of lower level
-nodes, given by the number of physical ports of the device.
+\clearpage
 
 *** Solution approach
 :PROPERTIES:
@@ -1083,9 +1094,6 @@ to the higher-level elements. \\
 This is closer to what is done in practice, as each step is examined and
 evaluated according to criteria, such as soundness and future-proofing of the
 infrastructure, that are difficult to explain to the solver.
-
-The network topology moves then from the one in [[autoref:fig:network_tree]] to the
-simplified setting of autoref:fig:network_tree_simplified.
 
 #+BEGIN_SRC plantuml :file ../figures/network_tree_simplified.eps :noweb yes
   <<plantuml_skin>>
@@ -1180,6 +1188,9 @@ simplified setting of autoref:fig:network_tree_simplified.
 #+RESULTS[5085dfc30f26ccf8321faf35dc8ee483110cc158]:
 [[file:../figures/network_tree_simplified.eps]]
 
+The network topology moves then from the one in [[autoref:fig:network_tree]] to the
+simplified setting of autoref:fig:network_tree_simplified.
+
 As apparent in the diagram the solver must now take into consideration the cost
 of the nodes that have been omitted from the tree. This is accounted as a lump
 sum for the connection of each network switch, called from now on cluster
@@ -1209,6 +1220,7 @@ will be taken for granted from now on.
 | $c_f$           | Cost of a fiber optic cable per meter                         |
 | $c_e$           | Cost of roadwork excavation per meter                         |
 
+\clearpage
 *** ILP formulation
 In order to express the optimization problem in a convenient way, we arrange our
 data as follows.
@@ -1380,7 +1392,9 @@ Because of the system requirements we also have to keep track of the distance
 $d_i$ of each node $i \in V \cup \{r\}$ from its head and the number of users $n_e$ served
 by each link in $A$, ensuring they do not exceed their limits.
 
-Given this setup, our optimization problem can be written as follows:
+Given this setup, our optimization problem can be written as follows.
+
+\clearpage
 
 \begin{align}
   \min_{ \stackrel{\{x_e\}_{e \in E}}{\{u_t\}_{t \in T}}}
@@ -1517,11 +1531,9 @@ Pseudo-code is available in [[autoref:lst:alg:heuristic]].
     \State pick $C_i$ and $C_j$ the two closest clusters in $C$
     \State $d_{ij}$ = diameter of cluster $C_i \cup C_j$
     \State $n_{ij}$ = number of users inside $C_i \cup C_j$
-    \State
     \If {$d_{ij} < 2 \, d_M$ and $n_{ij} < n_M$}
     \State $C^\prime = \{C_1, \ldots, C_i \cup C_j, \ldots \}$
     \State current\_cost = \Call{objective\_function}{$C^\prime$}
-    \State
     % \State /* \quad \textsc{performance} stop condition \quad */
     \If {current\_cost > cost}
     \State stop = True
@@ -1532,7 +1544,6 @@ Pseudo-code is available in [[autoref:lst:alg:heuristic]].
     \Else
     \State mark the couple $C_i$ and $C_j$ as unmergeable
     \EndIf
-    \State
     % \State /* \quad \textsc{exhaustion} stop condition \quad */
     \If {$\nexists \, C_i, C_j \in C^2$ mergeable}
     \State stop = True
@@ -1599,7 +1610,7 @@ Previous optimization steps returned a plausible topology for Aachen city access
 network.
 
 As mentioned earlier, the next step we take is to optimize it, in order to
-assess weather the more flexible framework provided by [[ac:sdn][SDN]] can benefit the
+assess whether the more flexible framework provided by [[ac:sdn][SDN]] can benefit the
 overall performance.
 
 *** Network structure
@@ -1611,15 +1622,6 @@ among the various destinations.
 This structure resembles what was previously described in
 autoref:fig:network_tree, and is further detailed in
 autoref:fig:simulator_downlink and autoref:fig:simulator_uplink.
-
-As shown in these diagrams, each outgoing flow passes through a controller,
-whose task is to govern and limit the data rate before it enters the
-transmitting interface, labeled as ``NIC''. All these units can be coordinated
-by the central administrator in order to give or revoke priority from a given
-source.
-
-Since in our setting all data flows are supposed to be [[ac:cbr][CBR]], deciding bandwidth
-allocation is the definitive tool to provide users the best service.
 
 #+NAME: fig:simulator_downlink
 #+BEGIN_SRC plantuml :file ../figures/simulator_downlink.eps :noweb yes
@@ -1672,6 +1674,15 @@ allocation is the definitive tool to provide users the best service.
 #+LABEL: fig:simulator_downlink
 #+RESULTS[b9c70fa3ebb841fc5ece1117e8000300baed9947]: fig:simulator_downlink
 [[file:../figures/simulator_downlink.eps]]
+
+As shown in these diagrams, each outgoing flow passes through a controller,
+whose task is to govern and limit the data rate before it enters the
+transmitting interface, labeled as ``NIC''. All these units can be coordinated
+by the central administrator in order to give or revoke priority from a given
+source.
+
+Since in our setting all data flows are supposed to be [[ac:cbr][CBR]], deciding bandwidth
+allocation is the definitive tool to provide users the best service.
 
 #+NAME: fig:simulator_uplink
 #+BEGIN_SRC plantuml :file ../figures/simulator_uplink.eps :noweb yes
