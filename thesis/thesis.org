@@ -4,27 +4,17 @@
 
 #+OPTIONS: toc:nil title:nil
 
-#+LATEX_CLASS: report
-#+LaTeX_CLASS_OPTIONS: [12pt, twoside, openright]
+#+LATEX_CLASS: dissertate
+#+LATEX_COMPILER: xelatex
 
-#+LATEX_COMPILER: pdflatex
-
-#+LATEX_HEADER: \usepackage{charter}
-#+LATEX_HEADER: \usepackage[charter]{mathdesign}
+#+LaTeX_HEADER: \setmainfont{Charis SIL}
+#+LaTeX_HEADER: \setmainfont{Charis SIL}
 
 #+LATEX_HEADER: \usepackage{geometry}
 #+LATEX_HEADER: \usepackage{etoolbox}
 #+LATEX_HEADER: \usepackage{multirow}
-#+LATEX_HEADER: \usepackage{graphicx}
-#+LATEX_HEADER: \graphicspath{{../figures/}}
-#+LATEX_HEADER: \usepackage{subcaption}
 #+LATEX_HEADER: \usepackage{xspace}
-#+LATEX_HEADER: \usepackage{mathtools}
 #+LaTeX_HEADER: \usepackage{booktabs}
-#+LaTeX_HEADER: \usepackage{amsmath}
-
-#+LaTeX_HEADER: \usepackage{algpseudocode}
-#+LaTeX_HEADER: \usepackage{algorithm}
 
 #+LaTeX_HEADER: \allowdisplaybreaks
 #+LaTeX_HEADER: \def\equationautorefname#1#2\null{(#2\null)}
@@ -59,7 +49,6 @@
 
 #+LATEX_HEADER: \newcommand{\etal}{\mbox{\emph{et al.}}\xspace}
 
-#+LATEX_HEADER: \usepackage{glossaries}
 #+LATEX_HEADER_EXTRA: \newacronym{pop}{PoP}{Point of Presence}
 #+LATEX_HEADER_EXTRA: \newacronym{dslam}{DSLAM}{Digital Subscriber Line Access Multiplexer}
 #+latex_header_extra: \newacronym{qos}{QoS}{Quality of Service}
@@ -98,9 +87,9 @@
       \vspace{8mm}
       \begin{figure}[h]
         \centering
-        \includegraphics[height=5cm]{logo_unipd.pdf}
+        \includegraphics[height=5cm]{../figures/logo_unipd.pdf}
         \vspace{5mm} \\
-        \includegraphics[height=2cm]{logo_rwth.pdf}
+        \includegraphics[height=2cm]{../figures/logo_rwth.pdf}
       \end{figure}
     }
 
@@ -292,7 +281,8 @@ LaTeX support for svg files sucks.
       text = element_text(family = "Fira Sans")
     )
 #+END_SRC
-* Various lists of things :noexport:
+
+* Various lists of things                                          :noexport:
 \listoffigures
 \listoftables
 \listofalgorithms
@@ -2123,7 +2113,7 @@ the proper level of detail if needed.
 :CUSTOM_ID: results-network_optimization
 :END:
 
-*** Plot utilities                                                 :noexport:
+*** Plot utilities                                               :noexport:
 
 #+NAME: optimization_plotter
 #+BEGIN_SRC R :exports none :noweb yes
@@ -2158,7 +2148,8 @@ the proper level of detail if needed.
 
   ## print(current)
 
-  out_path <- sprintf('../figures/obj_vs_p_nothing_%f.pdf', p_streaming)
+  name_tag <- gsub("\\.", "", sprintf('%.1f', p_streaming))
+  out_path <- sprintf('../figures/obj_vs_p_nothing_%s.pdf', name_tag)
   ggsave(plot = current,
          filename = out_path,
          width = 5,
@@ -2201,9 +2192,8 @@ the proper level of detail if needed.
           panel.spacing = unit(0.8, "lines")) +
     scale_fill_brewer(palette="Set2", type='div')
 
-  print(current)
-
-  out_path <- sprintf('../figures/utility_distribution_%f.pdf', p_streaming)
+  name_tag <- gsub("\\.", "", sprintf('%.1f', p_streaming))
+  out_path <- sprintf('../figures/utility_distribution_%s.pdf', name_tag)
   ggsave(plot = current,
          filename = out_path,
          width = 5,
@@ -2242,11 +2232,11 @@ p_streaming = 0.1
 <<optimization_plotter>>
 #+END_SRC
 
-#+ATTR_LATEX: :width 5in :placement [h]
+#+ATTR_LATEX: :width 5in
 #+LABEL: fig:obj_vs_p_nothing0.1
 #+CAPTION: Performance for $p_{streaming}$ = 0.1, with $95\%$ confidence intervals.
-#+RESULTS[3a7e1f61e204039afb78c821dfd64ef09a0312f0]: obj_vs_p_nothing0.1
-[[file:../figures/obj_vs_p_nothing_0.100000.pdf]]
+#+RESULTS[9501f89909d371fc3d6732b39c99407f12c32436]: obj_vs_p_nothing0.1
+[[file:../figures/obj_vs_p_nothing_01.pdf]]
 
 This gap can be easily spotted in autoref:fig:obj_vs_p_nothing0.1,
 autoref:fig:obj_vs_p_nothing0.5 and autoref:fig:obj_vs_p_nothing0.9, where
@@ -2260,11 +2250,11 @@ p_streaming = 0.5
 <<optimization_plotter>>
 #+END_SRC
 
-#+ATTR_LATEX: :width 5in :placement [h]
+#+ATTR_LATEX: :width 5in
 #+LABEL: fig:obj_vs_p_nothing0.5
 #+CAPTION: Performance for $p_{streaming}$ = 0.5, with $95\%$ confidence intervals.
-#+RESULTS[aa1ca3384364a67258da6206e60f7b248dbc5b4d]: obj_vs_p_nothing0.5
-[[file:../figures/obj_vs_p_nothing_0.500000.pdf]]
+#+RESULTS[8e4548dabef2351f0f68cb7ade14a6e0de4b68a4]: obj_vs_p_nothing0.5
+[[file:../figures/obj_vs_p_nothing_05.pdf]]
 
 Moreover, this difference is more evident when offered traffic is higher, i.e.
 when the situation is more difficult to handle from the point of view of the
@@ -2283,11 +2273,11 @@ p_streaming = 0.9
 <<optimization_plotter>>
 #+END_SRC
 
-#+ATTR_LATEX: :width 5in :placement [h]
+#+ATTR_LATEX: :width 5in
 #+LABEL: fig:obj_vs_p_nothing0.9
 #+CAPTION: Performance for $p_{streaming}$ = 0.9, with $95\%$ confidence intervals.
-#+RESULTS[37b1a7bea1c61e03ed83627db7713ea89816f50d]: obj_vs_p_nothing0.9
-[[file:../figures/obj_vs_p_nothing_0.900000.pdf]]
+#+RESULTS[b912d87877e1f7c1a608de54d46184c8b557d911]: obj_vs_p_nothing0.9
+[[file:../figures/obj_vs_p_nothing_09.pdf]]
 
 \bigskip
 
@@ -2301,11 +2291,11 @@ extreme values of $p_{active}$ and $p_{streaming}$.
   <<utility_distribution>>
 #+END_SRC
 
-#+ATTR_LATEX: :width 5in :placement [h]
+#+ATTR_LATEX: :width 5in
 #+LABEL: fig:utility_distribution0.1
 #+CAPTION: Utility distribution for $p_{streaming} = 0.1$.
-#+RESULTS[3b480dabf54955f0e5e046cbddc4aff048ecb170]: utility_distribution0.1
-[[file:../figures/utility_distribution_0.100000.pdf]]
+#+RESULTS[bd92908e750fbfa5348d1ba7180fef36a733f34a]: utility_distribution0.1
+[[file:../figures/utility_distribution_01.pdf]]
 
 #+NAME: utility_distribution0.9
 #+BEGIN_SRC R :exports results :results file value :noweb yes
@@ -2314,11 +2304,11 @@ extreme values of $p_{active}$ and $p_{streaming}$.
   <<utility_distribution>>
 #+END_SRC
 
-#+ATTR_LATEX: :width 5in :placement [h]
+#+ATTR_LATEX: :width 5in
 #+LABEL: fig:utility_distribution0.9
 #+CAPTION: Utility distribution for $p_{streaming} = 0.9$.
-#+RESULTS[c28bccf955b649e4e15a2b0255b04d49b3665dd2]: utility_distribution0.9
-[[file:../figures/utility_distribution_0.900000.pdf]]
+#+RESULTS[22801c4da43ffc1f37ca65b00f0855cda551db78]: utility_distribution0.9
+[[file:../figures/utility_distribution_09.pdf]]
 
 When offered traffic is lower, as shown in autoref:fig:utility_distribution0.1,
 it is apparent how realizations are overall closer to one, certifying the small,
@@ -2334,7 +2324,6 @@ Despite all these accomplishment of proposed heuristic approach, it is currently
 only a lower bound on the theoretical optimum, exact solution of the
 mathematical problem. Further progress can then be made in the search of the
 best working point.
-
 
 * Conclusion
 :PROPERTIES:
