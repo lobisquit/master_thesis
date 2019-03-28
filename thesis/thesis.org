@@ -2124,38 +2124,7 @@ the proper level of detail if needed.
 :CUSTOM_ID: results-network_optimization
 :END:
 
-As mentioned in autoref:methodology-network_optimization, we will analyze the
-behaviour of our reference access network for different bandwidth demands and
-application profiles.
-
-In our simulations, former point is taken care of via $p_{active}$ parameter,
-that is the probability a certain user is communicating or not. In order to
-describe the latter factor, instead, applications are randomly split into video
-streaming and web page browsing, according to probability $p_{streaming}$.
-
-Two different allocation strategies are evaluated, namely \emph{traditional}
-proportional fairness, and the more sophisticated Nash arbitration scheme,
-computed via the \emph{heuristic} autoref:lst:alg:heuristic_flow.
-
-With respect to global objective function $f(\rho)$, our proposed solution indeed
-provides a more fair operation point than the traditional one, proving that
-even an approximated solution outperforms what currently done in these kinds of
-scenarios.
-
-This gap can be easily spotted in autoref:fig:obj_vs_p_nothing0.1,
-autoref:fig:obj_vs_p_nothing0.5 and autoref:fig:obj_vs_p_nothing0.9 , where
-different values of $p_{active}$ and $p_{streaming}$ are tested and performance
-is averaged across multiple simulation runs.
-
-Moreover, this difference is more noticeable when offered traffic is higher,
-i.e. when the situation is more difficult to handle from the point of view of
-the administrator. This observation suggests that this novel approach can be
-relevant from a practical point of view, as the infrastructure size and
-complexity, and thus its cost, is often dictated by such worst-case scenario.
-
-As a final remark, the proposed method performance is smoother, more
-predictable, with respect to system parameters, and this again is a strong point
-in the field, making the tool more trustworthy.
+*** Plot utilities                                                 :ignore:
 
 #+NAME: optimization_plotter
 #+BEGIN_SRC R :exports none :noweb yes
@@ -2202,52 +2171,6 @@ in the field, making the tool more trustworthy.
   print(out_path)
 #+END_SRC
 
-#+NAME: obj_vs_p_nothing0.1
-#+BEGIN_SRC R :exports results :results file value :noweb yes
-p_streaming = 0.1
-
-<<optimization_plotter>>
-#+END_SRC
-
-#+ATTR_LATEX: :width 5in :placement [t]
-#+LABEL: fig:obj_vs_p_nothing0.1
-#+CAPTION: Performance for $p_{streaming}$ = 0.1, with $95\%$ confidence intervals.
-#+RESULTS[3a7e1f61e204039afb78c821dfd64ef09a0312f0]: obj_vs_p_nothing0.1
-[[file:../figures/obj_vs_p_nothing_0.100000.pdf]]
-
-#+NAME: obj_vs_p_nothing0.5
-#+BEGIN_SRC R :exports results :results file value :noweb yes
-p_streaming = 0.5
-
-<<optimization_plotter>>
-#+END_SRC
-
-#+ATTR_LATEX: :width 5in :placement [t]
-#+LABEL: fig:obj_vs_p_nothing0.5
-#+CAPTION: Performance for $p_{streaming}$ = 0.5, with $95\%$ confidence intervals.
-#+RESULTS[aa1ca3384364a67258da6206e60f7b248dbc5b4d]: obj_vs_p_nothing0.5
-[[file:../figures/obj_vs_p_nothing_0.500000.pdf]]
-
-#+NAME: obj_vs_p_nothing0.9
-#+BEGIN_SRC R :exports results :results file value :noweb yes
-p_streaming = 0.9
-
-<<optimization_plotter>>
-#+END_SRC
-
-#+ATTR_LATEX: :width 5in :placement [t]
-#+LABEL: fig:obj_vs_p_nothing0.9
-#+CAPTION: Performance for $p_{streaming}$ = 0.9, with $95\%$ confidence intervals.
-#+RESULTS[37b1a7bea1c61e03ed83627db7713ea89816f50d]: obj_vs_p_nothing0.9
-[[file:../figures/obj_vs_p_nothing_0.900000.pdf]]
-
-\smallskip
-
-Looking closer to the actual utility distribution among users, four reference
-settings are shown in autoref:fig:utility_distribution0.1 and
-autoref:fig:utility_distribution0.9, consisting of the extremes for $p_{active}$
-and $p_{streaming}$.
-
 #+NAME: utility_distribution
 #+BEGIN_SRC R :exports none :noweb yes
   <<R_preamble>>
@@ -2293,6 +2216,86 @@ and $p_{streaming}$.
   print(out_path)
 #+END_SRC
 
+*** Actual chapter                                                 :ignore:
+As mentioned in autoref:methodology-network_optimization, we analyze the
+behaviour of our reference access network for different bandwidth demands and
+application profiles.
+
+In our simulations, former point is taken care of via $p_{active}$ parameter,
+that is the probability a certain user is communicating or not. In order to
+describe the latter factor, instead, applications are randomly split into video
+streaming and web page browsing, according to probability $p_{streaming}$.
+
+Two different allocation strategies are evaluated, \emph{traditional}
+proportional fairness and the more sophisticated Nash arbitration scheme,
+computed via the \emph{heuristic} autoref:lst:alg:heuristic_flow.
+
+With respect to global objective function $f(\rho)$, our proposed solution indeed
+provides a more fair operation point than the traditional one, proving that
+even an approximated solution outperforms what currently done in these kinds of
+scenarios.
+
+#+NAME: obj_vs_p_nothing0.1
+#+BEGIN_SRC R :exports results :results file value :noweb yes
+p_streaming = 0.1
+
+<<optimization_plotter>>
+#+END_SRC
+
+#+ATTR_LATEX: :width 5in :placement [h]
+#+LABEL: fig:obj_vs_p_nothing0.1
+#+CAPTION: Performance for $p_{streaming}$ = 0.1, with $95\%$ confidence intervals.
+#+RESULTS[3a7e1f61e204039afb78c821dfd64ef09a0312f0]: obj_vs_p_nothing0.1
+[[file:../figures/obj_vs_p_nothing_0.100000.pdf]]
+
+This gap can be easily spotted in autoref:fig:obj_vs_p_nothing0.1,
+autoref:fig:obj_vs_p_nothing0.5 and autoref:fig:obj_vs_p_nothing0.9 , where
+different values of $p_{active}$ and $p_{streaming}$ are tested and performance
+is averaged across multiple simulation runs.
+
+#+NAME: obj_vs_p_nothing0.5
+#+BEGIN_SRC R :exports results :results file value :noweb yes
+p_streaming = 0.5
+
+<<optimization_plotter>>
+#+END_SRC
+
+#+ATTR_LATEX: :width 5in :placement [h]
+#+LABEL: fig:obj_vs_p_nothing0.5
+#+CAPTION: Performance for $p_{streaming}$ = 0.5, with $95\%$ confidence intervals.
+#+RESULTS[aa1ca3384364a67258da6206e60f7b248dbc5b4d]: obj_vs_p_nothing0.5
+[[file:../figures/obj_vs_p_nothing_0.500000.pdf]]
+
+Moreover, this difference is more noticeable when offered traffic is higher,
+i.e. when the situation is more difficult to handle from the point of view of
+the administrator. This observation suggests that this novel approach can be
+relevant from a practical point of view, as the infrastructure size and
+complexity, and thus its cost, is often dictated by such worst-case scenario.
+
+As a final remark, the proposed method performance is smoother, more
+predictable, with respect to system parameters, and this again is a strong point
+in the field, making the tool more trustworthy.
+
+#+NAME: obj_vs_p_nothing0.9
+#+BEGIN_SRC R :exports results :results file value :noweb yes
+p_streaming = 0.9
+
+<<optimization_plotter>>
+#+END_SRC
+
+#+ATTR_LATEX: :width 5in :placement [h]
+#+LABEL: fig:obj_vs_p_nothing0.9
+#+CAPTION: Performance for $p_{streaming}$ = 0.9, with $95\%$ confidence intervals.
+#+RESULTS[37b1a7bea1c61e03ed83627db7713ea89816f50d]: obj_vs_p_nothing0.9
+[[file:../figures/obj_vs_p_nothing_0.900000.pdf]]
+
+\smallskip
+
+Looking closer to the actual utility distribution among users, four reference
+settings are shown in autoref:fig:utility_distribution0.1 and
+autoref:fig:utility_distribution0.9, consisting of the extremes for $p_{active}$
+and $p_{streaming}$.
+
 #+NAME: utility_distribution0.1
 #+BEGIN_SRC R :exports results :results file value :noweb yes
   p_streaming = 0.1 ## 0.1000000 0.3666667 0.6333333 0.9000000
@@ -2300,7 +2303,7 @@ and $p_{streaming}$.
   <<utility_distribution>>
 #+END_SRC
 
-#+ATTR_LATEX: :width 5in :placement [t]
+#+ATTR_LATEX: :width 5in :placement [h]
 #+LABEL: fig:utility_distribution0.1
 #+CAPTION: Utility distribution for $p_{streaming} = 0.1$.
 #+RESULTS[3b480dabf54955f0e5e046cbddc4aff048ecb170]: utility_distribution0.1
@@ -2313,7 +2316,7 @@ and $p_{streaming}$.
   <<utility_distribution>>
 #+END_SRC
 
-#+ATTR_LATEX: :width 5in :placement [t]
+#+ATTR_LATEX: :width 5in :placement [h]
 #+LABEL: fig:utility_distribution0.9
 #+CAPTION: Utility distribution for $p_{streaming} = 0.9$.
 #+RESULTS[c28bccf955b649e4e15a2b0255b04d49b3665dd2]: utility_distribution0.9
