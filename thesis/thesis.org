@@ -1744,15 +1744,15 @@ allocation is the definitive tool to provide users the best service.
 :END:
 
 In order to improve the network, first we have to define what \emph{improvement}
-means. We decided to maximize user [[ac:qoe][QoE]], defined as a number in $[0,\,1]$,
+means for us. We decide to maximize user [[ac:qoe][QoE]], defined as a number in $[0,\,1]$,
 ranging from unusable to perfect link. Each user $i$ is then given a
 \emph{utility function}, mapping available bandwidth $\rho_i$ to perceived
 quality.
 
-The functions employed in this thesis were obtained, by multiple research
-groups, collecting user opinion of the service with different available
-bandwidth. cite:Georgopoulos2013,Schatz2011 These studies suggest a precise link
-between [[ac:qoe][QoE]] and the network metric, described by autoref:eq:utility_general.
+The functions employed in this thesis were obtained by various research groups
+collecting user opinion of the service under different network conditions.
+cite:Georgopoulos2013,Schatz2011 These studies suggest a precise link between
+[[ac:qoe][QoE]] and bandwidth, described by autoref:eq:utility_general.
 
 \begin{equation} \label{eq:utility_general}
 u(\rho) = a \, \rho^b + 1
@@ -1763,12 +1763,11 @@ the assigned bandwidth.
 
 \smallskip
 
-More specifically, our network will consider two different use-cases:
-traditional web-browsing and video streaming. Videos will either be Low
-Definition (360p), Medium Definition (720p), or High Definition (1080p).
-Following \emph{Google Video Quality Report}, each one of those will be
-experienced by 5%, 10% and 85% of the users respectively.
-cite:GoogleVideoQualityReport
+More specifically, our network considers two different use-cases: traditional
+web-browsing and video streaming. Videos are either Low Definition (360p),
+Medium Definition (720p), or High Definition (1080p). Following \emph{Google
+Video Quality Report}, each one of those is experienced by 5%, 10% and 85% of
+the users respectively. cite:GoogleVideoQualityReport
 
 #+NAME: video_quality_report
 #+BEGIN_SRC python :noweb yes :exports results :results file output
@@ -1857,40 +1856,42 @@ the different services to available resources, as shown in autoref:fig:utilities
 #+RESULTS[008700d760fd52c73f6e90e6e9a089c26a190499]: utilities
 [[file:../figures/utilities.pdf]]
 
-Observing the four trends, it can be seen that [[ac:hd][HD]], [[ac:md][MD]] and [[ac:ld][LD]] video streaming are
-in decreasing order of bandwidth demand, as expected. Instead, traditional web
+Looking at four trends, it can be seen that [[ac:hd][HD]], [[ac:md][MD]] and [[ac:ld][LD]] video streaming are in
+decreasing order of bandwidth demand, as expected. Instead, traditional web
 browsing puts itself between [[ac:md][MD]] and [[ac:ld][LD]].
-
-# This position can be explained by the fact that the growing size of pages is
-# not followed by an increasing expectation time by the user.
 
 *** Fairness on resource allocation
 In order to manage the network optimally, we need to reach an operation point
-$\vec{\rho}$ that balances demands of all parties involved.
+$\vec{\rho}$ in the bandwidth space that balances demands of all parties
+involved.
 
 Traditionally, the \emph{proportional fairness} principle is applied when
 handling different flows. According to this rule, each switching unit allocates
-bandwidth in \emph{proportion} to user demand. This has proven to be a reliable
-way to distribute network resources, but it does not take into account the
+resources in \emph{proportion} to user request. This has proven to be a reliable
+way to distribute bandwidth, but it does not take into account the
 application-dependent service quality perception.
 
-Each user tends to maximize this subjective metric, called \emph{utility}, when
-asking for bandwidth, but doing so it harms the [[ac:qos][QoS]] of its fellows. The [[ac:isp][ISP]] has
-then to act as an arbiter, allocating available resources in a fair way. The
-optimal solution of this problem was proven to be the so-called
-\emph{Nash arbitration scheme} of the \emph{game} played among these actors.
-cite:Mazumdar1991
+Each user tends to maximize this subjective metric, called \emph{utility},
+asking for more and more bandwidth, but doing so it harms the [[ac:qos][QoS]] of its
+fellows. The [[ac:isp][ISP]] has then to act as an arbiter, allocating available resources
+in a fair way.
 
-Such point is unique and pareto-optimal, and it can be found maximizing $f$,
-product of all the utilities. This gives us a straightforward criterion in order
-to rank all possible network configurations. In order to avoid issues related to
-CPU floating point precision, $\log f(\vec{\rho})$ is computed instead in simulations.
+The best solution of this problem is proven to be the so-called \emph{Nash
+arbitration scheme} of the \emph{game} played among these actors.
+cite:Mazumdar1991 Such unique point satisfies all desirable properties:
+symmetry, independence of irrelevant alternatives and Pareto-optimality.
+Moreover, it can be found simply maximizing $f$, product of all the utilities:
+this gives us a straightforward criterion to rank all possible network
+configurations.
 
 \begin{equation}
   f(\vec{\rho}) = \prod_i u_i(\rho_i) \implies
   \argmax_{\vec{\rho}} ~ f(\vec{\rho}) = \argmax_{\vec{\rho}} ~ \sum_i \log u_i(\rho_i)
 \end{equation}
+where, in order to avoid issues related to CPU floating point precision, $\log
+f(\vec{\rho})$ is computed instead in simulations.
 
+\smallbreak
 
 In autoref:results-network_optimization we will then show if the traditional
 approach to manage an access network is indeed fair or not, with respect to the
@@ -1899,7 +1900,7 @@ optimal strategy.
 *** Flow balancing optimization
 As anticipated in the previous section, the fair working point is identified as
 the Nash arbitration scheme $\vec{\rho}$. More formally, it is solution of the
-following mathematical problem.
+following mathematical problem. cite:Mazumdar1991
 
 \begin{align}
   \max_{\vec{\rho}} ~~ & \sum_{i=1}^n \log u_i(\rho_i) \\
@@ -1948,14 +1949,14 @@ employed.
 \end{bigalgorithm}
 
 A randomly picked bandwidth $\rho_i$ is iteratively incremented each round of a
-uniform quantity in $[0,\, K]$: such perturbation is left unless any constraint
+uniform quantity in $[0,\, K]$: such perturbation remains unless any constraint
 of the mathematical problem is violated. Once the operation is no more
 beneficial, i.e. the increment is below a certain tolerance, the algorithm
 stops.
 
 The rationale behind this is akin to what happens in \emph{simulated annealing},
 an heuristic search algorithm where perturbation of constantly decreasing size
-are applied to the starting point in the hope of converging toward a good
+are applied to the starting point in the hope of converging toward a viable
 solution. cite:Van1987
 
 * Results
