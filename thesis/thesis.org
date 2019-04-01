@@ -81,7 +81,7 @@
     \vspace{8mm}
     {\Large \textsl{Master degree in Telecommunication Engineering}} \\
     \vspace{8mm}
-    {\scshape\huge Traffic flow optimization \\[0.3em] for urban xDSL based access networks }
+    {\scshape\LARGE Traffic flow optimization \\[0.3em] for urban xDSL based access networks }
 
     \iftoggle{images_titlepage}{
       \vspace{8mm}
@@ -282,11 +282,29 @@ LaTeX support for svg files sucks.
     )
 #+END_SRC
 
-* Various lists of things                                          :noexport:
-\listoffigures
-\listoftables
-\listofalgorithms
+* Latex lists                                                        :ignore:
+#+BEGIN_EXPORT latex
+\frontispiece
+\sommario
+\tableofcontents
+\phantomsection
+\clearpage
 
+% figure listing - required if you have any figures
+\addcontentsline{toc}{chapter}{List of figures}
+\listoffigures
+\phantomsection
+\cleardoublepage
+
+% table listing - required if you have any tables
+\addcontentsline{toc}{chapter}{List of tables}
+\listoftables
+\phantomsection
+\cleardoublepage
+
+\setcounter{page}{1}
+\pagenumbering{arabic}
+#+END_EXPORT
 * Introduction
 :PROPERTIES:
 :CUSTOM_ID: introduction

@@ -259,6 +259,7 @@ TSWLatexianTemp*
 *.sta
 
 *.tex
+!frontmatter/preface.tex
 thesis.pdf
 svg-inkscape/
 auto/
