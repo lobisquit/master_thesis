@@ -8,7 +8,6 @@
 #+LATEX_COMPILER: xelatex
 
 #+LaTeX_HEADER: \setmainfont{Charis SIL}
-#+LaTeX_HEADER: \setmainfont{Charis SIL}
 
 #+LATEX_HEADER: \usepackage{geometry}
 #+LATEX_HEADER: \usepackage{etoolbox}
@@ -18,7 +17,8 @@
 
 #+LaTeX_HEADER: \allowdisplaybreaks
 #+LaTeX_HEADER: \def\equationautorefname#1#2\null{(#2\null)}
-#+LaTeX_HEADER: \def\algorithmautorefname#1#2\null{Algorithm #2\null}
+#+LaTeX_HEADER: \def\algorithmautorefname#1#2\null{Algorithm~#2\null}
+#+LaTeX_HEADER: \def\figureautorefname#1#2\null{Fig.~#2\null}
 #+LATEX_HEADER: \providetoggle{images_titlepage}
 #+LATEX_HEADER: \settoggle{images_titlepage}{true}
 
@@ -52,6 +52,7 @@
 #+LATEX_HEADER_EXTRA: \newacronym{pop}{PoP}{Point of Presence}
 #+LATEX_HEADER_EXTRA: \newacronym{dslam}{DSLAM}{Digital Subscriber Line Access Multiplexer}
 #+latex_header_extra: \newacronym{qos}{QoS}{Quality of Service}
+#+latex_header_extra: \newacronym{nic}{NIC}{Network Interface Card}
 #+latex_header_extra: \newacronym{qoe}{QoE}{Quality of Experience}
 #+latex_header_extra: \newacronym{cbr}{CBR}{Constant Bitrate}
 #+latex_header_extra: \newacronym{forces}{ForCES}{Forwarding and Control Element Separation}
@@ -273,6 +274,7 @@ LaTeX support for svg files sucks.
   library(dplyr)
   library(data.table)
   library(purrr)
+  library(viridis)
 
   loadfonts()
 
@@ -305,6 +307,9 @@ LaTeX support for svg files sucks.
 \setcounter{page}{1}
 \pagenumbering{arabic}
 #+END_EXPORT
+
+# TODO "cite" before dots
+
 * Introduction
 :PROPERTIES:
 :CUSTOM_ID: introduction
@@ -338,9 +343,10 @@ cases no tools were available to quickly modify the behaviour according to
 changes in traffic demand or network structure.
 
 In last years, this inflexible paradigm was questioned, as the complexity and
-sheer amount of data exchanged in the Internet grew dramatically. Moreover, the
-traffic all these people are requesting is not yet expected to stabilize,
-according to \textsc{cisco}. cite:CiscoVisualNetworking
+sheer amount of data exchanged in the Internet grew dramatically, as shown in
+autoref:fig:internet_user_growth. Moreover, traffic is not yet expected to
+stabilize, according to \textsc{cisco} predictions, plotted in
+autoref:fig:internet_traffic_growth cite:CiscoVisualNetworking.
 
 #+NAME: fig:internet_user_growth
 #+BEGIN_SRC asymptote :file ../figures/internet_user_growth.pdf :noweb yes
@@ -430,7 +436,7 @@ The latter operations are supervised by a logically centralized
 based on current and forecast network status. This moves the routing logic from
 the single component to a fully programmable core entity.
 
-In a moment of congestion of a particular link, for example, a data flow can be
+In case of congestion of a particular link, for example, a data flow can be
 diverted to another path, possibly increasing [[ac:qos][QoS]] for all users. This can be
 very interesting in cable networks, where gridlock is indeed the main issue for
 administrators.
@@ -503,13 +509,13 @@ only flow control, but also user mobility prediction could be exploited by the
 programmable controller logic.
 
 However, as every tool, its makings have to be coupled with a robust knowledge
-on its limits. From a methodological point of view, alleged once-and-for-all
-solutions often fall short when context changes from the expected one: this
-information is therefore crucial to make the most out of [[ac:sdn][SDN]].
+on its limits. This information is therefore crucial to make the most out of
+[[ac:sdn][SDN]] as, from a methodological point of view, alleged once-and-for-all
+solutions often fall short when context changes from the expected one: .
 
 As mentioned before, [[acp:sdn][SDNs]] are indeed popular nowadays when dealing with very
 high bandwidth link management in scenarios that are complex because of either
-topology or applications demand. cite:Singh2015
+topology or applications demand cite:Singh2015.
 
 #+CAPTION: Data flow of users (squares) are tuned and managed by the SDN controller via the routers (circles).
 #+ATTR_LATEX: :width 8cm
@@ -551,8 +557,8 @@ autoref:state_of_art.
 Then, autoref:methodology introduces the theoretical instruments employed in
 this analysis. In autoref:methodology-geographical_analysis, we will show how
 relevant information from Aachen building and road map can be extracted in order
-to design, in autoref:methodology-network_design, a proper access network based
-on city topology and population density.
+to design a proper access network based
+on city topology and population density, in autoref:methodology-network_design.
 autoref:methodology-network_optimization will detail how this infrastructure can
 be tuned for maximize user perceived [[ac:qoe][QoE]].
 
@@ -589,7 +595,7 @@ city topology and population density.
 
 \bigbreak
 
-Once extracted the relevant feature of the geographical area, designing of such
+Once extracted the relevant feature of the geographical area, the designing of such
 a network is a matter of connecting all terminals to a central unit, aggregating
 user traffic to a single end-point.
 
@@ -601,13 +607,13 @@ is to select the subset of edges in $E$ that activates those links at minimum
 cost.
 
 This problem was proven to be NP-hard and has been extensively studied and
-solved both with exact and approximated solutions.
-cite:Voss1992,Rehfeldt2015,Koch1998,Leitner2014
+solved both with exact and approximated solutions
+cite:Voss1992,Rehfeldt2015,Koch1998,Leitner2014.
 
 A reference formulation of it is given in autoref:eq:steiner_tree_reference,
 where active edges $e \in E$ are marked by a binary variable $x_e$ and a cost
-$c_e$. Function $\delta^{\pm}(\mathord{\cdot})$ instead gives the edges entering
-or exiting its argument, respectively.
+$c_e$. Function $\delta^{+}(\mathord{\cdot})$ and $\delta^{-}(\mathord{\cdot})$,
+instead, give the edges entering or exiting their argument, respectively.
 
 \begin{equation}
   \begin{split}
@@ -631,11 +637,11 @@ or exiting its argument, respectively.
 In our case, though, reachability is not sufficient to declare a user connected,
 as its traffic has to be supported by all links in the path to the root as well.
 
-Accounting for this factor, Steiner tree was extended by Andrews \etal adding
-flow conditions for bandwidth and link types of different capacity. cite:Andrews1998
-
+Accounting for this factor, Steiner tree was extended adding flow conditions for
+bandwidth and link types of different capacity by Andrews \etal cite:Andrews1998.
 Moreover, here fixed edge activation cost $c_e$ becomes proportional to the
-bandwidth used and a fixed cost for the activation is considered.
+bandwidth used and a fixed cost for the activation is considered, resulting in
+the scenario of autoref:fig:andrews_model.
 
 #+LABEL: fig:andrews_model
 #+ATTR_LATEX: :width 7.2cm
@@ -653,13 +659,13 @@ length.
 
 \smallbreak
 
-This last point is addressed in Mitcsenkov \etal, where they consider for the
+This last point is addressed in Mitcsenkov \etal cite:Mitcsenkov2011, where they consider for the
 same setting various technologies, such as [[acp:pon][PON]], Active Ethernet and VDSL, each
 one with its own constraints.
 
 Moreover, the access network is built not from an abstract model, but from a set
 of reference topographic scenarios, such as suburban, town or city, in
-increasing population density. cite:Mitcsenkov2011
+increasing population density.
 
 Here the mathematical problem, with exact solution but infeasible computation,
 is coupled with heuristic algorithms tailored to the given physical layer
@@ -684,10 +690,10 @@ bounds.
 
 # SDN: general concept + small history
 
-Once built, resulting network has to be properly managed in order to offer a
+Once built, the resulting network has to be properly managed in order to offer a
 decent [[ac:qos][QoS]] to end users, for example adopting congestion avoidance and load
 balancing strategies. However, enforcing these policies in traditional IP
-networks is a daunting task for administrators. cite:Benson2009
+networks is a daunting task for administrators cite:Benson2009.
 
 This is mainly caused by the need to use vendor-specific interfaces to specify
 switching units behavior, most notably setting and updating routing tables and
@@ -715,7 +721,7 @@ details.
 In order for the controller to operate and manage all diverse switching units, a
 proper vendor-agnostic communication interface has to be designed. The first
 widespread example of such a protocol was OpenFlow, proposed in 2008 by the
-Stanford computer science department. cite:Mckeown2008
+Stanford computer science department cite:Mckeown2008.
 
 Each OpenFlow device has multiple tables to match incoming packets to a
 programmable set of rules: these allow modification, forwarding and dropping of
@@ -743,8 +749,8 @@ context.
 The only tool left on the table is then \emph{flow control}, which is the
 ability to give or revoke priority from stream of packets. Traditionally this
 technique has been employed for congestion avoidance, primary example being
-distributed [[ac:tcp][TCP]] strategies to match the bitrate with the actual link capacity.
-cite:Allman2009 Nowadays, it is becoming necessary in order to assign users the
+distributed [[ac:tcp][TCP]] strategies to match the bitrate with the actual link capacity cite:Allman2009.
+Nowadays, it is becoming necessary in order to assign users the
 proper amount resources their application requires. For instance, video
 streaming shows a different profile than traditional web browsing and this
 factor needs to be taken into account when administrating the network.
@@ -758,14 +764,32 @@ needed.
 Many research groups estimate [[ac:qoe][QoE]] under a wide spectrum of network conditions
 using the so-called [[ac:mos][MOS]], the average subjective evaluation among a group of
 candidates. Georgopoulos \etal, Laghari \etal focus on the actual measurement
-and try to fit what found with a shifted power function.
-cite:Georgopoulos2013,Laghari2012 Instead, Reichl \etal go for a different
-approach, as they \emph{a-priori} suppose [[ac:qoe][QoE]] to be a logarithmic function: this
-hypothesis is taken in analogy to the Weber-Fechner Law, a key principle in
-psycho-physics connecting the magnitude of a \emph{stimulus} to its perceived
-intensity. cite:Reichl2011
+and try to fit what found with a shifted power function of the bandwidth
+cite:Georgopoulos2013,Laghari2012. Instead, Reichl \etal go for a different
+approach, as they \emph{a-priori} suppose [[ac:qoe][QoE]] to be a logarithmic function of available capacity: this
+hypothesis is taken in analogy to the Weber-Fechner Law. cite:Reichl2011
 
-These investigation give us analytical tools to effectively simulate and
+This law, formulated by Gustav Theodor Fechner and its student Ernst Heinrich Weber, is a key principle in
+psycho-physics that connects the magnitude of a \emph{stimulus} to its perceived
+intensity.
+
+\begin{align}
+	k = \frac{\mathrm{d}S}{S} \label{eq:weber} \\
+	\mathrm{d} p = k \frac{\mathrm{d} S}{S} \implies p = k \, \log \frac{S}{S_0} \label{eq:fechner}
+\end{align}
+where $p$ is the extent of the perception given by the external stimulus $S$.
+$k$ and $S_0$ are instead constants and depend on the specific physical quantities considered.
+
+Former equation autoref:eq:weber, known as \emph{Weber's contrast},
+This was supposed after performing an experiment, consisting in a man judging
+the weight of an object: it was observed that constant increments in the weight
+were more noticeable when the object itself was light.
+Thus it was concluded that the differential stimulus is inversely proportional to the stimulus itself.
+
+Latter equation autoref:eq:fechner, tries to move forward this preliminary result as
+general increments are allowed. The final relation between stimulus and perception is therefore logarithmic.
+
+These investigations give us analytical tools to effectively simulate and
 reproduce satisfaction for each user.
 
 \smallbreak
@@ -786,13 +810,13 @@ overly penalized.
 
 Pareto-optimal strategies are suggested by Douligeris \etal in order to capture
 this requirements, as no one can increment its own utility without worsening the
-experience of at least one of its fellows. cite:Douligeris1987 No criterion is
+experience of at least one of its fellows cite:Douligeris1987. No criterion is
 however provided in order to choose among the possibly infinite number of these
 solutions.
 
-Mazumdar \etal eventually proposes the so-called \emph{Nash arbitration scheme},
+Mazumdar \etal eventually propose the so-called \emph{Nash arbitration scheme},
 a stable operation point of the cooperative game played among users, located in
-throughput space. cite:Mazumdar1991 Such point is proved to exist and be the
+throughput space cite:Mazumdar1991. Such point is proved to exist and be the
 only one satisfying symmetry, independence of irrelevant alternatives and Pareto
 optimality. Moreover, they show that this strategy maximizes the product of
 individual user utilities, giving a straightforward way to compute it in
@@ -801,8 +825,8 @@ practice.
 It is important to differentiate between Nash arbitration scheme from the
 popular Nash equilibrium, as the former arises from a \emph{cooperative} game,
 while the latter from a \emph{competitive} one. Such equilibria are situations
-where no user can increment its own utility if others behaviour stays the same.
-cite:Tadelis2013 These points are typically Pareto sub-optimal and therefore not
+where no user can increment its own utility if others behaviour stays the same
+cite:Tadelis2013. These points are typically Pareto sub-optimal and therefore not
 relevant for our purposes.
 
 An example of this concept is the \emph{prisoner's dilemma}, a non-cooperative
@@ -831,7 +855,7 @@ other and spend no time in prison.
 
 This toy example shows how Nash equilibria, originating from competitive games,
 are often not optimal with respect to the global utility. In our context, then,
-the operator has then to enforce a fruitful coordination, the Nash arbitration
+the operator has to enforce a fruitful coordination, the Nash arbitration
 scheme, among players carefully tuning their packet flows.
 
 * Methodology
@@ -1527,7 +1551,7 @@ privilege more cohesive and compact pairs.
 This procedure is repeated until all possible choices have been considered or
 the next merge increases the cost of the network.
 
-Pseudo-code is available in [[autoref:lst:alg:heuristic]].
+Pseudo-code is available in [[autoref:lst:alg:heuristic]]. As defined in autoref:tab:quantities_constraints, parameters $n_M$ and $d_M$ are the maximum number of nodes per cluster and the maximum distance between vertices in the same cluster, respectively.
 
 \begin{bigalgorithm}
   \label{lst:alg:heuristic}
@@ -1573,7 +1597,7 @@ This is required for the algorithm to be feasible, as the Steiner-tree-like
 problem that it has to be solved in order to connect all cluster nodes to a
 common sub-root is yet again too complex.
 
-As can be seen in [[autoref:lst:alg:heuristic_obj]], each node close enough to the
+As it can be seen in [[autoref:lst:alg:heuristic_obj]], each node close enough to the
 cluster is evaluated as a candidate root of the corresponding spanning tree. The
 network is then simply built joining the minimum paths between the best of those
 and the terminals of the set.
@@ -1691,12 +1715,13 @@ autoref:fig:simulator_downlink and autoref:fig:simulator_uplink.
 
 As shown in these diagrams, each outgoing flow passes through a controller,
 whose task is to govern and limit the data rate before it enters the
-transmitting interface, labeled as ``NIC''. All these units can be coordinated
+[[ac:nic][NIC]]. All these units can be coordinated
 by the central administrator in order to give or revoke priority from a given
 source.
 
+# controllare CBR
 Since in our setting all data flows are supposed to be [[ac:cbr][CBR]], deciding bandwidth
-allocation is the definitive tool to provide users the best service.
+allocation is sufficient to provide users the best service.
 
 #+NAME: fig:simulator_uplink
 #+BEGIN_SRC plantuml :file ../figures/simulator_uplink.eps :noweb yes
@@ -1758,30 +1783,30 @@ ranging from unusable to perfect link. Each user $i$ is then given a
 quality.
 
 The functions employed in this thesis were obtained by various research groups
-collecting user opinion of the service under different network conditions.
+collecting user opinion of the Internet service under different network conditions.
 cite:Georgopoulos2013,Schatz2011 These studies suggest a precise link between
-[[ac:qoe][QoE]] and bandwidth, described by autoref:eq:utility_general.
+[[ac:qoe][QoE]] and bandwidth, described by autoref:eq:utility_general:
 
 \begin{equation} \label{eq:utility_general}
 u(\rho) = a \, \rho^b + 1
 \end{equation}
 
-where $a$ and $b$ are instead application specific coefficients and $\rho$ is
+where $a$ and $b$ are application specific coefficients and $\rho$ is
 the assigned bandwidth.
 
 \smallskip
 
 More specifically, our network considers two different use-cases: traditional
 web-browsing and video streaming. Videos are either Low Definition (360p),
-Medium Definition (720p), or High Definition (1080p). Following \emph{Google
-Video Quality Report}, each one of those is experienced by 5%, 10% and 85% of
-the users respectively. cite:GoogleVideoQualityReport
+Medium Definition (720p), or High Definition (1080p). Following \emph{Google Video Quality Report},
+each one of those is experienced by 5%, 10% and 85% of
+the users respectively, as shown in autoref:video_quality_report. cite:GoogleVideoQualityReport
 
 #+NAME: video_quality_report
 #+BEGIN_SRC python :noweb yes :exports results :results file output
   <<python_preamble>>
 
-  labels = 'Low Definition', 'Medium Definition', 'High Definition'
+  labels = 'Low Definition (LD)', 'Medium Definition (MD)', 'High Definition (HD)'
   sizes = (5, 10, 85)
   explode = (0.1, 0.1, 0)
 
@@ -1802,7 +1827,7 @@ the users respectively. cite:GoogleVideoQualityReport
 #+CAPTION: Distribution of video quality among video streaming users. cite:GoogleVideoQualityReport
 #+ATTR_LATEX: :height 2in
 #+LABEL: fig:video_quality_report
-#+RESULTS[bec44a5a0c483a75d987ba16e85eac166702ddac]: video_quality_report
+#+RESULTS[011430d4994e9ce3875856bdccbe452215e40b1e]: video_quality_report
 [[file:../figures/streamers_profiles.pdf]]
 
 Parameters $a$ and $b$ are then tuned in order to properly link user perception of
@@ -1838,11 +1863,12 @@ the different services to available resources, as shown in autoref:fig:utilities
     data <- rbind(data, current_data)
   }
 
-  current <- ggplot(data, aes(x=Bandwidth, y=Utility, color=Utility.profiles)) +
-    labs(x='Bandwidth [kbit/s]', color='Utility profiles') +
+  current <- ggplot(data, aes(x=Bandwidth, y=Utility, group=Utility.profiles)) +
+    labs(x='Bandwidth [kbit/s]', linetype='Utility profiles', colour='Utility profiles') +
     scale_x_continuous(trans='log', breaks=c(100, 1000, 10000)) +
-    geom_line() +
-    my_theme
+    geom_line(aes(colour=Utility.profiles, linetype=Utility.profiles)) +
+    scale_color_viridis(discrete=TRUE) +
+    scale_linetype_manual(values = c("dashed", "solid", "twodash", "longdash")) + my_theme
 
   ## print(current)
 
@@ -1858,13 +1884,13 @@ the different services to available resources, as shown in autoref:fig:utilities
   print(out_path)
 #+END_SRC
 
-#+CAPTION: Utilities connect available bandwidth to user satisfaction of the given service.
+#+CAPTION: Utilitis vs available bandwidth for a given service.
 #+ATTR_LATEX: :height 3in
 #+LABEL: fig:utilities
-#+RESULTS[008700d760fd52c73f6e90e6e9a089c26a190499]: utilities
+#+RESULTS[e0c1976a49f0fedfcf1bf50b91d3d75adcce920f]: utilities
 [[file:../figures/utilities.pdf]]
 
-Looking at four trends, it can be seen that [[ac:hd][HD]], [[ac:md][MD]] and [[ac:ld][LD]] video streaming are in
+Looking at the four trends, it can be seen that [[ac:hd][HD]], [[ac:md][MD]] and [[ac:ld][LD]] video streaming are in
 decreasing order of bandwidth demand, as expected. Instead, traditional web
 browsing puts itself between [[ac:md][MD]] and [[ac:ld][LD]].
 
@@ -1888,9 +1914,9 @@ The best solution of this problem is proven to be the so-called \emph{Nash
 arbitration scheme} of the \emph{game} played among these actors.
 cite:Mazumdar1991 Such unique point satisfies all desirable properties:
 symmetry, independence of irrelevant alternatives and Pareto-optimality.
-Moreover, it can be found simply maximizing $f$, product of all the utilities:
+Moreover, it can be found simply maximizing the product $f$ of all the utilities:
 this gives us a straightforward criterion to rank all possible network
-configurations.
+configurations. We then define
 
 \begin{equation} \label{eq:global_function}
   f(\vec{\rho}) = \prod_i u_i(\rho_i)
@@ -1906,11 +1932,11 @@ optimal strategy.
 
 *** Flow balancing optimization
 As anticipated in the previous section, the fair working point is identified as
-the Nash arbitration scheme $\vec{\rho}$. More formally, it is solution of the
+the Nash arbitration scheme, i.e. the vector $\vec{\rho}$, that is solution of the
 following mathematical problem. cite:Mazumdar1991
 
 \begin{align}
-  \max_{\vec{\rho}} ~~ & \sum_{i=1}^n \log u_i(\rho_i) \\
+  \argmax_{\vec{\rho}} & \log f(\vec{\rho}) = \argmax_{\vec{\rho}} \sum_{i=1}^n \log u_i(\rho_i)   \\
   \text{given~~}
                  & \sum_{i=1}^n \rho_i \le \rho_{MAX} \\
                  & \forall j \in D, \,\sum_{i \in DSLAM_j} \rho_i \le \rho_{D,\,MAX}  \label{eq:dslam_max} \\
@@ -1928,9 +1954,9 @@ Unfortunately, however, our case is complicated by the two additional
 constraints autoref:eq:dslam_max and autoref:eq:router_max: no algorithm is
 currently known in literature able to solve the problem optimally. cite:Xing2018
 
-A sub-optimal solution has then to be searched using an heuristic algorithm.
-Given the monotonicity of the objective function, the following procedure is
-employed.
+A sub-optimal solution has then to be searched using a heuristic procedure.
+Given the monotonicity of the objective function, autoref:lst:alg:heuristic_flow
+is employed.
 
 \begin{bigalgorithm}
   \label{lst:alg:heuristic_flow}
@@ -1945,7 +1971,7 @@ employed.
     \If{ $\rho_k$ does not respect constraints \autoref{eq:dslam_max} and \autoref{eq:router_max}}
     \State Revert perturbation on $k$
     \EndIf
-    \If{ Objective function $f$ improvement is negligible }
+    \If{ Objective function $f$ improvement is negligible in the last L iterations}
     \State stop\_condition = True
     \EndIf
     \State Decrement $K$
@@ -1962,7 +1988,7 @@ beneficial, i.e. the increment is below a certain tolerance, the algorithm
 stops.
 
 The rationale behind this is akin to what happens in \emph{simulated annealing},
-an heuristic search algorithm where perturbation of constantly decreasing size
+a heuristic search algorithm where perturbation of constantly decreasing size
 are applied to the starting point in the hope of converging toward a viable
 solution. cite:Van1987
 
@@ -1993,7 +2019,7 @@ Aachen border. cite:OpenStreetMap
 
 After those operations, the remaining 58,305 constructions and 9,759 roads were
 paired with the population density information and used to draw the map in
-autoref:results-geographical_analysis.
+autoref:fig:aachen_city_map.
 
 #+LABEL: fig:aachen_city_map
 #+ATTR_LATEX: :height 4.5in
@@ -2003,7 +2029,7 @@ autoref:results-geographical_analysis.
 As can be appreciated in the plot, the data is indeed quite accurate and
 suitable for the conversion to an abstract graph with streets as edges and road
 crossing as vertices. This procedure was performed using a dedicated library
-that took care of all the quirks of OpenStreetMap measures[fn:2]. For example
+that took care of all the quirks of OpenStreetMap measures.[fn:2] For example
 polygons were considered in contact up to a certain tolerance distance and
 everything outside the main connected component was pruned. Moreover all nodes
 close to each other less than 20m were merged: this removed many useless details
@@ -2017,7 +2043,7 @@ To integrate customers information into the road graph, a first attempt was made
 where a new vertex was created for every building, but the number of variables
 turned out to be too high: it was then made the decision to assign the
 inhabitants of the city to the closer road crossing. \\
-All long roads were split and forced to be shorter than 200m: this way the
+All long roads were split in segments, forced to be shorter than 200m: this way the
 average displacement introduced via this approximation was reduced to just 50m,
 tolerable for our purposes.
 
@@ -2082,8 +2108,10 @@ Even with a commercial software such as CPLEX cite:Cplex, in fact, computational
 time and memory demand exceeded all resources available.
 
 Although not conclusive, the solver provided useful insights on the valid
-solution domain, specifically a lower bound for the objective function. These
-limits are then compared against the configuration obtained via heuristic
+solution domain, specifically a lower bound for the objective function, obtained
+with the countinous relaxation of problem autoref:eq:obj_function.
+
+These limits are then compared against the configuration obtained via heuristic
 algorithm, presented before in autoref:methodology-heuristic. \\
 [[autoref:solution_table]] clearly shows that the heuristic result is indeed
 remarkably close to the theoretical optimum and proves that the choices and
@@ -2104,7 +2132,7 @@ problem.
 A visual representation of the obtained clusters, groups of devices connected to
 the same switching unit, is given in [[autoref:fig:heuristic_result]] and in
 autoref:fig:heuristic_mainframe. Again the map is cropped in order to scale at
-the proper level of detail if needed.
+the proper level of detail.
 
 \begin{figure}[htp]
   \captionsetup[subfigure]{skip=-15pt}
@@ -2155,14 +2183,16 @@ the proper level of detail if needed.
   ) / 100
 
   current <- ggplot(summary, aes(x=1-p_nothing, y=obj, color=type)) +
-      geom_line() +
-      geom_errorbar(aes(ymin=obj - padding,
-                        ymax=obj + padding)) +
-      labs(x=TeX("$p_{active}$"),
-           y="Objective function",
-           color='Strategy') +
-      scale_x_continuous(breaks=unique(summary$p_nothing), labels=round(unique(summary$p_nothing), 2)) +
-      my_theme
+    geom_line() +
+    geom_errorbar(aes(ymin=obj - padding,
+                      ymax=obj + padding)) +
+    labs(x=TeX("$p_{active}$"),
+         y="Objective function",
+         color='Strategy') +
+    scale_x_continuous(breaks=unique(summary$p_nothing),
+                       labels=round(unique(summary$p_nothing), 2)) +
+    scale_colour_viridis(discrete=TRUE, end=0.8) +
+    my_theme
 
   ## print(current)
 
@@ -2201,14 +2231,16 @@ the proper level of detail if needed.
 
   current <- ggplot(dataset, aes(x=utility, fill=type)) +
     scale_y_continuous(trans='log1p', breaks=c(100, 1000, 10000, 25000, 60000)) +
-    geom_histogram(bins=100, position="identity") +
-    labs(x='Utility', y='Count', title='Utility distribution') +
-    facet_grid(type ~ p_active, labeller=label_parsed) +
-    my_theme +
+    geom_histogram(aes(y=..density..), bins=100, position="identity") +
+    labs(x='Utility', y='Probability density', title='Utility distribution') +
+    facet_grid(type ~ p_active, labeller=label_parsed)  +
+    scale_fill_viridis(discrete=TRUE, begin=0.2, end=0.8) +
+    ## my_theme +
     theme(legend.position='none',
           plot.title = element_text(hjust=0.5),
-          panel.spacing = unit(0.8, "lines")) +
-    scale_fill_brewer(palette="Set2", type='div')
+          panel.spacing = unit(0.8, "lines"))
+
+  ## print(current)
 
   name_tag <- gsub("\\.", "", sprintf('%.1f', p_streaming))
   out_path <- sprintf('../figures/utility_distribution_%s.pdf', name_tag)
@@ -2253,7 +2285,7 @@ p_streaming = 0.1
 #+ATTR_LATEX: :width 5in
 #+LABEL: fig:obj_vs_p_nothing0.1
 #+CAPTION: Performance for $p_{streaming}$ = 0.1, with $95\%$ confidence intervals.
-#+RESULTS[9501f89909d371fc3d6732b39c99407f12c32436]: obj_vs_p_nothing0.1
+#+RESULTS[7d2569680410ebd621bd37f7aa38f81a6172678f]: obj_vs_p_nothing0.1
 [[file:../figures/obj_vs_p_nothing_01.pdf]]
 
 This gap can be easily spotted in autoref:fig:obj_vs_p_nothing0.1,
@@ -2271,7 +2303,7 @@ p_streaming = 0.5
 #+ATTR_LATEX: :width 5in
 #+LABEL: fig:obj_vs_p_nothing0.5
 #+CAPTION: Performance for $p_{streaming}$ = 0.5, with $95\%$ confidence intervals.
-#+RESULTS[8e4548dabef2351f0f68cb7ade14a6e0de4b68a4]: obj_vs_p_nothing0.5
+#+RESULTS[e3fdaf9cc2060a45849d3c969cb398773ecaeb3e]: obj_vs_p_nothing0.5
 [[file:../figures/obj_vs_p_nothing_05.pdf]]
 
 Moreover, this difference is more evident when offered traffic is higher, i.e.
@@ -2294,7 +2326,7 @@ p_streaming = 0.9
 #+ATTR_LATEX: :width 5in
 #+LABEL: fig:obj_vs_p_nothing0.9
 #+CAPTION: Performance for $p_{streaming}$ = 0.9, with $95\%$ confidence intervals.
-#+RESULTS[b912d87877e1f7c1a608de54d46184c8b557d911]: obj_vs_p_nothing0.9
+#+RESULTS[ab87c67fc88944d1aae068b2c010aa02d7562735]: obj_vs_p_nothing0.9
 [[file:../figures/obj_vs_p_nothing_09.pdf]]
 
 \bigskip
@@ -2312,7 +2344,7 @@ extreme values of $p_{active}$ and $p_{streaming}$.
 #+ATTR_LATEX: :width 5in
 #+LABEL: fig:utility_distribution0.1
 #+CAPTION: Utility distribution for $p_{streaming} = 0.1$.
-#+RESULTS[bd92908e750fbfa5348d1ba7180fef36a733f34a]: utility_distribution0.1
+#+RESULTS[4a85995c2a03b81ee501cf27d50e58382eb5e50f]: utility_distribution0.1
 [[file:../figures/utility_distribution_01.pdf]]
 
 #+NAME: utility_distribution0.9
@@ -2325,25 +2357,25 @@ extreme values of $p_{active}$ and $p_{streaming}$.
 #+ATTR_LATEX: :width 5in
 #+LABEL: fig:utility_distribution0.9
 #+CAPTION: Utility distribution for $p_{streaming} = 0.9$.
-#+RESULTS[22801c4da43ffc1f37ca65b00f0855cda551db78]: utility_distribution0.9
+#+RESULTS[267c935aa7fe7a21ee0439f1be55ebbf75b0681d]: utility_distribution0.9
 [[file:../figures/utility_distribution_09.pdf]]
 
 When offered traffic is lower, as shown in autoref:fig:utility_distribution0.1,
-it is apparent how realizations are overall closer to one, certifying the small,
+it is apparent how realizations of utility are overall closer to one, certifying the small,
 but noticeable, gain seen before for the novel approach.
 
 When instead in autoref:fig:utility_distribution0.9 the number of active users
-is larger the situation is trickier to interpret: again though proposed solution
+increases the situation is trickier to interpret: again though the proposed solution
 tends to move towards the optimal point.
 
 \bigskip
 
-Despite all these accomplishment of proposed heuristic approach, it is currently
+Despite all these promising results of proposed heuristic approach, it is currently
 only a lower bound on the theoretical optimum, exact solution of the
-mathematical problem. Further progress can then be made in the search of the
+mathematical problem. So, there is room for progress in the search of the
 best working point.
 
-* Conclusion
+* Conclusions
 :PROPERTIES:
 :CUSTOM_ID: conclusion
 :END:
@@ -2393,7 +2425,7 @@ performance and reliability.
 
 \smallbreak
 
-As proved in this thesis, adopted approach is indeed promising: future
+As proved in this thesis, the adopted approach is indeed promising: future
 development could consider using more connection metrics, such as delay and
 jitter, since bandwidth alone cannot completely describe [[ac:qoe][QoE]] for some
 applications. These works could therefore assess whether a trade-off can be made
@@ -2405,6 +2437,7 @@ algorithms.
 
 \clearpage
 
+# TODO check bibliography requirements
 bibliographystyle:plain
 bibliography:biblio.bib
 
