@@ -1697,7 +1697,7 @@ whose task is to govern and limit the data rate before it enters the
 by the central administrator in order to give or revoke priority from a given
 source.
 
-# TODO controllare CBR
+# controllare CBR
 Since in our setting all data flows are supposed to be [[ac:cbr][CBR]], deciding bandwidth
 allocation is sufficient to provide users the best service.
 
@@ -2088,10 +2088,9 @@ time and memory demand exceeded all resources available.
 
 Although not conclusive, the solver provided useful insights on the valid
 solution domain, specifically a lower bound for the objective function, obtained 
-with the countinous relaxation of problem. 
-# TODO ref problem 
-These 
-limits are then compared against the configuration obtained via heuristic
+with the countinous relaxation of problem autoref:eq:obj_function.  
+
+These limits are then compared against the configuration obtained via heuristic
 algorithm, presented before in autoref:methodology-heuristic. \\
 [[autoref:solution_table]] clearly shows that the heuristic result is indeed
 remarkably close to the theoretical optimum and proves that the choices and
@@ -2187,8 +2186,6 @@ the proper level of detail.
   print(out_path)
 #+END_SRC
 
-# TODO: non count, ma Prob. Mass Distribution
-
 #+NAME: utility_distribution
 #+BEGIN_SRC R :exports none :noweb yes
   <<R_preamble>>
@@ -2211,7 +2208,7 @@ the proper level of detail.
 
   current <- ggplot(dataset, aes(x=utility, fill=type)) +
     scale_y_continuous(trans='log1p', breaks=c(100, 1000, 10000, 25000, 60000)) +
-    geom_histogram(bins=100, position="identity") +
+    geom_histogram(aes(y=..density..), bins=100, position="identity") +
     labs(x='Utility', y='Count', title='Utility distribution') +
     facet_grid(type ~ p_active, labeller=label_parsed) +
     my_theme +
