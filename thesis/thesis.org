@@ -2170,7 +2170,7 @@ the proper level of detail.
 
   dataset <- rbind(traditional, heuristic)
 
-  summary <- group_by(dataset, p_nothing, p_streaming, type) %>% summarize(obj=mean(obj))
+  summary <- group_by(dataset, p_nothing, p_streaming, type) %>% summarize(obj=max(obj))
   summary$obj <- exp(summary$obj)
 
   summary <- summary[summary$p_streaming == p_streaming, ]
@@ -2282,7 +2282,7 @@ p_streaming = 0.1
 #+ATTR_LATEX: :width 5in
 #+LABEL: fig:obj_vs_p_nothing0.1
 #+CAPTION: Performance for $p_{streaming}$ = 0.1, with $95\%$ confidence intervals.
-#+RESULTS[7d2569680410ebd621bd37f7aa38f81a6172678f]: obj_vs_p_nothing0.1
+#+RESULTS[bd24e230cc1dea840f15e7e3d2e5bb5f8565259a]: obj_vs_p_nothing0.1
 [[file:../figures/obj_vs_p_nothing_01.pdf]]
 
 This gap can be easily spotted in autoref:fig:obj_vs_p_nothing0.1,
