@@ -1529,7 +1529,7 @@ privilege more cohesive and compact pairs.
 This procedure is repeated until all possible choices have been considered or
 the next merge increases the cost of the network.
 
-Pseudo-code is available in [[autoref:lst:alg:heuristic]].
+Pseudo-code is available in [[autoref:lst:alg:heuristic]]. As defined in autoref:tab:quantities_constraints, parameters $n_M$ and $d_M$ are the maximum number of nodes per cluster and the maximum distance between vertices in the same cluster, respectively.
 
 \begin{bigalgorithm}
   \label{lst:alg:heuristic}
@@ -1776,15 +1776,15 @@ the assigned bandwidth.
 
 More specifically, our network considers two different use-cases: traditional
 web-browsing and video streaming. Videos are either Low Definition (360p),
-Medium Definition (720p), or High Definition (1080p). Following \emph{Google
-Video Quality Report}, each one of those is experienced by 5%, 10% and 85% of
+Medium Definition (720p), or High Definition (1080p). Following \emph{Google Video Quality Report}, 
+each one of those is experienced by 5%, 10% and 85% of
 the users respectively, as shown in autoref:video_quality_report. cite:GoogleVideoQualityReport
 
 #+NAME: video_quality_report
 #+BEGIN_SRC python :noweb yes :exports results :results file output
   <<python_preamble>>
 
-  labels = 'Low Definition', 'Medium Definition', 'High Definition'
+  labels = 'Low Definition (LD)', 'Medium Definition (MD)', 'High Definition (HD)'
   sizes = (5, 10, 85)
   explode = (0.1, 0.1, 0)
 
@@ -1810,6 +1810,8 @@ the users respectively, as shown in autoref:video_quality_report. cite:GoogleVid
 
 Parameters $a$ and $b$ are then tuned in order to properly link user perception of
 the different services to available resources, as shown in autoref:fig:utilities.
+
+# TODO use greyscale-compatible colormap
 
 #+NAME: utilities
 #+BEGIN_SRC R :exports results :results file value :noweb yes
