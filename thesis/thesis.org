@@ -8,7 +8,6 @@
 #+LATEX_COMPILER: xelatex
 
 #+LaTeX_HEADER: \setmainfont{Charis SIL}
-#+LaTeX_HEADER: \setmainfont{Charis SIL}
 
 #+LATEX_HEADER: \usepackage{geometry}
 #+LATEX_HEADER: \usepackage{etoolbox}
@@ -18,7 +17,8 @@
 
 #+LaTeX_HEADER: \allowdisplaybreaks
 #+LaTeX_HEADER: \def\equationautorefname#1#2\null{(#2\null)}
-#+LaTeX_HEADER: \def\algorithmautorefname#1#2\null{Algorithm #2\null}
+#+LaTeX_HEADER: \def\algorithmautorefname#1#2\null{Algorithm~#2\null}
+#+LaTeX_HEADER: \def\figureautorefname#1#2\null{Fig.~#2\null}
 #+LATEX_HEADER: \providetoggle{images_titlepage}
 #+LATEX_HEADER: \settoggle{images_titlepage}{true}
 
@@ -2340,18 +2340,18 @@ extreme values of $p_{active}$ and $p_{streaming}$.
 [[file:../figures/utility_distribution_09.pdf]]
 
 When offered traffic is lower, as shown in autoref:fig:utility_distribution0.1,
-it is apparent how realizations are overall closer to one, certifying the small,
+it is apparent how realizations of utility are overall closer to one, certifying the small,
 but noticeable, gain seen before for the novel approach.
 
 When instead in autoref:fig:utility_distribution0.9 the number of active users
-is larger the situation is trickier to interpret: again though proposed solution
+increases the situation is trickier to interpret: again though the proposed solution
 tends to move towards the optimal point.
 
 \bigskip
 
-Despite all these accomplishment of proposed heuristic approach, it is currently
+Despite all these promising results of proposed heuristic approach, it is currently
 only a lower bound on the theoretical optimum, exact solution of the
-mathematical problem. Further progress can then be made in the search of the
+mathematical problem. So, there is room for progress in the search of the
 best working point.
 
 * Conclusions
