@@ -1914,7 +1914,6 @@ As anticipated in the previous section, the fair working point is identified as
 the Nash arbitration scheme, i.e. the vector $\vec{\rho}$, that is solution of the
 following mathematical problem. cite:Mazumdar1991
 
-# TODO fare comando argmax
 \begin{align}
   \argmax_{\vec{\rho}} & \log f(\vec{\rho}) = \argmax_{\vec{\rho}} \sum_{i=1}^n \log u_i(\rho_i)   \\
   \text{given~~}
