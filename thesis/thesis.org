@@ -2232,7 +2232,7 @@ the proper level of detail.
     labs(x='Utility', y='Probability density', title='Utility distribution') +
     facet_grid(type ~ p_active, labeller=label_parsed)  +
     scale_fill_viridis(discrete=TRUE, begin=0.2, end=0.8) +
-    ## my_theme +
+    my_theme +
     theme(legend.position='none',
           plot.title = element_text(hjust=0.5),
           panel.spacing = unit(0.8, "lines"))
@@ -2341,7 +2341,7 @@ extreme values of $p_{active}$ and $p_{streaming}$.
 #+ATTR_LATEX: :width 5in
 #+LABEL: fig:utility_distribution0.1
 #+CAPTION: Utility distribution for $p_{streaming} = 0.1$.
-#+RESULTS[4a85995c2a03b81ee501cf27d50e58382eb5e50f]: utility_distribution0.1
+#+RESULTS[200b8959dbadd32314f059647c2c2f1782f45e27]: utility_distribution0.1
 [[file:../figures/utility_distribution_01.pdf]]
 
 #+NAME: utility_distribution0.9
@@ -2354,7 +2354,7 @@ extreme values of $p_{active}$ and $p_{streaming}$.
 #+ATTR_LATEX: :width 5in
 #+LABEL: fig:utility_distribution0.9
 #+CAPTION: Utility distribution for $p_{streaming} = 0.9$.
-#+RESULTS[267c935aa7fe7a21ee0439f1be55ebbf75b0681d]: utility_distribution0.9
+#+RESULTS[fe671db9559a1901c24d318017548f66b990401c]: utility_distribution0.9
 [[file:../figures/utility_distribution_09.pdf]]
 
 When offered traffic is lower, as shown in autoref:fig:utility_distribution0.1,
