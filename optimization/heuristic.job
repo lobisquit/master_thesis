@@ -11,4 +11,4 @@ cd /home/lovisott/master_thesis/optimization/
 # pip install numpy pandas scipy networkx
 
 source venv/bin/activate
-python -O heuristic_solution.py
+python -O get_max_utility_distribution.py
