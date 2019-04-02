@@ -28,4 +28,4 @@ for seed in range(100):
     obj, _, _ = heuristic_optimizer(p_nothing, p_streaming, logger, topology_seed=14, search_seed=seed)
     objs.append(obj)
 
-pd.DataFrame(objs).to_csv("ciao.csv", index=None, header=None)
+pd.DataFrame(objs).to_csv("../data/optimization/objs.csv", index=None, header=None)
