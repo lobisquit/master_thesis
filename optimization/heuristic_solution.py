@@ -84,7 +84,7 @@ def dummy_validator(g, bws):
 
     return True
 
-def run_optimization(p_nothing, p_streaming, logger):
+def run_optimization(p_nothing, p_streaming, logger, topology_seed=None, search_seed=None):
     g = nx.read_graphml('abstract_topology.graphml')
 
     # fix loading problems
@@ -101,6 +101,10 @@ def run_optimization(p_nothing, p_streaming, logger):
     bws_min = np.zeros( (n_nodes,) )
     a = np.zeros( (n_nodes,) )
     b = np.zeros( (n_nodes,) )
+
+    if topology_seed is not None:
+        np.random.seed(topology_seed)
+        seed(topology_seed)
 
     for leaf in leaves:
         single_a, single_b, bw_min = get_realization(p_nothing, p_streaming)
@@ -133,6 +137,10 @@ def run_optimization(p_nothing, p_streaming, logger):
     EPOCH = 10e3
     MAX_BLOCKED_ITERS = 1000
     MAX_BLOCKED_ITERS_STEP = 1e-5
+
+    if search_seed is not None:
+        np.random.seed(search_seed)
+        seed(search_seed)
 
     old_obj = -np.inf
     n_iter = 1
