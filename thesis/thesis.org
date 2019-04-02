@@ -308,8 +308,6 @@ LaTeX support for svg files sucks.
 \pagenumbering{arabic}
 #+END_EXPORT
 
-# TODO "cite" before dots
-
 * Introduction
 :PROPERTIES:
 :CUSTOM_ID: introduction
@@ -645,7 +643,7 @@ the scenario of autoref:fig:andrews_model.
 
 #+LABEL: fig:andrews_model
 #+ATTR_LATEX: :width 7.2cm
-#+CAPTION: Each intermediate node in the tree merges the flows coming from the leaves and splits the return ones. cite:Andrews1998
+#+CAPTION: Each intermediate node in the tree merges the flows coming from the leaves and splits the return ones cite:Andrews1998.
 [[file:../figures/andrews_model.pdf]]
 
 A mathematical formulation describing the optimal solution is given in their
@@ -767,7 +765,7 @@ candidates. Georgopoulos \etal, Laghari \etal focus on the actual measurement
 and try to fit what found with a shifted power function of the bandwidth
 cite:Georgopoulos2013,Laghari2012. Instead, Reichl \etal go for a different
 approach, as they \emph{a-priori} suppose [[ac:qoe][QoE]] to be a logarithmic function of available capacity: this
-hypothesis is taken in analogy to the Weber-Fechner Law. cite:Reichl2011
+hypothesis is taken in analogy to the Weber-Fechner Law cite:Reichl2011.
 
 This law, formulated by Gustav Theodor Fechner and its student Ernst Heinrich Weber, is a key principle in
 psycho-physics that connects the magnitude of a \emph{stimulus} to its perceived
@@ -970,13 +968,13 @@ access network cost.
 
 In this chapter we will exploit this information to find the optimal network
 configuration, given some assumptions and requirements derived from best
-practices in access network design. cite:CiscoWAN
+practices in access network design cite:CiscoWAN.
 
 *** Topology considerations
 As depicted in autoref:fig:network_tree we suppose our access network to be made
 of layer-2 type switches and to be logically shaped as a tree. This is indeed
 common practice in such access networks, where more complex and elaborate
-topologies are too expensive and offer no substantial benefit. cite:CiscoWAN
+topologies are too expensive and offer no substantial benefit cite:CiscoWAN.
 
 In this configuration the path from users to the provider mainframe is fixed and
 must cross two kinds of intermediate nodes, a [[acp:dslam][DSLAM]] and a router.
@@ -1114,7 +1112,7 @@ since the set of possible topologies is far too vast for a manual evaluation: a
 programmatic strategy is then necessary to proceed.
 
 Problems on graphs similar to the one we face are often solved using either [[ac:ilp][ILP]]
-or an heuristic approach. cite:Koch1998,Rehfeldt2015,Diane1993,Leitner2014 \\
+or an heuristic approach cite:Koch1998,Rehfeldt2015,Diane1993,Leitner2014. \\
 The former is a powerful mathematical tool that finds the best possible solution
 to the problem, but it is very demanding with respect to computational resources
 and time. \\
@@ -1783,9 +1781,9 @@ ranging from unusable to perfect link. Each user $i$ is then given a
 quality.
 
 The functions employed in this thesis were obtained by various research groups
-collecting user opinion of the Internet service under different network conditions.
-cite:Georgopoulos2013,Schatz2011 These studies suggest a precise link between
-[[ac:qoe][QoE]] and bandwidth, described by autoref:eq:utility_general:
+collecting user opinion of the Internet service under different network
+conditions cite:Georgopoulos2013,Schatz2011. These studies suggest a precise
+link between [[ac:qoe][QoE]] and bandwidth, described by autoref:eq:utility_general:
 
 \begin{equation} \label{eq:utility_general}
 u(\rho) = a \, \rho^b + 1
@@ -1800,7 +1798,7 @@ More specifically, our network considers two different use-cases: traditional
 web-browsing and video streaming. Videos are either Low Definition (360p),
 Medium Definition (720p), or High Definition (1080p). Following \emph{Google Video Quality Report},
 each one of those is experienced by 5%, 10% and 85% of
-the users respectively, as shown in autoref:video_quality_report. cite:GoogleVideoQualityReport
+the users respectively, as shown in autoref:video_quality_report cite:GoogleVideoQualityReport.
 
 #+NAME: video_quality_report
 #+BEGIN_SRC python :noweb yes :exports results :results file output
@@ -1824,7 +1822,7 @@ the users respectively, as shown in autoref:video_quality_report. cite:GoogleVid
   print(out_path, end='')
 #+END_SRC
 
-#+CAPTION: Distribution of video quality among video streaming users. cite:GoogleVideoQualityReport
+#+CAPTION: Distribution of video quality among video streaming users cite:GoogleVideoQualityReport.
 #+ATTR_LATEX: :height 2in
 #+LABEL: fig:video_quality_report
 #+RESULTS[011430d4994e9ce3875856bdccbe452215e40b1e]: video_quality_report
@@ -1911,8 +1909,7 @@ fellows. The [[ac:isp][ISP]] has then to act as an arbiter, allocating available
 in a fair way.
 
 The best solution of this problem is proven to be the so-called \emph{Nash
-arbitration scheme} of the \emph{game} played among these actors.
-cite:Mazumdar1991 Such unique point satisfies all desirable properties:
+arbitration scheme} of the \emph{game} played among these actors cite:Mazumdar1991. Such unique point satisfies all desirable properties:
 symmetry, independence of irrelevant alternatives and Pareto-optimality.
 Moreover, it can be found simply maximizing the product $f$ of all the utilities:
 this gives us a straightforward criterion to rank all possible network
@@ -1933,7 +1930,7 @@ optimal strategy.
 *** Flow balancing optimization
 As anticipated in the previous section, the fair working point is identified as
 the Nash arbitration scheme, i.e. the vector $\vec{\rho}$, that is solution of the
-following mathematical problem. cite:Mazumdar1991
+following mathematical problem cite:Mazumdar1991.
 
 \begin{align}
   \argmax_{\vec{\rho}} & \log f(\vec{\rho}) = \argmax_{\vec{\rho}} \sum_{i=1}^n \log u_i(\rho_i)   \\
@@ -1952,7 +1949,7 @@ $\rho_{MAX}$ has to be allocated maximising a concave objective function.
 
 Unfortunately, however, our case is complicated by the two additional
 constraints autoref:eq:dslam_max and autoref:eq:router_max: no algorithm is
-currently known in literature able to solve the problem optimally. cite:Xing2018
+currently known in literature able to solve the problem optimally cite:Xing2018.
 
 A sub-optimal solution has then to be searched using a heuristic procedure.
 Given the monotonicity of the objective function, autoref:lst:alg:heuristic_flow
@@ -1990,7 +1987,7 @@ stops.
 The rationale behind this is akin to what happens in \emph{simulated annealing},
 a heuristic search algorithm where perturbation of constantly decreasing size
 are applied to the starting point in the hope of converging toward a viable
-solution. cite:Van1987
+solution cite:Van1987.
 
 * Results
 :PROPERTIES:
@@ -2015,7 +2012,7 @@ solution. cite:Van1987
 In order to obtain a decent map of the city, the two OpenStreetMap datasets
 corresponding to buildings and streets of the entire state of North
 Rein-Westphalia were downloaded, merged and cropped to remove anything outside
-Aachen border. cite:OpenStreetMap
+Aachen border cite:OpenStreetMap.
 
 After those operations, the remaining 58,305 constructions and 9,759 roads were
 paired with the population density information and used to draw the map in
@@ -2089,7 +2086,7 @@ single mainframe which is not relevant in our analysis.
 It is worth mentioning that the cost per unit $c_r$ is split into two addends,
 accounting for the physical device and its connection to the mainframe. The
 price and the number of ports of the switching units match the most popular
-items in the market and industry best practices. cite:CiscoWAN
+items in the market and industry best practices cite:CiscoWAN.
 
 #+NAME: optimization_params
 #+CAPTION: Values for problem parameters in the first two iterations.
