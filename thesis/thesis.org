@@ -274,6 +274,7 @@ LaTeX support for svg files sucks.
   library(dplyr)
   library(data.table)
   library(purrr)
+  library(viridis)
 
   loadfonts()
 
@@ -1811,8 +1812,6 @@ the users respectively, as shown in autoref:video_quality_report. cite:GoogleVid
 Parameters $a$ and $b$ are then tuned in order to properly link user perception of
 the different services to available resources, as shown in autoref:fig:utilities.
 
-# TODO use greyscale-compatible colormap
-
 #+NAME: utilities
 #+BEGIN_SRC R :exports results :results file value :noweb yes
   <<R_preamble>>
@@ -1846,6 +1845,8 @@ the different services to available resources, as shown in autoref:fig:utilities
   current <- ggplot(data, aes(x=Bandwidth, y=Utility, color=Utility.profiles)) +
     labs(x='Bandwidth [kbit/s]', color='Utility profiles') +
     scale_x_continuous(trans='log', breaks=c(100, 1000, 10000)) +
+    scale_color_viridis() + 
+    ## TODO or scale_fill_viridis()
     geom_line() +
     my_theme
 
@@ -2169,6 +2170,8 @@ the proper level of detail.
            y="Objective function",
            color='Strategy') +
       scale_x_continuous(breaks=unique(summary$p_nothing), labels=round(unique(summary$p_nothing), 2)) +
+      scale_color_viridis() + 
+      ## TODO or scale_fill_viridis()
       my_theme
 
   ## print(current)
@@ -2214,7 +2217,7 @@ the proper level of detail.
     my_theme +
     theme(legend.position='none',
           plot.title = element_text(hjust=0.5),
-          panel.spacing = unit(0.8, "lines")) +
+          panel.spacing = unit(0.8, "lines"))
     scale_fill_brewer(palette="Set2", type='div')
 
   name_tag <- gsub("\\.", "", sprintf('%.1f', p_streaming))
