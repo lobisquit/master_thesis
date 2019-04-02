@@ -535,8 +535,8 @@ autoref:state_of_art.
 Then, autoref:methodology introduces the theoretical instruments employed in
 this analysis. In autoref:methodology-geographical_analysis, we will show how
 relevant information from Aachen building and road map can be extracted in order
-to design, in autoref:methodology-network_design, a proper access network based
-on city topology and population density.
+to design a proper access network based
+on city topology and population density, in autoref:methodology-network_design.
 autoref:methodology-network_optimization will detail how this infrastructure can
 be tuned for maximize user perceived [[ac:qoe][QoE]].
 
@@ -745,11 +745,27 @@ candidates. Georgopoulos \etal, Laghari \etal focus on the actual measurement
 and try to fit what found with a shifted power function of the bandwidth
 cite:Georgopoulos2013,Laghari2012. Instead, Reichl \etal go for a different
 approach, as they \emph{a-priori} suppose [[ac:qoe][QoE]] to be a logarithmic function of available capacity: this
-hypothesis is taken in analogy to the Weber-Fechner Law, a key principle in
-psycho-physics connecting the magnitude of a \emph{stimulus} to its perceived
-intensity. cite:Reichl2011
+hypothesis is taken in analogy to the Weber-Fechner Law. cite:Reichl2011
 
-# TODO spiegare Weber-Fechner Law
+This law, formulated by Gustav Theodor Fechner and its student Ernst Heinrich Weber, is a key principle in
+psycho-physics that connects the magnitude of a \emph{stimulus} to its perceived
+intensity.
+
+\begin{align} 
+	k = \frac{\mathrm{d}S}{S} \label{eq:weber} \\
+	\mathrm{d} p = k \frac{\mathrm{d} S}{S} \implies p = k \, \log \frac{S}{S_0} \label{eq:fechner}
+\end{align}
+where $p$ is the extent of the perception given by the external stimulus $S$.
+$k$ and $S_0$ are instead constants and depend on the specific physical quantities considered.
+
+Former equation autoref:eq:weber, known as \emph{Weber's contrast},
+This was supposed after performing an experiment, consisting in a man judging 
+the weight of an object: it was observed that constant increments in the weight 
+were more noticeable when the object itself was light.
+Thus it was concluded that the differential stimulus is inversely proportional to the stimulus itself.
+
+Latter equation autoref:eq:fechner, tries to move forward this preliminary result as
+general increments are allowed. The final relation between stimulus and perception is therefore logarithmic.
 
 These investigations give us analytical tools to effectively simulate and
 reproduce satisfaction for each user.
