@@ -289,6 +289,8 @@ LaTeX support for svg files sucks.
 \listoftables
 \listofalgorithms
 
+# TODO "cite" before dots
+
 * Introduction
 :PROPERTIES:
 :CUSTOM_ID: introduction
@@ -2415,6 +2417,7 @@ algorithms.
 
 \clearpage
 
+# TODO check bibliography requirements
 bibliographystyle:plain
 bibliography:biblio.bib
 
