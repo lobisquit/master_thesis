@@ -1,11 +1,11 @@
 import logging
 
-import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
 from heuristic_solution import run_optimization as heuristic_optimizer
-from traditional_solution import run_optimization as traditional_optimizer
+
+# from traditional_solution import run_optimization as traditional_optimizer
 
 p_nothing = 0.5
 p_streaming = 0.5
