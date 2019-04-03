@@ -1,0 +1,53 @@
+% Abstract
+
+Internet is currently growing in an unprecedented way, both in terms of users
+and offered traffic.%
+%
+Software-Defined Networks (SDN) will be necessary to ensure a suitable Quality
+of Service for users in a more and more complex future, as legacy IP networks
+are not up to the task because of their configuration inflexibility.%
+%
+These programmable networks have proven successful in many context, from
+data-centers to backbone management, but currently no research has analyzed what
+happens in small-scale scenarios, such as common city access networks. In this
+thesis we try to quantify how much improvement an SDN approach can give to such
+a simple infrastructure.
+
+\smallskip
+
+As our case of study, we choose the city of Aachen, located in north-west of
+Germany in the state of North Rhine-Westphalia, site of RWTH university, this
+thesis was written in collaboration with. %
+%
+Since no schematics of its access network were publicly available, we infer its
+topology from population density and building maps, setting an optimal location
+for each network switch, from the DSLAMs to the backbone router.
+
+% Our approach is inspired by well-known techniques, but significantly improves
+% over them both in terms of input instance size and bound with the theoretical
+% optimum, provided by an Integer Linear Programming solver.
+
+After this design phase, we devise a strategy to distribute the common bandwidth
+among network users in a \emph{fair} way. %
+%
+Each user is therefore assigned an utility function that links its amount of
+resources with perceived Quality of Experience (QoE).%
+%
+The best synthesis for these individual evaluations is found in literature as
+the so-called \emph{Nash arbitration scheme}, equilibrium of the cooperative
+allocation game played among users.%
+%
+This optimal operation point is compared then with \emph{proportional fairness},
+the traditional approach for flow control where each user is assigned a
+bandwidth proportional to its demands.
+
+Simulating network operations, we show that our approach indeed improves user
+QoE with respect to legacy techniques of a significant extent, especially when
+demand is high and therefore network management is more challenging for
+administrators.
+
+%%% Local Variables:
+%%% ispell-local-dictionary: "en"
+%%% eval: (flyspell-mode)
+%%% TeX-master: "../thesis"
+%%% End:

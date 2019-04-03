@@ -287,6 +287,7 @@ LaTeX support for svg files sucks.
 * Latex lists                                                        :ignore:
 #+BEGIN_EXPORT latex
 \frontispiece
+\abstractpage
 \sommario
 \tableofcontents
 \phantomsection
@@ -772,8 +773,8 @@ psycho-physics that connects the magnitude of a \emph{stimulus} to its perceived
 intensity.
 
 \begin{align}
-	k = \frac{\mathrm{d}S}{S} \label{eq:weber} \\
-	\mathrm{d} p = k \frac{\mathrm{d} S}{S} \implies p = k \, \log \frac{S}{S_0} \label{eq:fechner}
+	k &= \frac{\mathrm{d}S}{S} \label{eq:weber} \\
+	\mathrm{d} p = k \, \frac{\mathrm{d} S}{S} &\implies p = k \, \log \frac{S}{S_0} \label{eq:fechner}
 \end{align}
 where $p$ is the extent of the perception given by the external stimulus $S$.
 $k$ and $S_0$ are instead constants and depend on the specific physical quantities considered.
@@ -1236,10 +1237,10 @@ Both the exact and approximate approach that will be proposed in this thesis
 will build the access network in this fashion, starting from the periphery and
 moving towards the core of the network.
 
-All relevant parameters have been collected in [[autoref:quantities_constraints]] and
+All relevant parameters have been collected in [[autoref:tab:quantities_constraints]] and
 will be taken for granted from now on.
 
-#+NAME: quantities_constraints
+#+NAME: tab:quantities_constraints
 #+CAPTION: Problem parameters, divided in topology specific ones, technological limits and costs.
 #+ATTR_LATEX: :align cl
 | Variable        | Description                                                   |
@@ -1798,9 +1799,9 @@ More specifically, our network considers two different use-cases: traditional
 web-browsing and video streaming. Videos are either Low Definition (360p),
 Medium Definition (720p), or High Definition (1080p). Following \emph{Google Video Quality Report},
 each one of those is experienced by 5%, 10% and 85% of
-the users respectively, as shown in autoref:video_quality_report cite:GoogleVideoQualityReport.
+the users respectively, as shown in [[autoref:fig:video_quality_report]] cite:GoogleVideoQualityReport.
 
-#+NAME: video_quality_report
+#+NAME: fig:video_quality_report
 #+BEGIN_SRC python :noweb yes :exports results :results file output
   <<python_preamble>>
 
@@ -1825,7 +1826,7 @@ the users respectively, as shown in autoref:video_quality_report cite:GoogleVide
 #+CAPTION: Distribution of video quality among video streaming users cite:GoogleVideoQualityReport.
 #+ATTR_LATEX: :height 2in
 #+LABEL: fig:video_quality_report
-#+RESULTS[011430d4994e9ce3875856bdccbe452215e40b1e]: video_quality_report
+#+RESULTS[011430d4994e9ce3875856bdccbe452215e40b1e]: fig:video_quality_report
 [[file:../figures/streamers_profiles.pdf]]
 
 Parameters $a$ and $b$ are then tuned in order to properly link user perception of
@@ -2300,7 +2301,7 @@ p_streaming = 0.5
 #+ATTR_LATEX: :width 5in
 #+LABEL: fig:obj_vs_p_nothing0.5
 #+CAPTION: Performance for $p_{streaming}$ = 0.5, with $95\%$ confidence intervals.
-#+RESULTS[e3fdaf9cc2060a45849d3c969cb398773ecaeb3e]: obj_vs_p_nothing0.5
+#+RESULTS[ec9308145dc39ddbf96780a266a77c5986da0d71]: obj_vs_p_nothing0.5
 [[file:../figures/obj_vs_p_nothing_05.pdf]]
 
 Moreover, this difference is more evident when offered traffic is higher, i.e.
@@ -2323,7 +2324,7 @@ p_streaming = 0.9
 #+ATTR_LATEX: :width 5in
 #+LABEL: fig:obj_vs_p_nothing0.9
 #+CAPTION: Performance for $p_{streaming}$ = 0.9, with $95\%$ confidence intervals.
-#+RESULTS[ab87c67fc88944d1aae068b2c010aa02d7562735]: obj_vs_p_nothing0.9
+#+RESULTS[4a412bd1c0690c25d8f1f5e6c997c15089d6dfab]: obj_vs_p_nothing0.9
 [[file:../figures/obj_vs_p_nothing_09.pdf]]
 
 \bigskip
