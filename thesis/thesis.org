@@ -685,7 +685,7 @@ Therefore, new approaches will be devised in this thesis, in order to properly
 solve the problem and possibly get the approximation closer to the theoretical
 bounds.
 
-\bigbreak
+\smallbreak
 
 # SDN: general concept + small history
 
@@ -736,7 +736,7 @@ cite:Jain2013, WMware cite:WMWareNSX and many operators around the world
 cite:OpenDaylight started to experiment and deploy software-defined solutions in
 their infrastructure, reporting performance and flexibility gains.
 
-\bigbreak
+\smallbreak
 
 # flow control
 
@@ -947,12 +947,12 @@ These two points can be accepted in this work as the end goal is to study how
 the access network of a city like Aachen behaves, not to replicate it in perfect
 detail.
 
-\bigskip
-
 #+LABEL: fig:lambdanet
 #+ATTR_LATEX: :width 10cm
 #+CAPTION: LambdaNet is a national backbone that serves all major German cities and connects the country to the rest of Europe.
 [[file:../figures/german_backbone.pdf]]
+
+\clearpage
 
 ** Network design
 :PROPERTIES:
@@ -1927,12 +1927,13 @@ asking for more and more bandwidth, but doing so it harms the [[ac:qos][QoS]] of
 fellows. The [[ac:isp][ISP]] has then to act as an arbiter, allocating available resources
 in a fair way.
 
-The best solution of this problem is proven to be the so-called \emph{Nash
-arbitration scheme} of the \emph{game} played among these actors cite:Mazumdar1991. Such unique point satisfies all desirable properties:
+The best solution of this problem is proven to be the so-called
+\emph{Nash arbitration scheme} of the \emph{game} played among these actors
+cite:Mazumdar1991. Such unique point satisfies all desirable properties:
 symmetry, independence of irrelevant alternatives and Pareto-optimality.
-Moreover, it can be found simply maximizing the product $f$ of all the utilities:
-this gives us a straightforward criterion to rank all possible network
-configurations. We then define
+Moreover, it can be found simply maximizing the product $f$ of all the
+utilities: this gives us a straightforward criterion to rank all possible
+network configurations. We then define
 
 \begin{equation} \label{eq:global_function}
   f(\vec{\rho}) = \prod_i u_i(\rho_i)
@@ -1987,7 +1988,7 @@ is employed.
     \If{ $\rho_k$ does not respect constraints \autoref{eq:dslam_max} and \autoref{eq:router_max}}
     \State Revert perturbation on $k$
     \EndIf
-    \If{ Objective function $f$ improvement is negligible in the last L iterations}
+    \If{ Objective $f$ improvement is negligible in the last L iterations}
     \State stop\_condition = True
     \EndIf
     \State Decrement $K$
@@ -2476,12 +2477,12 @@ Once built the network, [[ac:sdn][SDN]] principles are applied to its management
 packet flow control to a central unit.
 
 Bandwidth distribution is directed by this \emph{controller} according to a
-game-theoretical framework, called \emph{Nash arbitration scheme}. This ensure
+game theoretical framework, called \emph{Nash arbitration scheme}. This ensure
 the final configuration to balance packet flows and meet all desirable
 assumptions of \emph{fairness}.
 
 Utility functions, needed to fully characterize the allocation game, are
-application-specific and estimate actual [[ac:qoe][QoE]]. This is a step forward with
+application specific and estimate actual [[ac:qoe][QoE]]. This is a step forward with
 respect to common [[ac:qos][QoS]] metrics, as this way we maximize actual customer
 satisfaction and tailor service for end user peculiarities.
 
