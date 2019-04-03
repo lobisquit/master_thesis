@@ -1,4 +1,50 @@
 %!TEX root = ../dissertation.tex
-% the acknowledgments section
+% sommario
 
-% also called "sommario"
+Internet sta vivendo in questo periodo una crescita senza precedenti, sia in
+termini di utenti che di traffico offerto complessivo.
+
+Le cosiddette Software-Defined Networks (SDN) saranno necessarie in futuro per
+garantire le richieste di Quality of Service (QoS) da parte degli utenti, dal
+momento che le rete IP tradizionali non sono abbastanza flessibili e
+configurabili per la crescente domanda.
+
+Queste reti programmabili hanno trovato applicazione in molti ambiti, dal
+\emph{cloud computing} alla gestione di reti backbone, ma al momento nessuno
+studio le ha messe alla prova in contesti più comuni, come la rete di accesso di
+una città. Questa tesi si pone quindi come obiettivo di studiare i limiti delle
+SDN, valutando qual è il loro impatto in contesti più semplici.
+
+\smallskip
+
+Il nostro caso di studio è, nello specifico, la rete di accesso della città di
+Aquisgrana, situata nel nord-ovest della Germania, nello stato della
+Nord-Renania Westfalia. %
+%
+Siccome i suoi schematici non sono pubblici, abbiamo ricavato la topologia di
+questa rete a partire dalla distribuzione degli edifici e della popolazione, e
+posizionando poi in modo ottimale gli switch sulla superficie cittadina.
+
+Ultimata la fase di design, ci siamo posti come obiettivo quello di allocare le
+risorse di rete tra i terminali in modo \emph{giusto}.
+%
+Ad ogni utente è perciò assegnata una funzione utilità, il cui compito è quello
+di stabilire la sua Quality of Experience (QoE) a seconda della sua banda.
+%
+La miglior sintesi di queste valutazioni soggettive è il cosiddetto \emph{Nash
+arbitration scheme}, punto di equilibrio, secondo la teoria dei giochi, del
+problema di allocazione.
+%
+La strategia proposta è quindi confrontata con quella tradizionale, detta
+\emph{proportional fairness}, che assegna ad ogni utente una banda proporzionale
+alle sue richieste.
+
+Dopo aver simulato la rete, proveremo che il nostro approccio migliora la
+qualità del servizio per gli utenti anche in questo semplice
+contesto. L'effetto è rilevante specialmente quando il traffico offerto aumenta,
+e quindi la gestione della rete da parte dell'amministratore si complica.
+
+%%% Local Variables:
+%%% ispell-local-dictionary: "it"
+%%% eval: (flyspell-mode)
+%%% End:
