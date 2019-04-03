@@ -2366,41 +2366,41 @@ When instead in autoref:fig:utility_distribution0.9 the number of active users
 increases the situation is trickier to interpret: again though the proposed solution
 tends to move towards the optimal point.
 
+# #+NAME: obj_distribution
+# #+BEGIN_SRC R :exports results :results file value :noweb yes
+#   <<R_preamble>>
+
+#   dataset <- read.csv("../data/optimization/objs.csv", header = FALSE)
+
+#   current <- ggplot(dataset, aes(x=utility)) +
+#     ## scale_y_continuous(trans='log1p', breaks=c(100, 1000, 10000, 25000, 60000)) +
+#     geom_histogram(aes(y=..density..), bins=100, position="identity") +
+#     labs(x='Maximum global utility', y='Probability density', title='Objective function distribution') +
+#     scale_fill_viridis(discrete=TRUE, begin=0.5, end=0.5) +
+#     my_theme +
+#     theme(plot.title = element_text(hjust=0.5))
+
+#   ## print(current)
+
+#   out_path <- sprintf('../figures/obj_distribution.pdf')
+#   ggsave(plot = current,
+#          filename = out_path,
+#          width = 5,
+#          height = 5,
+#          unit = 'in',
+#          dpi = 300,
+#          device = 'pdf')
+
+#   print(out_path)
+# #+END_SRC
+
+# #+ATTR_LATEX: :width 5in
+# #+LABEL: fig:obj_distribution
+# #+CAPTION: Objective function distribution for $p_{streaming} = 0.5$ and $p_{active} = 0.5$.
+# #+RESULTS[267c935aa7fe7a21ee0439f1be55ebbf75b0681d]: obj_distribution
+# [[file:../figures/utility_distribution_09.pdf]]
+
 \bigskip
-
-#+NAME: obj_distribution
-#+BEGIN_SRC R :exports results :results file value :noweb yes
-  <<R_preamble>>
-
-  dataset <- read.csv("../data/optimization/objs.csv", header = FALSE)
-
-  current <- ggplot(dataset, aes(x=utility)) +
-    ## scale_y_continuous(trans='log1p', breaks=c(100, 1000, 10000, 25000, 60000)) +
-    geom_histogram(aes(y=..density..), bins=100, position="identity") +
-    labs(x='Maximum global utility', y='Probability density', title='Objective function distribution') +
-    scale_fill_viridis(discrete=TRUE, begin=0.5, end=0.5) +
-    my_theme +
-    theme(plot.title = element_text(hjust=0.5))
-
-  ## print(current)
-
-  out_path <- sprintf('../figures/obj_distribution.pdf')
-  ggsave(plot = current,
-         filename = out_path,
-         width = 5,
-         height = 5,
-         unit = 'in',
-         dpi = 300,
-         device = 'pdf')
-
-  print(out_path)
-#+END_SRC
-
-#+ATTR_LATEX: :width 5in
-#+LABEL: fig:obj_distribution
-#+CAPTION: Objective function distribution for $p_{streaming} = 0.5$ and $p_{active} = 0.5$.
-#+RESULTS[267c935aa7fe7a21ee0439f1be55ebbf75b0681d]: obj_distribution
-[[file:../figures/utility_distribution_09.pdf]]
 
 Despite all these promising results of proposed heuristic approach, it is currently
 only a lower bound on the theoretical optimum, exact solution of the
