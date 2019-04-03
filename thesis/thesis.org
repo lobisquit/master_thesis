@@ -862,6 +862,24 @@ scheme, among players carefully tuning their packet flows.
 :CUSTOM_ID: methodology
 :END:
 
+This chapter will present which theoretical tools and frameworks are employed in
+our analysis.
+
+First, in autoref:methodology-geographical_analysis, we show how relevant
+information about city topology is extracted from publicly available data,
+namely population density, streets and buildings position.
+
+Then in autoref:methodology-network_design, we will show how to design a network
+given valid paths across the city area and supposed user demand. As mentioned
+earlier this will be performed solving an optimization problem, akin to Steiner
+tree.
+
+Finally, obtained network is optimized in
+autoref:methodology-network_optimization with respect to user requirements and
+applications, distributing available network resources in a \emph{fair} way.
+Global user utility will be maximized using a game-theoretical framework, called
+\emph{Nash arbitration scheme}.
+
 ** Geographical analysis
 :PROPERTIES:
 :CUSTOM_ID: methodology-geographical_analysis
@@ -1994,6 +2012,22 @@ solution cite:Van1987.
 :PROPERTIES:
 :CUSTOM_ID: results
 :END:
+
+This chapter shows what we obtain applying the tools presented in
+autoref:methodology in our specific context, the city of Aachen.
+
+As its theoretical counterpart, here we first extract relevant geographical
+features from publicly available maps, in autoref:results-geographical_analysis.
+
+Then, in autoref:results-network_design, once the abstract city topology is
+known, a network is designed on top of it, solving an optimization problem both
+using an exact [[ac:ilp][ILP]] solver and an heuristic approach.
+
+Obtained network is finally optimized in autoref:results-network_optimization,
+such that each user enjoys a \emph{fair} amount of network resources, according
+to the \emph{Nash arbitration scheme}. This optimal operation point is then
+compared with legacy strategies, namely \emph{proportional fairness}, in order
+to assess whether this new proposed technique improvement is significant or not.
 
 ** Geographical analysis
 :PROPERTIES:
