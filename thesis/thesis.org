@@ -73,6 +73,9 @@
 #+BEGIN_EXPORT latex
 \newgeometry{top=1in, bottom=1in, inner=1in, outer=1in}
 \begin{titlepage}
+  % add space for paperback
+  \iftoggle{images_titlepage}{ }{ \vspace*{1.5in} }
+
   {\Large University of Padova}
   \vspace{4mm}
 
@@ -286,6 +289,10 @@ LaTeX support for svg files sucks.
 
 * Latex lists                                                        :ignore:
 #+BEGIN_EXPORT latex
+\pagenumbering{roman}
+
+\clearpage
+
 \frontispiece
 \abstractpage
 \sommario
@@ -1827,7 +1834,7 @@ the users respectively, as shown in [[autoref:fig:video_quality_report]] cite:Go
   sizes = (5, 10, 85)
   explode = (0.1, 0.1, 0)
 
-  fig = plt.figure(frameon=False, figsize=(4, 2))
+  fig = plt.figure(frameon=False, figsize=(5, 2))
   ax = fig.gca()
   ax.pie(sizes, explode=(0.1, 0.1, 0.1), labels=labels, autopct='%1.0f%%', startangle=0)
   ax.axis('equal')  # Equal aspect ratio ensures that pie is drawn as a circle.
@@ -1844,7 +1851,7 @@ the users respectively, as shown in [[autoref:fig:video_quality_report]] cite:Go
 #+CAPTION: Distribution of video quality among video streaming users cite:GoogleVideoQualityReport.
 #+ATTR_LATEX: :height 2in
 #+LABEL: fig:video_quality_report
-#+RESULTS[011430d4994e9ce3875856bdccbe452215e40b1e]: fig:video_quality_report
+#+RESULTS[2ceec3ea1f33a4389166ece8a602f2c7dfe13f21]: fig:video_quality_report
 [[file:../figures/streamers_profiles.pdf]]
 
 Parameters $a$ and $b$ are then tuned in order to properly link user perception of
@@ -1901,7 +1908,7 @@ the different services to available resources, as shown in autoref:fig:utilities
   print(out_path)
 #+END_SRC
 
-#+CAPTION: Utilitis vs available bandwidth for a given service.
+#+CAPTION: Utilities vs available bandwidth for a given service.
 #+ATTR_LATEX: :height 3in
 #+LABEL: fig:utilities
 #+RESULTS[e0c1976a49f0fedfcf1bf50b91d3d75adcce920f]: utilities
