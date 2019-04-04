@@ -1,0 +1,369 @@
+#+STARTUP: indent
+
+#+PROPERTY: header-args :cache yes
+
+#+startup: beamer
+#+LaTeX_CLASS: beamer
+
+#+LATEX_HEADER_EXTRA: \mode<beamer>{\usetheme{Padova}}
+#+LATEX_HEADER: \usepackage{mathtools}
+#+LATEX_HEADER: \usepackage{subcaption}
+
+#+TITLE: Traffic flow optimization for urban xDSL based access networks
+#+AUTHOR: Enrico Lovisotto
+#+DATE: 8 Aprile 2019
+
+#+OPTIONS: H:2
+
+* Preambles                                                        :noexport:
+#+NAME: asymptote_preamble
+#+BEGIN_SRC asymptote :exports none
+  settings.outformat="pdf";
+
+  texpreamble("\usepackage[sfdefault]{Fira Sans}");
+  texpreamble("\usepackage{newtxsf}");
+
+  // texpreamble("\usepackage{charter}");
+  // texpreamble("\usepackage[charter]{mathdesign}");
+#+END_SRC
+
+#+NAME: R_preamble
+#+BEGIN_SRC R :exports none
+  .libPaths("/opt/R/x86_64-pc-linux-gnu-library")
+
+  library(reshape2)
+  library(ggplot2)
+  library(scales)
+  library(extrafont)
+  library(gridExtra)
+  library(latex2exp)
+  library(readr)
+  library(dplyr)
+  library(data.table)
+  library(purrr)
+  library(viridis)
+
+  loadfonts()
+
+  my_theme <- theme_bw() +
+    theme(
+      text = element_text(family = "Fira Sans")
+    )
+#+END_SRC
+
+* Introduzione
+** Internet
+\centering
+
+Internet sta vivendo in questi anni una crescita senza precedenti, \\
+sia in termini di traffico che di numero di utenti.
+
+\vspace{3mm}
+
+#+NAME: fig:internet_user_growth
+#+BEGIN_SRC asymptote :file figures/internet_user_growth.pdf :noweb yes :export results
+  <<asymptote_preamble>>
+
+  import graph;
+
+  size(8cm, 5cm, IgnoreAspect);
+
+  int[] years = { 2017,
+                  2018,
+                  2019,
+                  2020,
+                  2021,
+                  2022 };
+
+  real xmin = 0.5;
+  real xmax = 8;
+
+  real[] traffic = { 122, // 2017
+                     156, // 2018
+                     201, // 2019
+                     254, // 2020
+                     319, // 2021
+                     396, // 2022
+  };
+
+  real ymin = 0.5;
+  real ymax = 8;
+
+  draw(graph(x=years, y=traffic, join=operator ..), green + linewidth(1.1pt));
+
+  xaxis(axis=YEquals(0.5),
+        xmin=years[0] - 1,
+        xmax=years[years.length - 1] + 2,
+        ticks=LeftTicks(Label(fontsize(8)),
+                        beginlabel=false,
+                        Step=2,
+                        step=1,
+                        modify=OmitTickInterval(years[years.length - 1] + 1, inf)),
+        arrow=Arrow());
+
+  yaxis(rotate(0) * shift(1.6cm) * Label("Traffico",
+                                         EndPoint,
+                                         fontsize(10),
+                                         align=NW),
+        axis=Left,
+        ymin=0.5,
+        ymax=traffic[traffic.length - 1] + 100,
+        ticks=RightTicks(format=Label("$%.4g$EB/month", fontsize(8)),
+                         modify=OmitTickInterval(401, inf),
+                         extend=false,
+                         beginlabel=true),
+        arrow=Arrow);
+#+END_SRC
+
+#+ATTR_LATEX: :height 5cm
+#+RESULTS[7bbcb8a43870d3a106d9dc1548d835ad313e48bb]: fig:internet_user_growth
+[[file:figures/internet_user_growth.pdf]]
+
+** Reti IP
+\centering
+
+La tradizionale gestione \emph{statica} del routing nelle reti IP rende la loro
+configurazione complessa, in particolare dove si voglia garantire un QoS agli
+utenti o assicurare il rispetto di \emph{policy} di rete.
+
+#+ATTR_LATEX: :height 5cm
+#+RESULTS[7bbcb8a43870d3a106d9dc1548d835ad313e48bb]: fig:internet_user_growth
+[[file:figures/rete_ip.png]]
+
+** Software Defined Networks
+\centering
+
+Per garantire flessibilità nell'impostazione delle rotte, è necessario spostare
+la loro logica in un \emph{controller} centrale programmabile, separando
+\emph{data plane} e \emph{control plane}.
+
+#+ATTR_LATEX: :height 5cm
+[[file:../figures/network_planes.pdf]]
+
+** Software Defined Networks
+\centering
+
+Questo principio è stato applicato con successo in infrastrutture complesse come
+datacenter e reti backbone.
+
+\vspace{3mm}
+
+#+ATTR_LATEX: :width 5cm
+[[file:figures/google.png]]
+
+#+ATTR_LATEX: :width 5cm
+[[file:figures/yahoo.png]]
+
+** Software Defined Networks
+\centering
+
+Non ci sono al momento studi riguardo i benefici portati da una SDN in
+contesti più comuni, come la rete di accesso di una città.
+
+\vspace{10mm}
+
+\begin{minipage}[c]{0.48\textwidth}
+ \includegraphics[width=\textwidth]{figures/aachen.jpg}
+\end{minipage}
+\begin{minipage}[c]{0.48\textwidth}
+ \includegraphics[width=\textwidth]{figures/rwth.png}
+\end{minipage}
+
+* Design della rete
+** Analisi topografica
+Gli schematici della rete di accesso di Aquisgrana non sono disponibili al
+pubblico, così è stato necessario inferirla da dati liberamente accessibili.
+
+\vspace*{-0.3cm}
+#+ATTR_LATEX: :height 6cm
+[[file:../figures/aachen_citymap.png]]
+
+** Premesse alla soluzione
+Una rete di accesso ha tipicamente una forma ad albero, con la radice collegata
+alla backbone e una foglia per ogni utenza.
+
+#+ATTR_LATEX: :height 5.5cm
+[[file:../figures/network_tree.eps]]
+
+# NOTE step iterativo da menzionare
+
+** Modello matematico
+
+Il problema di individuare la posizione ottimale per ogni switch e router si può
+risolvere con un modello lineare intero, il cui compito è quello di minimizzare
+il costo dato un insieme di condizioni.
+
+\setlength{\parskip}{0.8em}
+- il grafo in uscita è un albero \setlength{\itemsep}{0.8em}
+- la distanza tra ogni utente e la sua sotto-radice è limitata a $d_M$
+- il numero di utenti serviti da ogni sotto-radice è limitato a $n_M$
+
+** Algoritmo euristico
+
+Come spesso accade, tuttavia, il modello matematico non riesce a fornire
+soluzioni esatte oltre una certa taglia dell'istanza. Per questi casi abbiamo
+sviluppato un algorimo euristico, ispirato al \emph{clustering gerarchico}.
+
+# TODO fare schemino
+
+** Topologia ottenuta
+
+L'algoritmo restituisce la posizione delle DSLAM, dei router di secondo livello
+e del \emph{mainframe} centrale. Il costo della soluzione euristica dista al più
+il $4\%$ dall'ottimo teorico.
+
+\vspace{3mm}
+\begin{figure}[htp]
+  \captionsetup[subfigure]{skip=-15pt}
+  \centering
+  \begin{subfigure}[c]{0.48\textwidth}
+    \centering
+    \includegraphics[height=5cm]{figures/heuristic_small.png}
+  \end{subfigure}
+  \begin{subfigure}[c]{0.48\textwidth}
+    \centering
+    \includegraphics[height=5cm]{../figures/heuristic_mainframe.png}
+  \end{subfigure}
+\end{figure}
+
+* Allocazione delle risorse
+** Quality of Experience
+Ogni tipologia di utente considerata giudica la bontà della connessione in modo
+differente, a seconda del servizio utilizzato.
+
+#+NAME: utilities
+#+BEGIN_SRC R :exports results :results file value :noweb yes
+  <<R_preamble>>
+
+  library(pracma)
+
+  utility <- function(x, a, b) {
+    return(a * `^`(x, b) + 1)
+  }
+
+  as <- c(-3.035, -4.850, -17.53, -14.98544276)
+  bs  <- c(-.5061, -.6470, -1.048, -0.8780054)
+  types  <- c('Streaming HD',
+             'Streaming MD',
+             'Streaming LD',
+             'Web broswing')
+
+  x <- logspace(2, 4, 100)
+
+  data <- data.frame('type'=c(), 'Bandwidth'=c(), 'Utility profiles'=c())
+
+  for (index in seq(from=1, to=length(as), by=1)) {
+    current_data <- data.frame(
+      'Utility profiles'=types[index],
+      'Bandwidth'=x,
+      'Utility'=utility(x, as[index], bs[index])
+    )
+    data <- rbind(data, current_data)
+  }
+
+  current <- ggplot(data, aes(x=Bandwidth, y=Utility, colour=Utility.profiles)) +
+    labs(x='Banda [kbit/s]', colour='Profili', y='Utilità') +
+    scale_x_continuous(trans='log', breaks=c(100, 1000, 10000)) +
+    geom_line(aes(colour=Utility.profiles)) +
+    scale_color_viridis(discrete=TRUE) +
+    my_theme
+
+  ## print(current)
+
+  out_path <- 'figures/utilities.pdf'
+  ggsave(plot = current,
+         filename = out_path,
+         width = 5,
+         height = 3,
+         unit = 'in',
+         dpi = 300,
+         device = 'pdf')
+
+  print(out_path)
+#+END_SRC
+
+#+ATTR_LATEX: :height 6cm
+#+RESULTS[1e11f7a4084c7fc4859fc33f6dcfa74a5fade335]: utilities
+[[file:figures/utilities.pdf]]
+
+** Nash arbitration scheme
+Per decidere il punto di lavoro della rete, ovvero la distribuzione ottimale
+della banda, dev'essere formulato un giudizio comune sull'\emph{equità}
+dell'allocazione scelta.
+
+\begin{equation}
+  f(\vec{\rho}) = \prod_i u_i(\rho_i)
+\end{equation}
+
+Il punto ottimo per garantire una giusta spartizione delle risorse è il
+\emph{Nash arbitration scheme}, ottenuto massimizzando $f(\vec{\rho})$.
+
+** Giudizio sull'allocazione
+L'allocazione delle risorse proposta risulta migliore dal punto di vista della
+funzione utilità globale rispetto alla tradizionale strategia della
+\emph{proportional fairness}. Ciò è particolarmente evidente quando il traffico
+offerto aumenta.
+
+#+NAME: obj_vs_p_nothing0.1
+#+BEGIN_SRC R :exports results :results file value :noweb yes
+  <<R_preamble>>
+
+  p_streaming = 0.1
+
+  traditional <- read.csv("../data/optimization/traditional.csv", header = TRUE)
+  traditional$type <- "Heuristic"
+
+  heuristic <- read.csv("../data/optimization/heuristic.csv", header = TRUE)
+  heuristic$type <- "Traditional"
+
+  dataset <- rbind(traditional, heuristic)
+
+  summary <- group_by(dataset, p_nothing, p_streaming, type) %>% summarize(obj=max(obj))
+  summary$obj <- exp(summary$obj)
+
+  summary <- summary[summary$p_streaming == p_streaming, ]
+  padding <- (
+    max(exp(summary$obj[summary$type == 'Traditional'])) -
+    min(exp(summary$obj[summary$type == 'Traditional']))
+  ) / 100
+
+  current <- ggplot(summary, aes(x=1-p_nothing, y=obj, color=type)) +
+    geom_line() +
+    geom_errorbar(aes(ymin=obj - padding,
+                      ymax=obj + padding)) +
+    labs(x=TeX("$p_{active}$"),
+         y="Objective function",
+         color='Strategy') +
+    scale_x_continuous(breaks=unique(summary$p_nothing),
+                       labels=round(unique(summary$p_nothing), 2)) +
+    scale_colour_viridis(discrete=TRUE, end=0.8) +
+    my_theme
+
+  ## print(current)
+
+  name_tag <- gsub("\\.", "", sprintf('%.1f', p_streaming))
+  out_path <- sprintf('figures/obj_vs_p_nothing_%s.pdf', name_tag)
+  ggsave(plot = current,
+         filename = out_path,
+         width = 5,
+         height = 3,
+         unit = 'in',
+         dpi = 300,
+         device = 'pdf')
+
+  print(out_path)
+#+END_SRC
+
+#+ATTR_LATEX: :height 5cm
+#+RESULTS[ca75d91a03ca58939676cdec5a6cc1192b6e0634]: obj_vs_p_nothing0.1
+[[file:figures/obj_vs_p_nothing_01.pdf]]
+
+* Conclusioni
+** Conclusioni
+- l'algoritmo euristico proposto risulta, allo stato dell'arte, il più
+  performante e completo per il design di una rete di accesso a partire da
+  informazioni geografiche
+- il calcolo del \emph{Nash arbitration scheme}, punto di lavoro ottimale per la
+  rete, richiede limitate risorse da parte dell'operatore
+- l'utilizzo dei principi SDN può portare ad un miglioramento dell'allocazione
+  delle risorse di rete, specialmente quando il carico aumenta
