@@ -98,7 +98,7 @@ sia in termini di traffico che di numero di utenti.
                         beginlabel=false,
                         Step=2,
                         step=1,
-                        modify=OmitTickInterval(years[years.length - 1] + 1, inf)),
+                        modify=OmitTickInterval(2023.5, inf)),
         arrow=Arrow());
 
   yaxis(rotate(0) * shift(1.6cm) * Label("Traffic",
@@ -116,11 +116,13 @@ sia in termini di traffico che di numero di utenti.
 #+END_SRC
 
 #+ATTR_LATEX: :height 5cm
-#+RESULTS[a4459493ecc5c5411cd7ca632807a9b0c4ec286d]: fig:internet_user_growth
+#+RESULTS[d68f7aa1ba488ab7e74801646004cb3e28e60a9c]: fig:internet_user_growth
 [[file:figures/internet_user_growth.pdf]]
 
-** Contesto
+** Legacy infrastructure
 \centering
+
+Traditional *static* routing in IP networks are difficult to configure,
 
 La tradizionale gestione *statica* del routing nelle reti IP rende la loro
 configurazione complessa, in particolare dove si voglia garantire un QoS agli
@@ -128,7 +130,7 @@ utenti o assicurare il rispetto di *policy* di rete.
 
 #+ATTR_LATEX: :height 5cm
 #+RESULTS[7bbcb8a43870d3a106d9dc1548d835ad313e48bb]: fig:internet_user_growth
-[[file:figures/rete_ip.png]]
+[[file:figures/network_shema.pdf]]
 
 ** Software Defined Networks
 \centering
