@@ -15,7 +15,7 @@
 
 #+OPTIONS: H:2
 
-* Preambles                                                        :noexport:
+* Preamboli di codice                                              :noexport:
 #+NAME: asymptote_preamble
 #+BEGIN_SRC asymptote :exports none
   settings.outformat="pdf";
@@ -52,7 +52,7 @@
 #+END_SRC
 
 * Introduzione
-** Internet
+** Contesto
 \centering
 
 Internet sta vivendo in questi anni una crescita senza precedenti, \\
@@ -119,12 +119,12 @@ sia in termini di traffico che di numero di utenti.
 #+RESULTS[7bbcb8a43870d3a106d9dc1548d835ad313e48bb]: fig:internet_user_growth
 [[file:figures/internet_user_growth.pdf]]
 
-** Reti IP
+** Contesto
 \centering
 
-La tradizionale gestione \emph{statica} del routing nelle reti IP rende la loro
+La tradizionale gestione *statica* del routing nelle reti IP rende la loro
 configurazione complessa, in particolare dove si voglia garantire un QoS agli
-utenti o assicurare il rispetto di \emph{policy} di rete.
+utenti o assicurare il rispetto di *policy* di rete.
 
 #+ATTR_LATEX: :height 5cm
 #+RESULTS[7bbcb8a43870d3a106d9dc1548d835ad313e48bb]: fig:internet_user_growth
@@ -134,13 +134,13 @@ utenti o assicurare il rispetto di \emph{policy} di rete.
 \centering
 
 Per garantire flessibilità nell'impostazione delle rotte, è necessario spostare
-la loro logica in un \emph{controller} centrale programmabile, separando
-\emph{data plane} e \emph{control plane}.
+la loro logica in un *controller* centrale programmabile, separando
+*data plane* e *control plane*.
 
 #+ATTR_LATEX: :height 5cm
 [[file:../figures/network_planes.pdf]]
 
-** Software Defined Networks
+** Software Defined Networks                                      :noexport:
 \centering
 
 Questo principio è stato applicato con successo in infrastrutture complesse come
@@ -190,8 +190,8 @@ alla backbone e una foglia per ogni utenza.
 ** Modello matematico
 
 Il problema di individuare la posizione ottimale per ogni switch e router si può
-risolvere con un modello lineare intero, il cui compito è quello di minimizzare
-il costo dato un insieme di condizioni.
+risolvere con un modello *lineare intero*, il cui compito è quello di
+minimizzare il costo dato un insieme di condizioni.
 
 \setlength{\parskip}{0.8em}
 - il grafo in uscita è un albero \setlength{\itemsep}{0.8em}
@@ -202,14 +202,14 @@ il costo dato un insieme di condizioni.
 
 Come spesso accade, tuttavia, il modello matematico non riesce a fornire
 soluzioni esatte oltre una certa taglia dell'istanza. Per questi casi abbiamo
-sviluppato un algorimo euristico, ispirato al \emph{clustering gerarchico}.
+sviluppato un algorimo euristico, ispirato al *clustering gerarchico*.
 
-# TODO fare schemino
+[[file:figures/hierarchical_clustering.pdf]]
 
 ** Topologia ottenuta
 
 L'algoritmo restituisce la posizione delle DSLAM, dei router di secondo livello
-e del \emph{mainframe} centrale. Il costo della soluzione euristica dista al più
+e del *mainframe* centrale. Il costo della soluzione euristica dista al più
 il $4\%$ dall'ottimo teorico.
 
 \vspace{3mm}
@@ -288,7 +288,7 @@ differente, a seconda del servizio utilizzato.
 
 ** Nash arbitration scheme
 Per decidere il punto di lavoro della rete, ovvero la distribuzione ottimale
-della banda, dev'essere formulato un giudizio comune sull'\emph{equità}
+della banda, dev'essere formulato un giudizio comune sull'*equità*
 dell'allocazione scelta.
 
 \begin{equation}
@@ -296,12 +296,12 @@ dell'allocazione scelta.
 \end{equation}
 
 Il punto ottimo per garantire una giusta spartizione delle risorse è il
-\emph{Nash arbitration scheme}, ottenuto massimizzando $f(\vec{\rho})$.
+*Nash arbitration scheme*, ottenuto massimizzando $f(\vec{\rho})$.
 
 ** Giudizio sull'allocazione
 L'allocazione delle risorse proposta risulta migliore dal punto di vista della
 funzione utilità globale rispetto alla tradizionale strategia della
-\emph{proportional fairness}. Ciò è particolarmente evidente quando il traffico
+*proportional fairness*. Ciò è particolarmente evidente quando il traffico
 offerto aumenta.
 
 #+NAME: obj_vs_p_nothing0.1
@@ -363,7 +363,7 @@ offerto aumenta.
 - l'algoritmo euristico proposto risulta, allo stato dell'arte, il più
   performante e completo per il design di una rete di accesso a partire da
   informazioni geografiche
-- il calcolo del \emph{Nash arbitration scheme}, punto di lavoro ottimale per la
+- il calcolo del *Nash arbitration scheme*, punto di lavoro ottimale per la
   rete, richiede limitate risorse da parte dell'operatore
 - l'utilizzo dei principi SDN può portare ad un miglioramento dell'allocazione
   delle risorse di rete, specialmente quando il carico aumenta
