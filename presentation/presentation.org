@@ -8,6 +8,7 @@
 #+LATEX_HEADER_EXTRA: \mode<beamer>{\usetheme{Padova}}
 #+LATEX_HEADER: \usepackage{mathtools}
 #+LATEX_HEADER: \usepackage{subcaption}
+#+LATEX_HEADER: \usepackage{tikz}
 
 #+TITLE: Traffic flow optimization for urban xDSL based access networks
 #+AUTHOR: Enrico Lovisotto
@@ -229,6 +230,48 @@ il $4\%$ dall'ottimo teorico.
 \end{figure}
 
 * Allocazione delle risorse
+
+  \begin{figure}
+
+    \begin{columns}
+      \begin{column}{0.02\textwidth}
+      \end{column}
+      \begin{column}{0.5\textwidth}
+        \begin{columns}
+          \begin{column}{0.3\textwidth}
+            \flushright DSLAMs
+          \end{column}
+          \begin{column}{0.7\textwidth}
+            \includegraphics[height=2.5cm]{../figures/heuristic_DSLAM.png} \\
+          \end{column}
+        \end{columns}
+
+        \vspace{2mm}
+
+        \begin{columns}
+          \begin{column}{0.3\textwidth}
+            \flushright Routers
+          \end{column}
+          \begin{column}{0.7\textwidth}
+            \includegraphics[height=2.5cm]{../figures/heuristic_2router.png}
+          \end{column}
+        \end{columns}
+
+      \end{column}
+
+      \begin{column}{0.48\textwidth}
+        \includegraphics[height=5.3cm]{../figures/heuristic_mainframe.png}
+        \begin{tikzpicture}[remember picture,overlay]
+          \node[xshift=-4.5cm,yshift=1.5cm] at (current page.south east){%
+            Mainframe
+          };
+        \end{tikzpicture}
+
+      \end{column}
+    \end{columns}
+
+  \end{figure}
+
 ** Quality of Experience
 Ogni tipologia di utente considerata giudica la bontà della connessione in modo
 differente, a seconda del servizio utilizzato.
@@ -373,3 +416,10 @@ offerto aumenta.
   rete, richiede limitate risorse da parte dell'operatore
 - l'utilizzo dei principi SDN può portare ad un miglioramento dell'allocazione
   delle risorse di rete, specialmente quando il carico aumenta
+
+
+* Local variables                                                  :noexport:
+# Local Variables:
+# eval: (flyspell-mode)
+# ispell-local-dictionary: "en"
+# End:
