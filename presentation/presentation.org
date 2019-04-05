@@ -101,7 +101,7 @@ sia in termini di traffico che di numero di utenti.
                         modify=OmitTickInterval(years[years.length - 1] + 1, inf)),
         arrow=Arrow());
 
-  yaxis(rotate(0) * shift(1.6cm) * Label("Traffico",
+  yaxis(rotate(0) * shift(1.6cm) * Label("Traffic",
                                          EndPoint,
                                          fontsize(10),
                                          align=NW),
@@ -116,7 +116,7 @@ sia in termini di traffico che di numero di utenti.
 #+END_SRC
 
 #+ATTR_LATEX: :height 5cm
-#+RESULTS[7bbcb8a43870d3a106d9dc1548d835ad313e48bb]: fig:internet_user_growth
+#+RESULTS[a4459493ecc5c5411cd7ca632807a9b0c4ec286d]: fig:internet_user_growth
 [[file:figures/internet_user_growth.pdf]]
 
 ** Contesto
@@ -262,7 +262,7 @@ differente, a seconda del servizio utilizzato.
   }
 
   current <- ggplot(data, aes(x=Bandwidth, y=Utility, colour=Utility.profiles)) +
-    labs(x='Banda [kbit/s]', colour='Profili', y='Utilità') +
+    labs(x='Bandwidth [kbit/s]', colour='Profiles', y='Utility') +
     scale_x_continuous(trans='log', breaks=c(100, 1000, 10000)) +
     geom_line(aes(colour=Utility.profiles)) +
     scale_color_viridis(discrete=TRUE) +
@@ -283,10 +283,14 @@ differente, a seconda del servizio utilizzato.
 #+END_SRC
 
 #+ATTR_LATEX: :height 6cm
-#+RESULTS[1e11f7a4084c7fc4859fc33f6dcfa74a5fade335]: utilities
+#+RESULTS[bffdb828624f77504922bd298bd18bfec0991997]: utilities
 [[file:figures/utilities.pdf]]
 
 ** Nash arbitration scheme
+
+In order to specify the operation point of the network, i.e. the optimal bandwidth allocation to users,
+single QoE have to be summarized into a global evaluation that guar1
+
 Per decidere il punto di lavoro della rete, ovvero la distribuzione ottimale
 della banda, dev'essere formulato un giudizio comune sull'*equità*
 dell'allocazione scelta.
@@ -330,7 +334,7 @@ offerto aumenta.
   current <- ggplot(summary, aes(x=1-p_nothing, y=obj, color=type)) +
     geom_line() +
     geom_errorbar(aes(ymin=obj - padding,
-                      ymax=obj + padding)) +
+                      ymax=obj + padding), width=0.02) +
     labs(x=TeX("$p_{active}$"),
          y="Objective function",
          color='Strategy') +
@@ -355,7 +359,7 @@ offerto aumenta.
 #+END_SRC
 
 #+ATTR_LATEX: :height 5cm
-#+RESULTS[ca75d91a03ca58939676cdec5a6cc1192b6e0634]: obj_vs_p_nothing0.1
+#+RESULTS[8ff3a220482f01aeb46d672aa22e19bf45e5212e]: obj_vs_p_nothing0.1
 [[file:figures/obj_vs_p_nothing_01.pdf]]
 
 * Conclusioni
