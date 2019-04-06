@@ -1,0 +1,51 @@
+\documentclass[preview]{standalone}
+\usepackage{mathtools}
+\usepackage{amsmath}
+\usepackage{amsfonts}
+\renewcommand{\familydefault}{\sfdefault}
+\usepackage[cm]{sfmath}
+
+\begin{document}
+
+\begin{flalign*}
+  & \left. \begin{aligned}
+      \min_{ \{x_e\}_{e \in E} }
+      & \left( \sum_{t \in T} d_t \, u_t \right) \, c_c
+      + \left( \sum_{e \in E} x_e \, l_e \right) \, c_e
+      + \left( \sum_{e \in \delta^+(r)} x_e \right) \, c_r
+    \end{aligned} ~~ \right\} ~~ \text{\Large Minimize total cost}
+  \\[0.7em]
+  & \quad \quad \left. \begin{aligned}
+      & \sum_{e \in \delta^-(j)} x_e ~
+      \begin{cases}
+        = 0 & j = r \\[0em]
+        = 1 & j \in T \\
+        \le 1 & j \in V \setminus T
+      \end{cases}  \\[0.5em]
+      & \sum_{e \in \delta^+(r)} x_e \ge 1
+    \end{aligned} \hspace{4.15cm} \right\} ~ \text{\Large Solution is a \emph{tree}} \\[0.5em]
+  & \quad \quad \left. \begin{aligned}
+  & \forall j \in V \cup \{r\}, ~ d_j \le \left( \sum_{e \in \delta^-(j)} x_e \right) d_M \\[0.2em]
+  & \forall (i,\,j) \in A ~
+    \begin{cases}
+      ~ d_j - d_i \ge l_{ij} ~ x_{ij} - d_M \, (1 - x_{ij}) \\[0em]
+      ~ d_j - d_i \le l_{ij} ~ x_{ij} + d_M \, (1 - x_{ij})
+    \end{cases} \\[0em]
+  \end{aligned} \hspace{1.55cm} \right\} ~ \text{\Large Cable length is no more than $d_M$} \\[0em]
+  & \quad \quad \left. \begin{aligned}
+  & \forall e \in A,\, n_e \le x_e \, n_M \\
+  & \sum_{e \in \delta^-(j)} n_e - \sum_{e \in \delta^+(j)} n_e =
+    \begin{cases}
+      ~ p_j & j \in T \\[0em]
+      ~ 0 & j \in V \setminus T
+    \end{cases}  \\[0em]
+  & \sum_{e \in \delta^+(r)} n_e = \sum_{i \in T} u_i
+  \end{aligned} \hspace{2.25cm} \right\} ~ \text{\Large Users per group are up to $n_M$}  \\[0em]
+  & \quad \quad \forall e \in A, \, x_e \in \{0, \, 1\}, \, n_e \in \mathbb{N} \cup \{0\}, ~ \forall j \in V \cup \{r\}, \, d_j \ge 0
+\end{flalign*}
+
+\end{document}
+
+%%% Local Variables:
+%%% TeX-master: t
+%%% End:
