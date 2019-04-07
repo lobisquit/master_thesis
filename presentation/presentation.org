@@ -9,6 +9,18 @@
 #+LATEX_HEADER: \usepackage{mathtools}
 #+LATEX_HEADER: \usepackage{subcaption}
 #+LATEX_HEADER: \usepackage{tikz}
+#+LATEX_HEADER: \usepackage{booktabs}
+
+#+LATEX_HEADER: \AtBeginSection[]{
+#+LATEX_HEADER:   \begin{frame}
+#+LATEX_HEADER:     \vfill
+#+LATEX_HEADER:     \centering
+#+LATEX_HEADER:     \begin{beamercolorbox}[sep=8pt,center,shadow=true,rounded=true]{frametitle}
+#+LATEX_HEADER:       \usebeamerfont{title}\insertsectionhead\par%
+#+LATEX_HEADER:     \end{beamercolorbox}
+#+LATEX_HEADER:     \vfill
+#+LATEX_HEADER:   \end{frame}
+#+LATEX_HEADER: }
 
 #+TITLE: Traffic flow optimization for urban xDSL based access networks
 #+AUTHOR: Enrico Lovisotto
@@ -16,7 +28,7 @@
 
 #+OPTIONS: H:2
 
-* Preamboli di codice                                              :noexport:
+* Code preambles                                                   :noexport:
 #+NAME: asymptote_preamble
 #+BEGIN_SRC asymptote :exports none
   settings.outformat="pdf";
@@ -52,12 +64,12 @@
     )
 #+END_SRC
 
-* Introduzione
-** Contesto
+* Introduction
+** Background scenario
 \centering
 
-Internet sta vivendo in questi anni una crescita senza precedenti, \\
-sia in termini di traffico che di numero di utenti.
+Internet is experiencing nowadays an unprecedented growth, both in terms of
+users and traffic.[fn:1]
 
 \vspace{3mm}
 
@@ -120,48 +132,36 @@ sia in termini di traffico che di numero di utenti.
 #+RESULTS[d68f7aa1ba488ab7e74801646004cb3e28e60a9c]: fig:internet_user_growth
 [[file:figures/internet_user_growth.pdf]]
 
+[fn:1] Cisco VNI Forecast, ``Cisco Visual Networking Index: Forecast and Trends,
+2017-2022, \emph{Cisco Public Information}''
+
 ** Legacy infrastructure
 \centering
 
-Traditional *static* routing in IP networks are difficult to configure,
+Implementing flow balancing, congestion avoidance and QoS guarantees is complex
+in current IP networks: their *fixed routing policies* are in fact difficult to
+adapt to the dynamic modern setting.
 
-La tradizionale gestione *statica* del routing nelle reti IP rende la loro
-configurazione complessa, in particolare dove si voglia garantire un QoS agli
-utenti o assicurare il rispetto di *policy* di rete.
+# \vspace{3mm}
 
-#+ATTR_LATEX: :height 5cm
+#+ATTR_LATEX: :height 5.5cm
 #+RESULTS[7bbcb8a43870d3a106d9dc1548d835ad313e48bb]: fig:internet_user_growth
 [[file:figures/network_shema.pdf]]
 
 ** Software Defined Networks
 \centering
 
-Per garantire flessibilità nell'impostazione delle rotte, è necessario spostare
-la loro logica in un *controller* centrale programmabile, separando
-*data plane* e *control plane*.
+To guarantee flexibility it is necessary to decouple *data plane* and *control
+plane*, moving the routing logic to a central entity.
 
-#+ATTR_LATEX: :height 5cm
+#+ATTR_LATEX: :height 5.5cm
 [[file:../figures/network_planes.pdf]]
 
-** Software Defined Networks                                      :noexport:
+** Case of study
 \centering
 
-Questo principio è stato applicato con successo in infrastrutture complesse come
-datacenter e reti backbone.
-
-\vspace{3mm}
-
-#+ATTR_LATEX: :width 5cm
-[[file:figures/google.png]]
-
-#+ATTR_LATEX: :width 5cm
-[[file:figures/yahoo.png]]
-
-** Software Defined Networks
-\centering
-
-Non ci sono al momento studi riguardo i benefici portati da una SDN in
-contesti più comuni, come la rete di accesso di una città.
+Currently no study quantifies the benefits provided by an SDN approach in common
+contexts, such as a city access network.
 
 \vspace{10mm}
 
@@ -172,109 +172,111 @@ contesti più comuni, come la rete di accesso di una città.
  \includegraphics[width=\textwidth]{figures/rwth.png}
 \end{minipage}
 
-* Design della rete
-** Analisi topografica
-Gli schematici della rete di accesso di Aquisgrana non sono disponibili al
-pubblico, così è stato necessario inferirla da dati liberamente accessibili.
+* Network design
+** Topographical analysis
+
+Aachen access network schematics are not publicly available, so it was necessary
+to infer it from freely-accessible data.
 
 \vspace*{-0.3cm}
-#+ATTR_LATEX: :height 6cm
+#+ATTR_LATEX: :height 6.5cm
 [[file:../figures/aachen_citymap.png]]
 
-** Premesse alla soluzione
-Una rete di accesso ha tipicamente una forma ad albero, con la radice collegata
-alla backbone e una foglia per ogni utenza.
+** Topology hypothesis
+
+An access network graph is tipically a tree, whose root is connected to the
+backbone and leaves reach the customers.
 
 #+ATTR_LATEX: :height 5.5cm
 [[file:../figures/network_tree.eps]]
 
-# NOTE step iterativo da menzionare
+# NOTE mention iterative step
 
-** Modello matematico
+** Variables and constraints
 
-Il problema di individuare la posizione ottimale per ogni switch e router si può
-risolvere con un modello *lineare intero*, il cui compito è quello di
-minimizzare il costo dato un insieme di condizioni.
+#+ATTR_LATEX: :booktabs yes
+| Variable        | Description                                   |
+|-----------------+-----------------------------------------------|
+| $G = (V, \, E)$ | Graph describing the city topology            |
+| $T \subseteq V$ | Set of terminal nodes                         |
+| $l_e = l_{ij}$  | Length of edge $e = (i,\,j) \in E$            |
+| $u_i$           | Number of users at terminal $i \in T$         |
+| $x_e$           | Indicator variable for edge $e$ activation    |
+|-----------------+-----------------------------------------------|
+| $c_r$           | Cost of a single subtree root node            |
+| $c_f$           | Cost of a fiber optic cable per meter         |
+| $c_e$           | Cost of roadwork excavation per meter         |
+|-----------------+-----------------------------------------------|
+| $d_M$           | Maximum distance from a terminal and its root |
+| $n_M$           | Maximum number of terminals per tree          |
 
-\setlength{\parskip}{0.8em}
-- il grafo in uscita è un albero \setlength{\itemsep}{0.8em}
-- la distanza tra ogni utente e la sua sotto-radice è limitata a $d_M$
-- il numero di utenti serviti da ogni sotto-radice è limitato a $n_M$
+** Mathematical model
 
-** Algoritmo euristico
+\vspace{-7mm}
 
-Come spesso accade, tuttavia, il modello matematico non riesce a fornire
-soluzioni esatte oltre una certa taglia dell'istanza. Per questi casi abbiamo
-sviluppato un algorimo euristico, ispirato al *clustering gerarchico*.
+#+ATTR_LATEX: :height 8cm
+[[file:figures/formulas.pdf]]
+
+** Heuristic algorithm
+
+CPLEX, our reference ILP solver, cannot find the optimum exactly above a certain
+instance size, because of resource limitations. In these cases we developed then
+an heuristic algorithm, inspired by *hierarchical clustering*.
 
 [[file:figures/hierarchical_clustering.pdf]]
 
-** Topologia ottenuta
+** Resulting topology
 
-L'algoritmo restituisce la posizione delle DSLAM, dei router di secondo livello
-e del *mainframe* centrale. Il costo della soluzione euristica dista al più
-il $4\%$ dall'ottimo teorico.
+Proposed algorithm provides DSLAM, router and mainframe positions, shown in the
+maps. Heuristic solution cost gap with respect to the theoretical optimum,
+obtained via CPLEX on our case of study, is no more than 4%.
 
-\vspace{3mm}
-\begin{figure}[htp]
-  \captionsetup[subfigure]{skip=-15pt}
-  \centering
-  \begin{subfigure}[c]{0.48\textwidth}
-    \centering
-    \includegraphics[height=5cm]{figures/heuristic_small.png}
-  \end{subfigure}
-  \begin{subfigure}[c]{0.48\textwidth}
-    \centering
-    \includegraphics[height=5cm]{../figures/heuristic_mainframe.png}
-  \end{subfigure}
+\begin{figure}
+
+  \begin{columns}
+    \begin{column}{0.02\textwidth}
+    \end{column}
+    \begin{column}{0.5\textwidth}
+      \begin{columns}
+        \begin{column}{0.3\textwidth}
+          \flushright DSLAMs
+        \end{column}
+        \begin{column}{0.7\textwidth}
+          \includegraphics[height=2.5cm]{../figures/heuristic_DSLAM.png} \\
+        \end{column}
+      \end{columns}
+
+      \vspace{2mm}
+
+      \begin{columns}
+        \begin{column}{0.3\textwidth}
+          \flushright Routers
+        \end{column}
+        \begin{column}{0.7\textwidth}
+          \includegraphics[height=2.5cm]{../figures/heuristic_2router.png}
+        \end{column}
+      \end{columns}
+
+    \end{column}
+
+    \begin{column}{0.48\textwidth}
+      \includegraphics[height=5.3cm]{../figures/heuristic_mainframe.png}
+      \begin{tikzpicture}[remember picture,overlay]
+        \node[xshift=-4.5cm,yshift=1.5cm] at (current page.south east){%
+          Mainframe
+        };
+      \end{tikzpicture}
+
+    \end{column}
+  \end{columns}
+
 \end{figure}
 
-* Allocazione delle risorse
-
-  \begin{figure}
-
-    \begin{columns}
-      \begin{column}{0.02\textwidth}
-      \end{column}
-      \begin{column}{0.5\textwidth}
-        \begin{columns}
-          \begin{column}{0.3\textwidth}
-            \flushright DSLAMs
-          \end{column}
-          \begin{column}{0.7\textwidth}
-            \includegraphics[height=2.5cm]{../figures/heuristic_DSLAM.png} \\
-          \end{column}
-        \end{columns}
-
-        \vspace{2mm}
-
-        \begin{columns}
-          \begin{column}{0.3\textwidth}
-            \flushright Routers
-          \end{column}
-          \begin{column}{0.7\textwidth}
-            \includegraphics[height=2.5cm]{../figures/heuristic_2router.png}
-          \end{column}
-        \end{columns}
-
-      \end{column}
-
-      \begin{column}{0.48\textwidth}
-        \includegraphics[height=5.3cm]{../figures/heuristic_mainframe.png}
-        \begin{tikzpicture}[remember picture,overlay]
-          \node[xshift=-4.5cm,yshift=1.5cm] at (current page.south east){%
-            Mainframe
-          };
-        \end{tikzpicture}
-
-      \end{column}
-    \end{columns}
-
-  \end{figure}
-
+* Resource allocation
 ** Quality of Experience
-Ogni tipologia di utente considerata giudica la bontà della connessione in modo
-differente, a seconda del servizio utilizzato.
+
+Every kind of user considered judges connection quality in different ways,
+according to the requested service.[fn:2][fn:3]
 
 #+NAME: utilities
 #+BEGIN_SRC R :exports results :results file value :noweb yes
@@ -289,9 +291,9 @@ differente, a seconda del servizio utilizzato.
   as <- c(-3.035, -4.850, -17.53, -14.98544276)
   bs  <- c(-.5061, -.6470, -1.048, -0.8780054)
   types  <- c('Streaming HD',
-             'Streaming MD',
-             'Streaming LD',
-             'Web broswing')
+              'Streaming MD',
+              'Streaming LD',
+              'Web broswing')
 
   x <- logspace(2, 4, 100)
 
@@ -327,31 +329,34 @@ differente, a seconda del servizio utilizzato.
   print(out_path)
 #+END_SRC
 
-#+ATTR_LATEX: :height 6cm
-#+RESULTS[bffdb828624f77504922bd298bd18bfec0991997]: utilities
+#+ATTR_LATEX: :height 5cm
+#+RESULTS[af5f72a9ae1c5dcfa437cedb29f91a751fb06f7d]: utilities
 [[file:figures/utilities.pdf]]
+
+[fn:2] Laghari \emph{et al.}, Quality-of-Experience perception for video streaming
+services
+
+[fn:3] Georgopulos \emph{et al.}, Towards network-wide QoE fairness using
+OpenFlow assisted adaptive video streaming
 
 ** Nash arbitration scheme
 
-In order to specify the operation point of the network, i.e. the optimal bandwidth allocation to users,
-single QoE have to be summarized into a global evaluation that guar1
-
-Per decidere il punto di lavoro della rete, ovvero la distribuzione ottimale
-della banda, dev'essere formulato un giudizio comune sull'*equità*
-dell'allocazione scelta.
+The only point that guarantees a *fair* resource distribution is the *Nash
+arbitration scheme*, an equilibrium point of the allocation game played among
+users.
 
 \begin{equation}
   f(\vec{\rho}) = \prod_i u_i(\rho_i)
 \end{equation}
 
-Il punto ottimo per garantire una giusta spartizione delle risorse è il
-*Nash arbitration scheme*, ottenuto massimizzando $f(\vec{\rho})$.
+This optimal working point is obtained maximizing the *objective function* $f$,
+product of the individual utilities.
 
-** Giudizio sull'allocazione
-L'allocazione delle risorse proposta risulta migliore dal punto di vista della
-funzione utilità globale rispetto alla tradizionale strategia della
-*proportional fairness*. Ciò è particolarmente evidente quando il traffico
-offerto aumenta.
+** Allocation performance
+
+Proposed resource allocation improves, in terms of objective $f$ value, with
+respect to the legacy approach of *proportional fairness* of a significant
+extent, especially as traffic increases.
 
 #+NAME: obj_vs_p_nothing0.1
 #+BEGIN_SRC R :exports results :results file value :noweb yes
@@ -407,19 +412,20 @@ offerto aumenta.
 #+RESULTS[8ff3a220482f01aeb46d672aa22e19bf45e5212e]: obj_vs_p_nothing0.1
 [[file:figures/obj_vs_p_nothing_01.pdf]]
 
-* Conclusioni
-** Conclusioni
-- l'algoritmo euristico proposto risulta, allo stato dell'arte, il più
-  performante e completo per il design di una rete di accesso a partire da
-  informazioni geografiche
-- il calcolo del *Nash arbitration scheme*, punto di lavoro ottimale per la
-  rete, richiede limitate risorse da parte dell'operatore
-- l'utilizzo dei principi SDN può portare ad un miglioramento dell'allocazione
-  delle risorse di rete, specialmente quando il carico aumenta
+* Conclusions
+** Conclusions
 
+- proposed heuristic is the most complete and performing available in
+  literature, at the moment, to design an access network from geographical
+  information \setlength{\parskip}{0.8em}
+- using SDN principles can improve bandwidth allocation, and so network
+  performance, especially when demand increases
+- evaluating the *Nash arbitration scheme* requires limited computational
+  resources
 
 * Local variables                                                  :noexport:
 # Local Variables:
 # eval: (flyspell-mode)
+# org-latex-pdf-process: ("%latex -shell-escape -interaction nonstopmode -output-directory %o %f")
 # ispell-local-dictionary: "en"
 # End:
