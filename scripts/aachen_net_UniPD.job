@@ -1,0 +1,10 @@
+#!/bin/bash
+
+# create ouput files in job directory
+#$ -o /home/lovisott/master_thesis/out.txt
+#$ -e /home/lovisott/master_thesis/err.txt
+
+cd /home/lovisott/master_thesis/
+
+source venv/bin/activate
+GDAL_DATA=/home/lovisott/gdal python scripts/aachen_net/07_get_closest_roads.py
